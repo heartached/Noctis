@@ -1365,7 +1365,7 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>保持隨機播放</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>隨機播放開啟時，播放專輯、播放清單或歌曲會保持開啟，並隨機播放新的音樂。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SkipSilence" xml:space="preserve"><value>略過靜音</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.SkipSilenceHint" xml:space="preserve"><value>每首歌從第一個聲音開始播放，在最後一個聲音之後切到下一首。不會修改你的檔案，為歌曲設定的開始或停止時間優先。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilenceHint" xml:space="preserve"><value>略過歌曲開頭和結尾的靜音。不會修改你的檔案。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevel" xml:space="preserve"><value>靜音音量</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevelHint" xml:space="preserve"><value>低於此音量的部分都視為靜音。調低會保留輕柔的淡出，調高會剪掉更多，例如底噪。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="PlaybackBar.PlayingFrom" xml:space="preserve"><value>播放來源：{0}</value><comment>Queue drawer link and island title tooltip (Discord 11-24). {0} = album, playlist, artist or page name</comment></data>
@@ -4537,6 +4537,12 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="Metadata.ArtSearchBoxHint" xml:space="preserve"><value>專輯或藝人</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
   <data name="Metadata.ArtNoMatches" xml:space="preserve"><value>Apple Music 上沒有相符的專輯。請嘗試其他名稱。</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
   <data name="Metadata.ArtDownloadFailed" xml:space="preserve"><value>下載失敗。</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibAlbums" xml:space="preserve"><value>專輯</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibSinglesEps" xml:space="preserve"><value>單曲和 EP</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibAppearsOn" xml:space="preserve"><value>參與作品</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibMatches" xml:space="preserve"><value>最佳符合</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibMoreBy" xml:space="preserve"><value>{0} 的更多作品</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibReleases" xml:space="preserve"><value>{0} 個作品</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel). Plural forms, see Mobile.Count.Songs.</comment></data>
   <data name="Metadata.Downloading" xml:space="preserve">
     <value>下載中…</value>
     <comment>Text in MetadataWindow.axaml</comment>
@@ -7641,6 +7647,14 @@ Deezer 和 TIDAL：貼上連結。</value></data>
     <value>重設</value>
     <comment>Settings section label</comment>
   </data>
+  <data name="Settings.Section.Versions" xml:space="preserve">
+    <value>版本</value>
+    <comment>Settings section label (Advanced tab, Developer Mode: the version list)</comment>
+  </data>
+  <data name="Settings.Section.Logs" xml:space="preserve">
+    <value>記錄檔</value>
+    <comment>Settings section label (Advanced tab, Developer Mode: the session log)</comment>
+  </data>
   <data name="Settings.Section.YourAccount" xml:space="preserve">
     <value>你的帳號</value>
     <comment>Settings section label</comment>
@@ -7910,8 +7924,8 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   </data>
   <data name="Settings.Section.OtherComputers" xml:space="preserve"><value>其他電腦</value><comment>Settings section label, Account &amp; Devices tab</comment></data>
   <data name="PcSync.Title" xml:space="preserve"><value>與另一台電腦同步</value><comment>Sync with another computer card title</comment></data>
-  <data name="PcSync.Description" xml:space="preserve"><value>收藏、評分、播放次數和播放清單在兩台電腦上保持一致。每台電腦保留各自的音樂檔案；歌曲依標題、藝人和長度比對。</value><comment>Sync with another computer card subtitle</comment></data>
-  <data name="PcSync.Help" xml:space="preserve"><value>在另一台電腦上開啟「{0}」和「{1}」，然後開啟 {2} › {3}。在此輸入它的位址和你的帳號。</value><comment>Sync with another computer, where to start on the other computer; {0} = the phone card title, {1} = the phone sync switch title, {2} = Connect a phone, {3} = Enter manually (filled from those strings)</comment></data>
+  <data name="PcSync.Description" xml:space="preserve"><value>讓收藏、評分、播放次數和播放清單在兩台電腦上保持一致。音樂檔案各自保留。</value><comment>Sync with another computer card subtitle</comment></data>
+  <data name="PcSync.Help" xml:space="preserve"><value>在另一台電腦上開啟「{0}」和「{1}」，然後在此輸入 {2} › {3} 中顯示的位址和你的帳號。</value><comment>Sync with another computer, where to start on the other computer; {0} = the phone card title, {1} = the phone sync switch title, {2} = Connect a phone, {3} = Enter manually (filled from those strings)</comment></data>
   <data name="PcSync.Address" xml:space="preserve"><value>另一台電腦上顯示的位址</value><comment>Address box watermark</comment></data>
   <data name="PcSync.User" xml:space="preserve"><value>電子郵件或使用者名稱</value><comment>Email or username box watermark</comment></data>
   <data name="PcSync.Password" xml:space="preserve"><value>密碼</value><comment>Password box watermark</comment></data>
@@ -9504,6 +9518,7 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="DiscogsGenres.TitleOne" xml:space="preserve"><value>取得 1 張專輯的曲風</value></data>
   <data name="DiscogsGenres.TitleMany" xml:space="preserve"><value>取得 {0:N0} 張專輯的曲風</value><comment>Get Genres from Discogs dialog. Plural forms, see Mobile.Count.Songs.</comment></data>
   <data name="DiscogsGenres.Subtitle" xml:space="preserve"><value>在 Discogs 上尋找每張專輯，並將其風格建議為專輯的曲風。在你選擇「套用」之前不會儲存任何內容。</value></data>
+  <data name="DiscogsGenres.ReadyHint" xml:space="preserve"><value>按「尋找」查詢這些專輯，然後勾選要變更的專輯。</value></data>
   <data name="DiscogsGenres.Use" xml:space="preserve"><value>使用</value></data>
   <data name="DiscogsGenres.SourceStyles" xml:space="preserve"><value>風格</value></data>
   <data name="DiscogsGenres.SourceGenres" xml:space="preserve"><value>曲風</value></data>

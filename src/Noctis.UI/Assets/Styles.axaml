@@ -1327,6 +1327,14 @@
         <Setter Property="Background" Value="Transparent" />
     </Style>
 
+    <!-- :pressed too (Discord 11-26, "it highlights that whole row"): a left press on a tile
+         sets :pressed on its row (PressedMixin, tunnel) and Fluent painted the whole row grey
+         for as long as it was held. The row only clears it on a release routed through it, so
+         a release that went elsewhere (a light-dismissed menu, a file drag) left the band up. -->
+    <Style Selector="ListBox:not(.track-list):not(.sidebar) ListBoxItem:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+
     <!-- Album grid tile styling -->
 
     <Style Selector="Button.album-tile">
@@ -1719,6 +1727,13 @@
     <Style Selector="Button:pressed">
         <Setter Property="RenderTransform" Value="scale(0.96)"/>
     </Style>
+    <!-- Cover tiles do not shrink on press (Discord 11-26, "the artwork flickers for a split
+         second"): the whole tile snapped to 96% on the press and back on the release, every
+         time a cover was opened. Home's and the album page's tiles already opted out; after
+         Button:pressed so it wins. -->
+    <Style Selector="Button.album-tile:pressed">
+        <Setter Property="RenderTransform" Value="scale(1)"/>
+    </Style>
 
     <!-- Artist credit links (ArtistCreditLink): the hover/press box sits behind the one name
          under the pointer, so the credit as a whole must not zoom or shrink (Discord, Luwi
@@ -1816,7 +1831,9 @@
 
     <!-- Round circle checkbox with check mark. Fluent's CheckBox theme clips to bounds: where
          the box is only as tall as the 22 px circle (a row tick with no label), the hover's
-         scale(1.06) cut the ring's top and bottom off (owner 11-14). -->
+         scale(1.06) cut the ring's top and bottom off (owner 11-14).
+         The Grid's Transparent background makes the label (and the gaps between its letters)
+         take the click too; without it only the circle and the glyphs did (owner 11-26). -->
     <Style Selector="CheckBox.metadata-pill-checkbox">
         <Setter Property="ClipToBounds" Value="False" />
         <Setter Property="Cursor" Value="Hand" />
@@ -1824,6 +1841,7 @@
         <Setter Property="Template">
             <ControlTemplate>
                 <Grid ColumnDefinitions="28,*"
+                      Background="Transparent"
                       VerticalAlignment="Center">
                     <Border x:Name="IndicatorBorder"
                             Margin="3,0"

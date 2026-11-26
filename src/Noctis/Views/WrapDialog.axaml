@@ -523,8 +523,14 @@
                                        FontSize="13" Opacity="0.5"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"
                                        IsVisible="{Binding Preview, Converter={x:Static ObjectConverters.IsNull}}" />
+                            <!-- Two stacked cards: the outgoing one stays underneath while the new
+                                 one fades in (WrapDialog.ShowPreview), so a period, year or 1:1 /
+                                 9:16 switch never shows an empty well. Sources are set in code. -->
+                            <Image x:Name="PreviewImageOld"
+                                   Stretch="Uniform"
+                                   IsHitTestVisible="False"
+                                   RenderOptions.BitmapInterpolationMode="HighQuality" />
                             <Image x:Name="PreviewImage"
-                                   Source="{Binding Preview}"
                                    Stretch="Uniform"
                                    RenderOptions.BitmapInterpolationMode="HighQuality" />
                         </Panel>

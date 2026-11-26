@@ -27,6 +27,10 @@ internal sealed record ComputerLinkAccount
     /// (both "N" hex): playlists both computers already had under one name when they first synced.
     /// A playlist one computer got from the other keeps its id and needs no entry.</summary>
     public Dictionary<string, string> PlaylistLinks { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>This computer's playlist id ("N" hex) → the custom cover both computers had after the
+    /// last sync ("" none, else its <see cref="PlaylistCovers"/> hash). Tells a cover one computer
+    /// removed from one it never received, which must not remove the other's.</summary>
+    public Dictionary<string, string> SharedCovers { get; init; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Never prints the key.</summary>
     public override string ToString() => $"ComputerLinkAccount {{ ServerUrl = {ServerUrl}, UserName = {UserName} }}";
@@ -41,8 +45,9 @@ internal sealed record ComputerLinkResult(int Paired, int Received, int Sent, bo
 /// way the phone app does (address, the account's name and password, the security code compared
 /// by eye; then a device key), and the two sync ledgers (<see cref="ILibrarySyncService"/>) are
 /// kept in step. What travels is what the ledger holds: favourites, ratings, dislikes, play counts,
-/// last played, snoozes, and playlists. Music files, lyrics, artwork, playlist covers and settings
-/// stay on each computer.
+/// last played, snoozes, and playlists with their custom covers (the picture travels the way a
+/// phone's does: getNoctisPlaylistCover / noctisUploadPlaylistCover, named by its hash). Music
+/// files, lyrics, artwork and settings stay on each computer.
 ///
 /// Each computer has its own files and so its own song ids (a song's id comes from its path).
 /// The other computer's catalog is paired with this computer's files by
@@ -66,6 +71,9 @@ internal sealed record ComputerLinkResult(int Paired, int Received, int Sent, bo
 /// <item>A playlist deleted on one computer is deleted on the other when the delete is newer than
 /// the other's last edit of it; a delete of a playlist the other computer never had is not sent.
 /// An empty or unreadable playlist list on this computer sends no deletes at all.</item>
+/// <item>A playlist's custom cover goes with the playlist's newest change (set, changed or removed).
+/// "No cover" only removes the other computer's cover when that computer had sent it (a cover that
+/// never arrived is no removal), and a cover one computer lacks for the same change is filled in.</item>
 /// <item>Every sync reads the other computer's whole ledger again, so a sync that fails half way
 /// loses nothing and a song this computer gets later pairs up on the next sync.</item>
 /// <item>Offline: changes wait in each computer's ledger until the next sync that reaches the other one.</item>
@@ -286,6 +294,15 @@ internal sealed class ComputerLinkService
         var listToRemote = listToLocal.ToDictionary(kv => kv.Value, kv => kv.Key);
         var localCovers = playlists.Where(p => p is not null)
             .GroupBy(p => p.Id).ToDictionary(g => g.Key, g => PlaylistCovers.CoverOf(g.First().CoverArtPath));
+        // This computer's stamp per playlist: the other computer's change wins only when newer.
+        var stamps = new Dictionary<Guid, DateTime>();
+        foreach (var item in before)
+            if (item.Kind == SyncKinds.Playlist && NoctisRemoteIds.TryParseSyncId(item.Id, out var id)) stamps[id] = item.UpdatedUtc;
+        var staging = PlaylistCovers.StagingDirectory(_persistence.DataDirectory);
+        var staged = new List<string>();
+        string? Shared(Guid localId) => account.SharedCovers.TryGetValue(localId.ToString("N"), out var c) ? c : null;
+        Task<bool> FetchAsync(Guid remoteId, string hash) => FetchCoverAsync(client, remoteId, hash, staging, staged, ct);
+
         var songById = songs.ToDictionary(s => s.Id);
         var incoming = new List<SyncItem>();
         foreach (var item in remote.Values)
@@ -299,16 +316,20 @@ internal sealed class ComputerLinkService
                 case SyncKinds.Playlist when freshLists.Contains(id):
                     break; // paired just now: merged below
                 case SyncKinds.Playlist when SyncJson.Deserialize<PlaylistSyncState>(item.Payload.GetRawText()) is { } state:
+                {
+                    var remoteId = id;
                     if (listToLocal.TryGetValue(id, out var listId)) id = listId;
-                    // Covers stay on each computer: this computer's cover (or none) is what the
-                    // item says, so taking the other computer's edit never removes or changes it.
-                    state = state with
-                    {
-                        TrackIds = Translate(state.TrackIds, toLocal),
-                        Cover = state.Deleted ? null : localCovers.TryGetValue(id, out var cover) ? cover : null,
-                    };
+                    var exists = localCovers.TryGetValue(id, out var mine);
+                    var wins = !stamps.TryGetValue(id, out var stamp) || item.UpdatedUtc > stamp;
+                    // The other computer's cover, its picture fetched first (only for a change that
+                    // wins: an older one is dropped by the merge anyway).
+                    var cover = state.Deleted ? null
+                        : !wins ? mine
+                        : await IncomingCoverAsync(state.Cover, mine, exists, Shared(id), hash => FetchAsync(remoteId, hash)).ConfigureAwait(false);
+                    state = state with { TrackIds = Translate(state.TrackIds, toLocal), Cover = cover };
                     incoming.Add(new SyncItem(SyncKinds.Playlist, id.ToString("N"), SyncJson.Serialize(state), item.UpdatedUtc, item.Device, 0));
                     break;
+                }
             }
         }
         foreach (var rid in fresh)
@@ -340,21 +361,44 @@ internal sealed class ComputerLinkService
             var mine = PlaylistSyncState.From(local);
             var theirIds = Translate(their.TrackIds, toLocal);
             var mineNewer = (local.ModifiedAt.Kind == DateTimeKind.Utc ? local.ModifiedAt : local.ModifiedAt.ToUniversalTime()) >= theirs.UpdatedUtc;
+            // The newer one's custom cover; the other one's when the newer one has none.
+            var myCover = localCovers.TryGetValue(lid, out var cover) ? cover : null;
+            var mergedCover = mineNewer && myCover is { Length: > 0 } ? myCover
+                : their.Cover is { Length: > 0 } t && t != myCover && PlaylistCovers.IsHash(t) && await FetchAsync(rid, t).ConfigureAwait(false) ? t
+                : myCover;
             var merged = (mineNewer ? mine : their) with
             {
                 TrackIds = (mineNewer ? mine.TrackIds.Concat(theirIds) : theirIds.Concat(mine.TrackIds))
                     .Distinct().Take(LibrarySyncService.MaxPlaylistTracks).ToList(),
                 ModifiedAt = now,
                 Deleted = false,
-                Cover = localCovers.TryGetValue(lid, out var cover) ? cover : null,
+                Cover = mergedCover,
             };
             incoming.Add(new SyncItem(SyncKinds.Playlist, lid.ToString("N"), SyncJson.Serialize(merged), now, _ledger.DeviceId, 0));
         }
         var received = incoming.Count == 0 ? 0 : await _ledger.MergeAsync(incoming, _applier, ct).ConfigureAwait(false);
 
+        // 3b. The same change on both computers (one stamp) with a cover only the other one shows:
+        // playlists synced before covers travelled, or a picture an earlier sync could not fetch.
+        foreach (var item in remote.Values)
+        {
+            if (item.Kind != SyncKinds.Playlist || !NoctisRemoteIds.TryParseSyncId(item.Id, out var rid)) continue;
+            var lid = listToLocal.TryGetValue(rid, out var l) ? l : rid;
+            if (!stamps.TryGetValue(lid, out var stamp) || stamp != item.UpdatedUtc) continue;
+            if (SyncJson.Deserialize<PlaylistSyncState>(item.Payload.GetRawText()) is not { Deleted: false, Cover: { Length: > 0 } theirs }
+                || !PlaylistCovers.IsHash(theirs) || !localCovers.TryGetValue(lid, out var mine) || mine is not { Length: 0 }
+                || Shared(lid) == theirs || !await FetchAsync(rid, theirs).ConfigureAwait(false)) continue;
+            var here = (await _persistence.LoadPlaylistsAsync().ConfigureAwait(false)).FirstOrDefault(p => p is not null && p.Id == lid);
+            if (here is null || PlaylistCovers.CoverOf(here.CoverArtPath) is not { Length: 0 }) continue;
+            await _applier.ApplyPlaylistStateAsync(lid, PlaylistSyncState.From(here) with { Cover = theirs }).ConfigureAwait(false);
+            received++;
+        }
+
         // 4. This computer's changes the other computer does not have yet.
         var mineItems = await _ledger.LocalItemsAsync(ct).ConfigureAwait(false);
         var playlistsReadable = playlists.Count > 0;
+        var current = await _persistence.LoadPlaylistsAsync().ConfigureAwait(false);
+        var sentCovers = new Dictionary<Guid, string?>();
         var outgoing = new List<PushItem>();
         foreach (var item in mineItems)
         {
@@ -371,25 +415,36 @@ internal sealed class ComputerLinkService
                 }
                 case SyncKinds.Playlist:
                 {
+                    var localId = id;
                     if (listToRemote.TryGetValue(id, out var remoteId)) id = remoteId;
                     remote.TryGetValue(Key(SyncKinds.Playlist, id), out var theirs);
-                    if (theirs is not null && item.UpdatedUtc <= theirs.UpdatedUtc) continue;
+                    var their = theirs is null ? null : SyncJson.Deserialize<PlaylistSyncState>(theirs.Payload.GetRawText());
                     if (SyncJson.Deserialize<PlaylistSyncState>(item.Payload) is not { } state) continue;
+                    var stamp = item.UpdatedUtc;
+                    var fill = false;
+                    if (theirs is not null && stamp <= theirs.UpdatedUtc)
+                    {
+                        // The same change there without this computer's cover (synced before covers
+                        // travelled): sent again just after it, with the picture.
+                        if (stamp != theirs.UpdatedUtc || state.Deleted || their is not { Deleted: false, Cover: { Length: 0 } }
+                            || state.Cover is not { Length: > 0 } || Shared(localId) == state.Cover) continue;
+                        stamp = stamp.AddMilliseconds(1);
+                        fill = true;
+                    }
                     if (state.Deleted)
                     {
                         // A delete of a playlist the other computer never had, or with this
                         // computer's playlist list empty (unreadable, or a fresh install), stays here.
                         if (theirs is null || !playlistsReadable) continue;
-                        if (SyncJson.Deserialize<PlaylistSyncState>(theirs.Payload.GetRawText()) is { Deleted: true }) continue;
+                        if (their is { Deleted: true }) continue;
                     }
-                    var theirCover = theirs is null ? null : SyncJson.Deserialize<PlaylistSyncState>(theirs.Payload.GetRawText())?.Cover;
-                    state = state with
-                    {
-                        TrackIds = Translate(state.TrackIds, toRemote),
-                        // The other computer keeps its own cover (none said = keep).
-                        Cover = state.Deleted ? null : theirCover,
-                    };
-                    outgoing.Add(new PushItem(SyncKinds.Playlist, id.ToString("N"), state, item.UpdatedUtc));
+                    var cover = state.Deleted ? null
+                        : await OutgoingCoverAsync(client, state.Cover, their is { Deleted: false } ? their.Cover : null, Shared(localId),
+                            current.FirstOrDefault(p => p is not null && p.Id == localId), ct).ConfigureAwait(false);
+                    if (fill && cover != state.Cover) continue;
+                    state = state with { TrackIds = Translate(state.TrackIds, toRemote), Cover = cover };
+                    sentCovers[id] = cover;
+                    outgoing.Add(new PushItem(SyncKinds.Playlist, id.ToString("N"), state, stamp));
                     break;
                 }
             }
@@ -401,6 +456,20 @@ internal sealed class ComputerLinkService
             sent += chunk.Count;
         }
 
+        foreach (var file in staged) NoctisServerClient.TryDelete(file);
+
+        // The cover each playlist now has on both computers (what was sent there, else what it had).
+        var shared = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var p in await _persistence.LoadPlaylistsAsync().ConfigureAwait(false))
+        {
+            if (p is null) continue;
+            var rid = listToRemote.TryGetValue(p.Id, out var r) ? r : p.Id;
+            var there = sentCovers.TryGetValue(rid, out var s) ? s
+                : remote.TryGetValue(Key(SyncKinds.Playlist, rid), out var item)
+                  && SyncJson.Deserialize<PlaylistSyncState>(item.Payload.GetRawText()) is { Deleted: false } state ? state.Cover : null;
+            if (there is not null && PlaylistCovers.CoverOf(p.CoverArtPath) == there) shared[p.Id.ToString("N")] = there;
+        }
+
         // 5. Done: the pairs and the time, only now (a failed sync pairs again next time).
         lock (_gate)
         {
@@ -410,6 +479,7 @@ internal sealed class ComputerLinkService
                 LastSyncUtc = DateTime.UtcNow,
                 Links = toLocal.ToDictionary(kv => kv.Key.ToString("N"), kv => kv.Value.ToString("N"), StringComparer.OrdinalIgnoreCase),
                 PlaylistLinks = listToLocal.ToDictionary(kv => kv.Key.ToString("N"), kv => kv.Value.ToString("N"), StringComparer.OrdinalIgnoreCase),
+                SharedCovers = shared,
             };
             Save(updated);
             _account = updated;
@@ -463,6 +533,74 @@ internal sealed class ComputerLinkService
             fresh.Add(rid);
         }
         return (toLocal, fresh);
+    }
+
+    /// <summary>
+    /// The cover a winning change from the other computer says here: theirs (its picture fetched by
+    /// <paramref name="fetch"/>), except that "none" there keeps this computer's cover unless the
+    /// other computer had it (<paramref name="shared"/>: it removed it), and a picture that could not
+    /// be fetched keeps this computer's (tried again next sync). Null says nothing (kept as it is).
+    /// </summary>
+    internal static async Task<string?> IncomingCoverAsync(string? theirs, string? mine, bool exists, string? shared, Func<string, Task<bool>> fetch)
+    {
+        if (theirs is null || theirs == mine) return theirs ?? mine;
+        if (theirs.Length == 0)
+            return !exists ? theirs : mine is null ? null : mine.Length > 0 && shared != mine ? mine : theirs;
+        return PlaylistCovers.IsHash(theirs) && await fetch(theirs).ConfigureAwait(false) ? theirs : mine;
+    }
+
+    /// <summary>
+    /// The cover a change from here says there: this computer's (its picture sent first), except
+    /// that "none" here keeps the other computer's cover unless this computer had it
+    /// (<paramref name="shared"/>: removed here), and a picture that could not be sent keeps theirs.
+    /// </summary>
+    private static async Task<string?> OutgoingCoverAsync(NoctisServerClient client, string? mine, string? theirs, string? shared,
+        Playlist? local, CancellationToken ct)
+    {
+        if (mine is null || mine == theirs) return mine ?? theirs;
+        if (mine.Length == 0) return theirs is { Length: > 0 } && shared != theirs ? theirs : mine;
+        if (local?.CoverArtPath is not { Length: > 0 } path || PlaylistCovers.CoverOf(path) != mine) return theirs;
+        try
+        {
+            return await client.UploadPlaylistCoverAsync(path, ct).ConfigureAwait(false) == mine ? mine : theirs;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException || ex is NoctisServerException { Kind: NoctisErrorKind.Server })
+        {
+            DebugLog.Write("ComputerLink", $"playlist cover not sent: {(ex is NoctisServerException n ? n.Kind.ToString() : ex.GetType().Name)}");
+            return theirs;
+        }
+    }
+
+    /// <summary>The other computer's cover of its playlist <paramref name="remoteId"/>, fetched into
+    /// <paramref name="staging"/> under <paramref name="hash"/> for <see cref="PlaylistCovers.Apply"/>.
+    /// False when it cannot be had now (none there, not a picture, changed since): best effort.</summary>
+    private static async Task<bool> FetchCoverAsync(NoctisServerClient client, Guid remoteId, string hash, string staging,
+        List<string> staged, CancellationToken ct)
+    {
+        var dest = Path.Combine(staging, hash);
+        if (File.Exists(dest) && PlaylistCovers.CoverOf(dest) == hash) return true;
+        var download = Path.Combine(staging, ".download-" + remoteId.ToString("N"));
+        try
+        {
+            Directory.CreateDirectory(staging);
+            if (!await client.GetPlaylistCoverAsync(remoteId, download, ct).ConfigureAwait(false)) return false;
+            string got;
+            using (var file = new FileStream(download, FileMode.Open, FileAccess.Read, FileShare.Read)) got = PlaylistCovers.Hash(file);
+            if (got != hash) return false;
+            File.Move(download, dest, overwrite: true);
+            staged.Add(dest);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException || ex is NoctisServerException { Kind: not NoctisErrorKind.SignedOut })
+        {
+            DebugLog.Write("ComputerLink", $"playlist cover not fetched: {(ex is NoctisServerException n ? n.Kind.ToString() : ex.GetType().Name)}");
+            return false;
+        }
+        finally
+        {
+            NoctisServerClient.TryDelete(download);
+            NoctisServerClient.TryDelete(download + ".part");
+        }
     }
 
     private static string NameKey(string? name) => (name ?? string.Empty).Trim().ToUpperInvariant();

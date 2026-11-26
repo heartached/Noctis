@@ -24,6 +24,7 @@ public partial class WrapDialog : Window
     public WrapDialog()
     {
         InitializeComponent();
+        PreviewImage.PropertyChanged += OnPreviewImagePropertyChanged;
         FitToWindow(ClientSize);
         // Light-dismiss, as the old overlay had: a click on the blurred backdrop closes. On the
         // window, not the host: outside the card the host draws nothing hit-testable.
@@ -36,6 +37,102 @@ public partial class WrapDialog : Window
     }
 
     private WrapViewModel? Vm => DataContext as WrapViewModel;
+
+    /// <summary>Share card cross-fade: the new card fades in over the old one.</summary>
+    internal static readonly TimeSpan PreviewFade = TimeSpan.FromMilliseconds(220);
+
+    private WrapViewModel? _previewVm;
+    private bool _swapping;
+
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+        if (_previewVm != null) _previewVm.PropertyChanged -= OnVmPropertyChanged;
+        _previewVm = Vm;
+        if (_previewVm != null) _previewVm.PropertyChanged += OnVmPropertyChanged;
+        ShowPreview(_previewVm?.Preview, animate: false);
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        // The view-model disposes its cards when the dialog closes; stop following it first.
+        if (_previewVm != null) _previewVm.PropertyChanged -= OnVmPropertyChanged;
+        _previewVm = null;
+        base.OnClosed(e);
+    }
+
+    private void OnVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(WrapViewModel.Preview) && sender is WrapViewModel vm)
+            ShowPreview(vm.Preview, animate: true);
+    }
+
+    private static Avalonia.Animation.Transitions Fade() => new()
+    {
+        new Avalonia.Animation.DoubleTransition
+        {
+            Property = OpacityProperty,
+            Duration = PreviewFade,
+            Easing = new Avalonia.Animation.Easings.CubicEaseOut(),
+        },
+    };
+
+    /// <summary>
+    /// Owner 11-26: the card flickered on Full year / This month. The outgoing card now stays
+    /// underneath (PreviewImageOld) while the new one fades in on top; a card of another shape
+    /// (1:1 vs 9:16) or no card at all also fades the old one out, so its edges don't snap
+    /// away at the end. The view-model keeps the outgoing bitmap alive until the next swap.
+    /// </summary>
+    private void ShowPreview(Avalonia.Media.Imaging.Bitmap? next, bool animate)
+    {
+        if (PreviewImage is null || PreviewImageOld is null) return;
+        var front = PreviewImage;
+        var back = PreviewImageOld;
+        if (ReferenceEquals(front.Source, next)) return;
+
+        // The cards are being released (dialog closing): show nothing rather than a card
+        // that is about to be disposed.
+        if (_previewVm is { IsDisposed: true })
+        {
+            back.Source = null;
+            front.Source = null;
+            return;
+        }
+
+        // Stop any fade still running first: dropping a transition snaps its value to the
+        // target, which would read as "fade finished" below. Keep where the front card was.
+        var frontOpacity = front.Opacity;
+        _swapping = true;
+        try
+        {
+            back.Transitions = null;
+            front.Transitions = null;
+            var old = animate ? front.Source as Avalonia.Media.Imaging.Bitmap : null;
+            back.Source = old;
+            back.Opacity = old != null ? frontOpacity : 1;
+            if (old != null && !(next != null && old.PixelSize == next.PixelSize))
+            {
+                back.Transitions = Fade();
+                back.Opacity = 0;
+            }
+
+            front.Source = next;
+            front.Opacity = animate ? 0 : 1;
+            if (!animate) return;
+            front.Transitions = Fade();
+            front.Opacity = 1;
+        }
+        finally { _swapping = false; }
+    }
+
+    /// <summary>The new card is fully in: let the old one go.</summary>
+    private void OnPreviewImagePropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (_swapping || e.Property != OpacityProperty || PreviewImage.Opacity < 0.999 || PreviewImageOld.Source is null) return;
+        PreviewImageOld.Transitions = null;
+        PreviewImageOld.Source = null;
+        PreviewImageOld.Opacity = 1;
+    }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {

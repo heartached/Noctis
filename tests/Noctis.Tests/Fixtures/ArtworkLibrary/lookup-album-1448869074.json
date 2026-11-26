@@ -1,0 +1,18 @@
+{
+"resultCount": 1,
+"results": [
+{
+"wrapperType": "collection",
+"collectionType": "Album",
+"artistId": 879496517,
+"collectionId": 1448869074,
+"artistName": "Chase Atlantic",
+"collectionName": "DON'T TRY THIS - EP",
+"collectionViewUrl": "https://music.apple.com/us/album/dont-try-this-ep/1448869074?uo=4",
+"artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music114/v4/c3/79/ae/c379ae0b-f0d1-1ac4-207f-7baed45d4f04/4050538467802.jpg/100x100bb.jpg",
+"collectionExplicitness": "explicit",
+"trackCount": 6,
+"releaseDate": "2019-01-25T08:00:00Z"
+}
+]
+}

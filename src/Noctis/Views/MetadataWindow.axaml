@@ -274,6 +274,12 @@
             <Setter Property="MaxWidth" Value="680"/>
             <Setter Property="MaxHeight" Value="680"/>
         </Style>
+        <!-- Owner 11-26: the Artwork chooser's library card (756 wide) centred on the editor card
+             (852 x 740), so it fits inside it: the card plus the room for its shadow. -->
+        <Style Selector="FlyoutPresenter.library-pop">
+            <Setter Property="MaxWidth" Value="852"/>
+            <Setter Property="MaxHeight" Value="740"/>
+        </Style>
 
     </Window.Styles>
 
@@ -987,9 +993,14 @@
                              artwork preview so it reads as part of the tab. -->
                         <FlyoutBase.AttachedFlyout>
                             <Flyout Placement="Center" ShowMode="Standard"
-                                    FlyoutPresenterClasses="search-pop">
-                                <!-- One card for both search pop-ups (owner 11-04): Controls/ArtworkChooserCard. -->
+                                    FlyoutPresenterClasses="search-pop library-pop">
+                                <!-- One card for both search pop-ups (owner 11-04): Controls/ArtworkChooserCard.
+                                     Owner 11-26: this one is an artist's artwork library (wide, sectioned). -->
                                 <controls:ArtworkChooserCard x:Name="ArtworkSearchCard"
+                                                             IsWide="True"
+                                                             Sections="{Binding ArtworkSearchSections}"
+                                                             LibraryTitle="{Binding ArtworkLibraryArtist}"
+                                                             LibraryDetail="{Binding ArtworkLibraryDetail}"
                                                              Title="{loc:T Metadata.ChooseArtwork}"
                                                              Subtitle="{loc:T Metadata.FromAppleMusic}"
                                                              SearchBoxHint="{loc:T Metadata.ArtSearchBoxHint}"

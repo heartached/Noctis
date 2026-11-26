@@ -22,6 +22,11 @@
         <Style Selector="TextBlock.status.failed">
             <Setter Property="Foreground" Value="#FF8A80" />
         </Style>
+        <!-- An album tick before Find (nothing proposed yet) is plainly off, not a faint 0.6
+             that read as clickable (owner 11-26); the status line says to press Find. -->
+        <Style Selector="CheckBox.dg-row-tick:disabled">
+            <Setter Property="Opacity" Value="0.3" />
+        </Style>
         <Style Selector="TextBlock.dg-label">
             <Setter Property="FontSize" Value="12" />
             <Setter Property="Opacity" Value="0.65" />
@@ -74,7 +79,7 @@
                         <Border Classes="job-row pill-well">
                             <Grid ColumnDefinitions="Auto,*,Auto">
                                 <!-- Ticked rows are written by Apply. -->
-                                <CheckBox Grid.Column="0" Classes="metadata-pill-checkbox" IsChecked="{Binding IsIncluded}"
+                                <CheckBox Grid.Column="0" Classes="metadata-pill-checkbox dg-row-tick" IsChecked="{Binding IsIncluded}"
                                           IsEnabled="{Binding CanInclude}" VerticalAlignment="Center" Margin="0,0,8,0"
                                           AutomationProperties.Name="{Binding Title}" />
                                 <StackPanel Grid.Column="1" Spacing="1">

@@ -1365,7 +1365,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>إبقاء التشغيل العشوائي مفعّلًا</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>عندما يكون التشغيل العشوائي مفعّلًا، يبقى مفعّلًا عند تشغيل ألبوم أو قائمة تشغيل أو أغنية، وتُشغَّل الموسيقى الجديدة عشوائيًا.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SkipSilence" xml:space="preserve"><value>تخطي الصمت</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.SkipSilenceHint" xml:space="preserve"><value>تبدأ كل أغنية من أول صوت فيها وتنتقل إلى التالية بعد آخر صوت. لا تتغير ملفاتك، وتبقى أوقات البدء والإيقاف التي تحددها لأغنية هي الأولى.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilenceHint" xml:space="preserve"><value>يتخطى الصمت في بداية الأغاني ونهايتها. لا تتغير ملفاتك.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevel" xml:space="preserve"><value>مستوى الصمت</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevelHint" xml:space="preserve"><value>كل ما هو أهدأ من هذا يُعدّ صمتًا. القيمة الأدنى تُبقي التلاشي الهادئ، والأعلى تقطع أكثر مثل التشويش.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="PlaybackBar.PlayingFrom" xml:space="preserve"><value>يُشغَّل من {0}</value><comment>Queue drawer link and island title tooltip (Discord 11-24). {0} = album, playlist, artist or page name</comment></data>
@@ -4537,6 +4537,12 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Metadata.ArtSearchBoxHint" xml:space="preserve"><value>الألبوم أو الفنان</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
   <data name="Metadata.ArtNoMatches" xml:space="preserve"><value>لا توجد ألبومات مطابقة على Apple Music. جرّب اسمًا آخر.</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
   <data name="Metadata.ArtDownloadFailed" xml:space="preserve"><value>فشل التنزيل.</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibAlbums" xml:space="preserve"><value>الألبومات</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibSinglesEps" xml:space="preserve"><value>الأغاني المنفردة وEP</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibAppearsOn" xml:space="preserve"><value>يظهر في</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibMatches" xml:space="preserve"><value>أفضل النتائج</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibMoreBy" xml:space="preserve"><value>المزيد من {0}</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibReleases" xml:space="preserve"><value>{0} إصدار|إصدار واحد|إصداران|{0} إصدارات|{0} إصدارًا|{0} إصدار</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel). Plural forms, see Mobile.Count.Songs.</comment></data>
   <data name="Metadata.Downloading" xml:space="preserve">
     <value>جارٍ التنزيل…</value>
     <comment>Text in MetadataWindow.axaml</comment>
@@ -7641,6 +7647,14 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <value>إعادة الضبط</value>
     <comment>Settings section label</comment>
   </data>
+  <data name="Settings.Section.Versions" xml:space="preserve">
+    <value>الإصدارات</value>
+    <comment>Settings section label (Advanced tab, Developer Mode: the version list)</comment>
+  </data>
+  <data name="Settings.Section.Logs" xml:space="preserve">
+    <value>السجلات</value>
+    <comment>Settings section label (Advanced tab, Developer Mode: the session log)</comment>
+  </data>
   <data name="Settings.Section.YourAccount" xml:space="preserve">
     <value>حسابك</value>
     <comment>Settings section label</comment>
@@ -7910,8 +7924,8 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   </data>
   <data name="Settings.Section.OtherComputers" xml:space="preserve"><value>أجهزة كمبيوتر أخرى</value><comment>Settings section label, Account &amp; Devices tab</comment></data>
   <data name="PcSync.Title" xml:space="preserve"><value>المزامنة مع كمبيوتر آخر</value><comment>Sync with another computer card title</comment></data>
-  <data name="PcSync.Description" xml:space="preserve"><value>تبقى المفضلة والتقييمات وعدد مرات التشغيل وقوائم التشغيل متطابقة على جهازي كمبيوتر. يحتفظ كل جهاز بملفات الموسيقى الخاصة به، وتُطابَق الأغاني حسب العنوان والفنان والمدة.</value><comment>Sync with another computer card subtitle</comment></data>
-  <data name="PcSync.Help" xml:space="preserve"><value>على الكمبيوتر الآخر، شغّل «{0}» و«{1}»، ثم افتح {2} › {3}. اكتب عنوانه وحسابك هنا.</value><comment>Sync with another computer, where to start on the other computer; {0} = the phone card title, {1} = the phone sync switch title, {2} = Connect a phone, {3} = Enter manually (filled from those strings)</comment></data>
+  <data name="PcSync.Description" xml:space="preserve"><value>يُبقي المفضلة والتقييمات وعدد مرات التشغيل وقوائم التشغيل متطابقة على الجهازين. تبقى ملفات الموسيقى منفصلة.</value><comment>Sync with another computer card subtitle</comment></data>
+  <data name="PcSync.Help" xml:space="preserve"><value>على الكمبيوتر الآخر، شغّل «{0}» و«{1}»، ثم أدخل هنا العنوان الظاهر في {2} › {3} وحسابك.</value><comment>Sync with another computer, where to start on the other computer; {0} = the phone card title, {1} = the phone sync switch title, {2} = Connect a phone, {3} = Enter manually (filled from those strings)</comment></data>
   <data name="PcSync.Address" xml:space="preserve"><value>العنوان الظاهر على الكمبيوتر الآخر</value><comment>Address box watermark</comment></data>
   <data name="PcSync.User" xml:space="preserve"><value>البريد الإلكتروني أو اسم المستخدم</value><comment>Email or username box watermark</comment></data>
   <data name="PcSync.Password" xml:space="preserve"><value>كلمة المرور</value><comment>Password box watermark</comment></data>
@@ -9504,6 +9518,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="DiscogsGenres.TitleOne" xml:space="preserve"><value>جلب الأنواع لألبوم واحد</value></data>
   <data name="DiscogsGenres.TitleMany" xml:space="preserve"><value>جلب الأنواع لـ {0:N0} ألبوم|جلب الأنواع لألبوم واحد|جلب الأنواع لألبومين|جلب الأنواع لـ {0:N0} ألبومات|جلب الأنواع لـ {0:N0} ألبومًا|جلب الأنواع لـ {0:N0} ألبوم</value><comment>Get Genres from Discogs dialog. Plural forms, see Mobile.Count.Songs.</comment></data>
   <data name="DiscogsGenres.Subtitle" xml:space="preserve"><value>يبحث عن كل ألبوم في Discogs ويقترح أنماطه كأنواع للألبوم. لا يُحفظ شيء حتى تختار تطبيق.</value></data>
+  <data name="DiscogsGenres.ReadyHint" xml:space="preserve"><value>اضغط بحث للبحث عن الألبومات، ثم حدّد ما تريد تغييره.</value></data>
   <data name="DiscogsGenres.Use" xml:space="preserve"><value>استخدام</value></data>
   <data name="DiscogsGenres.SourceStyles" xml:space="preserve"><value>الأنماط</value></data>
   <data name="DiscogsGenres.SourceGenres" xml:space="preserve"><value>الأنواع</value></data>

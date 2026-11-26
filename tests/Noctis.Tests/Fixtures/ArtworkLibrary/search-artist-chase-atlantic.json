@@ -1,0 +1,40 @@
+{
+"resultCount": 5,
+"results": [
+{
+"wrapperType": "artist",
+"artistId": 879496517,
+"artistName": "Chase Atlantic",
+"artistLinkUrl": "https://music.apple.com/us/artist/chase-atlantic/879496517?uo=4",
+"artistType": "Artist"
+},
+{
+"wrapperType": "artist",
+"artistId": 219350813,
+"artistName": "The Neighbourhood",
+"artistLinkUrl": "https://music.apple.com/us/artist/the-neighbourhood/219350813?uo=4",
+"artistType": "Artist"
+},
+{
+"wrapperType": "artist",
+"artistId": 1168567308,
+"artistName": "Conan Gray",
+"artistLinkUrl": "https://music.apple.com/us/artist/conan-gray/1168567308?uo=4",
+"artistType": "Artist"
+},
+{
+"wrapperType": "artist",
+"artistId": 356545647,
+"artistName": "Skrillex",
+"artistLinkUrl": "https://music.apple.com/us/artist/skrillex/356545647?uo=4",
+"artistType": "Artist"
+},
+{
+"wrapperType": "artist",
+"artistId": 993014053,
+"artistName": "Melanie Martinez",
+"artistLinkUrl": "https://music.apple.com/us/artist/melanie-martinez/993014053?uo=4",
+"artistType": "Artist"
+}
+]
+}

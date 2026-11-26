@@ -531,7 +531,7 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>Zufallswiedergabe beibehalten</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>Wenn die Zufallswiedergabe an ist, bleibt sie beim Abspielen eines Albums, einer Playlist oder eines Songs an und mischt die neue Musik.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SkipSilence" xml:space="preserve"><value>Stille überspringen</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.SkipSilenceHint" xml:space="preserve"><value>Startet jeden Song beim ersten Ton und geht nach dem letzten Ton weiter. Deine Dateien bleiben unverändert, und Start- oder Stoppzeiten, die du für einen Song festgelegt hast, haben Vorrang.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilenceHint" xml:space="preserve"><value>Überspringt die Stille am Anfang und Ende von Songs. Deine Dateien bleiben unverändert.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevel" xml:space="preserve"><value>Stillepegel</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevelHint" xml:space="preserve"><value>Alles, was leiser ist, gilt als Stille. Niedriger behält leise Ausblendungen, höher schneidet mehr weg, etwa Rauschen.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="PlaybackBar.PlayingFrom" xml:space="preserve"><value>Wiedergabe aus {0}</value><comment>Queue drawer link and island title tooltip (Discord 11-24). {0} = album, playlist, artist or page name</comment></data>
@@ -1688,6 +1688,12 @@ Speichern ersetzt sie durch den Songtext auf dem Bildschirm. Eine Songtextdatei,
   <data name="Metadata.ArtSearchBoxHint" xml:space="preserve"><value>Album oder Künstler</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
   <data name="Metadata.ArtNoMatches" xml:space="preserve"><value>Keine passenden Alben bei Apple Music. Versuch einen anderen Namen.</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
   <data name="Metadata.ArtDownloadFailed" xml:space="preserve"><value>Download fehlgeschlagen.</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibAlbums" xml:space="preserve"><value>Alben</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibSinglesEps" xml:space="preserve"><value>Singles &amp; EPs</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibAppearsOn" xml:space="preserve"><value>Auch enthalten in</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibMatches" xml:space="preserve"><value>Beste Treffer</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibMoreBy" xml:space="preserve"><value>Mehr von {0}</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibReleases" xml:space="preserve"><value>{0} Veröffentlichung|{0} Veröffentlichungen</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel). Plural forms, see Mobile.Count.Songs.</comment></data>
   <data name="Metadata.Downloading" xml:space="preserve"><value>Lädt…</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.SearchArtwork" xml:space="preserve"><value>Artwork suchen</value><comment>Content in MetadataWindow.axaml</comment></data>
   <data name="Metadata.AddFromFile" xml:space="preserve"><value>Aus Datei hinzufügen</value><comment>Content in MetadataWindow.axaml</comment></data>
@@ -3065,6 +3071,8 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Settings.Section.AudioTools" xml:space="preserve"><value>Hilfsprogramme</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.Updates" xml:space="preserve"><value>Updates und Entwickler</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.Reset" xml:space="preserve"><value>Zurücksetzen</value><comment>Settings section label</comment></data>
+  <data name="Settings.Section.Versions" xml:space="preserve"><value>Versionen</value><comment>Settings section label (Advanced tab, Developer Mode: the version list)</comment></data>
+  <data name="Settings.Section.Logs" xml:space="preserve"><value>Protokolle</value><comment>Settings section label (Advanced tab, Developer Mode: the session log)</comment></data>
   <data name="Settings.Section.YourAccount" xml:space="preserve"><value>Dein Konto</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.Sync" xml:space="preserve"><value>Sync</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.OtherAccounts" xml:space="preserve"><value>Weitere Konten</value><comment>Settings section label</comment></data>
@@ -3135,8 +3143,8 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Phone.Description" xml:space="preserve"><value>Diese Bibliothek auf deinem Smartphone streamen und laden.</value><comment>Phone app card subtitle</comment></data>
   <data name="Settings.Section.OtherComputers" xml:space="preserve"><value>Andere Computer</value><comment>Settings section label, Account &amp; Devices tab</comment></data>
   <data name="PcSync.Title" xml:space="preserve"><value>Mit einem anderen Computer synchronisieren</value><comment>Sync with another computer card title</comment></data>
-  <data name="PcSync.Description" xml:space="preserve"><value>Favoriten, Bewertungen, Wiedergabezahlen und Playlists bleiben auf zwei Computern gleich. Jeder behält seine eigenen Musikdateien; Songs werden über Titel, Interpret und Länge zugeordnet.</value><comment>Sync with another computer card subtitle</comment></data>
-  <data name="PcSync.Help" xml:space="preserve"><value>Schalte auf dem anderen Computer „{0}“ und „{1}“ ein und öffne {2} › {3}. Gib hier seine Adresse und dein Konto ein.</value><comment>Sync with another computer, where to start on the other computer; {0} = the phone card title, {1} = the phone sync switch title, {2} = Connect a phone, {3} = Enter manually (filled from those strings)</comment></data>
+  <data name="PcSync.Description" xml:space="preserve"><value>Hält Favoriten, Bewertungen, Wiedergabezahlen und Playlists auf beiden Computern gleich. Die Musikdateien bleiben getrennt.</value><comment>Sync with another computer card subtitle</comment></data>
+  <data name="PcSync.Help" xml:space="preserve"><value>Schalte auf dem anderen Computer „{0}“ und „{1}“ ein und gib hier die Adresse aus {2} › {3} und dein Konto ein.</value><comment>Sync with another computer, where to start on the other computer; {0} = the phone card title, {1} = the phone sync switch title, {2} = Connect a phone, {3} = Enter manually (filled from those strings)</comment></data>
   <data name="PcSync.Address" xml:space="preserve"><value>Adresse vom anderen Computer</value><comment>Address box watermark</comment></data>
   <data name="PcSync.User" xml:space="preserve"><value>E-Mail oder Benutzername</value><comment>Email or username box watermark</comment></data>
   <data name="PcSync.Password" xml:space="preserve"><value>Passwort</value><comment>Password box watermark</comment></data>
@@ -4497,6 +4505,7 @@ Eine Playlist namens „{0}“ mit diesen Titeln erstellen?</value><comment>Drag
   <data name="DiscogsGenres.TitleOne" xml:space="preserve"><value>Genres für 1 Album holen</value></data>
   <data name="DiscogsGenres.TitleMany" xml:space="preserve"><value>Genres für {0:N0} Alben holen</value><comment>Get Genres from Discogs dialog. Plural forms, see Mobile.Count.Songs.</comment></data>
   <data name="DiscogsGenres.Subtitle" xml:space="preserve"><value>Sucht jedes Album auf Discogs und schlägt seine Stile als Genres des Albums vor. Gespeichert wird erst, wenn du „Übernehmen“ wählst.</value></data>
+  <data name="DiscogsGenres.ReadyHint" xml:space="preserve"><value>Wähle „Suchen“, um die Alben nachzuschlagen, und hake dann die an, die geändert werden sollen.</value></data>
   <data name="DiscogsGenres.Use" xml:space="preserve"><value>Verwenden</value></data>
   <data name="DiscogsGenres.SourceStyles" xml:space="preserve"><value>Stile</value></data>
   <data name="DiscogsGenres.SourceGenres" xml:space="preserve"><value>Genres</value></data>

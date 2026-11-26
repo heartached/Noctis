@@ -124,6 +124,85 @@ public class SettingsPolish1126ShotsTests
         });
     }
 
+    /// <summary>
+    /// Owner 11-26 (second round): the Equalizer table (EQ on, one band at +10.5 dB) and the
+    /// whole Advanced tab (Developer Mode on, a sample version list and crash banner).
+    /// </summary>
+    [AvaloniaFact]
+    public async Task EqualizerAndAdvanced_SavePngs()
+    {
+        var dir = Environment.GetEnvironmentVariable("NOCTIS_POLISH_SHOTS_DIR");
+        if (!HeadlessTestApp.RealRendering || string.IsNullOrEmpty(dir)) return;
+        Directory.CreateDirectory(dir);
+
+        EnsureAppStyles();
+        var root = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
+        var vm = new SettingsViewModel(new PersistenceService(root), new FakeLibraryService(), new NoOpPlayHistory());
+        await vm.LoadAsync();
+
+        AccentTestHarness.WithAccent("#E74856", ThemeVariant.Dark, () =>
+        {
+            var view = new SettingsView { DataContext = vm };
+            var window = new Window
+            {
+                Width = 1100, Height = 3400, Content = view,
+                RequestedThemeVariant = ThemeVariant.Dark,
+                Background = new SolidColorBrush(Color.Parse("#141414")),
+            };
+            window.Show();
+            Pump(300);
+
+            void Shot(string name, string tab, Action set, Func<Control?> find, Func<Control, Control> box)
+            {
+                vm.SelectedSettingsTab = tab;
+                Pump(200);
+                set();
+                Pump(1200);
+                var target = find();
+                Assert.NotNull(target);
+                var area = box(target!);
+                var sv = view.GetVisualDescendants().OfType<ScrollViewer>().First(v => v.Name == "SettingsScrollViewer");
+                var top = area.TranslatePoint(new Point(0, 0), sv)!.Value.Y;
+                sv.Offset = new Vector(0, Math.Max(0, sv.Offset.Y + top - 20));
+                Pump(500);
+                var origin = area.TranslatePoint(new Point(0, 0), window)!.Value;
+                var full = Path.Combine(dir, $"_{name}-full.png");
+                window.CaptureRenderedFrame()!.Save(full);
+                var path = Path.Combine(dir, $"{name}.png");
+                Crop(full, path, new SKRectI(
+                    (int)origin.X - 14, (int)origin.Y - 14,
+                    (int)(origin.X + area.Bounds.Width) + 14, (int)(origin.Y + area.Bounds.Height) + 14));
+                File.Delete(full);
+                _o.WriteLine(path);
+            }
+
+            Shot("eq-table", SettingsViewModel.TabAudio,
+                () => { vm.EqualizerEnabled = true; vm.EqBands[0].GainDb = 10.5; },
+                () => view.GetVisualDescendants().OfType<Button>().FirstOrDefault(b => b.Classes.Contains("eq-remove") && b.IsEffectivelyVisible),
+                t => t.GetVisualAncestors().OfType<Border>().First(b => b.Classes.Contains("setting-card")));
+
+            Shot("advanced-tab", SettingsViewModel.TabAdvanced, () =>
+                {
+                    vm.DeveloperMode = true;
+                    vm.PreservedCrashBanner = "The last session closed unexpectedly. Its log is kept below.";
+                    vm.DevReleases.Clear();
+                    var versions = new[] { ("1.7.2", true, false), ("1.7.1", false, false), ("1.7.0", false, false), ("1.6.9", false, true) };
+                    foreach (var (v, latest, pre) in versions)
+                        vm.DevReleases.Add(new DevReleaseItem
+                        {
+                            TagName = "v" + v, VersionDisplay = v, DateDisplay = "Nov 25, 2026",
+                            IsLatest = latest, IsPrerelease = pre,
+                            Info = new UpdateInfo { TagName = "v" + v, Version = Version.Parse(v), ReleaseUrl = "https://example.invalid/r", InstallerApiUrl = "https://example.invalid/a" },
+                        });
+                    vm.HiddenReleaseCount = 12;
+                    vm.ShowDevReleasesEmpty = false;
+                    vm.DevLogText = "[12:00:01] App: started\n[12:00:02] Library: 1,204 songs\n[12:00:03] Playback: ready";
+                },
+                () => view.GetVisualDescendants().OfType<Control>().FirstOrDefault(c => c.Name == "AdvancedTabPanel"),
+                t => t);
+        });
+    }
+
     private static void Crop(string src, string dst, SKRectI rect)
     {
         using var bmp = SKBitmap.Decode(src);

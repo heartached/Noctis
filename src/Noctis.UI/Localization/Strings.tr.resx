@@ -530,7 +530,7 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
   <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>Karıştırmayı Açık Tut</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>Karıştırma açıkken bir albüm, çalma listesi veya şarkı çalmak onu açık tutar ve yeni müziği karıştırır.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SkipSilence" xml:space="preserve"><value>Sessizliği Atla</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.SkipSilenceHint" xml:space="preserve"><value>Her şarkıyı ilk sesinde başlatır ve son sesinden sonra sıradakine geçer. Dosyaların değiştirilmez; bir şarkı için ayarladığın başlangıç ve bitiş zamanları önceliklidir.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilenceHint" xml:space="preserve"><value>Şarkıların başındaki ve sonundaki sessizliği atlar. Dosyaların değiştirilmez.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevel" xml:space="preserve"><value>Sessizlik Seviyesi</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevelHint" xml:space="preserve"><value>Bundan sessiz olan her şey sessizlik sayılır. Düşük değer sessiz kapanışları korur; yüksek değer cızırtı gibi daha fazlasını keser.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="PlaybackBar.PlayingFrom" xml:space="preserve"><value>{0} içinden çalınıyor</value><comment>Queue drawer link and island title tooltip (Discord 11-24). {0} = album, playlist, artist or page name</comment></data>
@@ -1676,6 +1676,12 @@ Kaydetmek bunları ekrandaki sözlerle değiştirir. Noctis'in yazmadığı bir 
   <data name="Metadata.ArtSearchBoxHint" xml:space="preserve"><value>Albüm veya sanatçı</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
   <data name="Metadata.ArtNoMatches" xml:space="preserve"><value>Apple Music'te eşleşen albüm yok. Başka bir ad dene.</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
   <data name="Metadata.ArtDownloadFailed" xml:space="preserve"><value>İndirme başarısız oldu.</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibAlbums" xml:space="preserve"><value>Albümler</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibSinglesEps" xml:space="preserve"><value>Single'lar ve EP'ler</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibAppearsOn" xml:space="preserve"><value>Yer aldığı çalışmalar</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibMatches" xml:space="preserve"><value>En iyi eşleşmeler</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibMoreBy" xml:space="preserve"><value>{0} sanatçısından daha fazlası</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibReleases" xml:space="preserve"><value>{0} yayın</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel). Plural forms, see Mobile.Count.Songs.</comment></data>
   <data name="Metadata.Downloading" xml:space="preserve"><value>İndiriliyor…</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.SearchArtwork" xml:space="preserve"><value>Kapak Ara</value><comment>Content in MetadataWindow.axaml</comment></data>
   <data name="Metadata.AddFromFile" xml:space="preserve"><value>Dosyadan ekle</value><comment>Content in MetadataWindow.axaml</comment></data>
@@ -3091,6 +3097,8 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Settings.Section.AudioTools" xml:space="preserve"><value>Yardımcı programlar</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.Updates" xml:space="preserve"><value>Güncellemeler ve geliştirici</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.Reset" xml:space="preserve"><value>Sıfırla</value><comment>Settings section label</comment></data>
+  <data name="Settings.Section.Versions" xml:space="preserve"><value>Sürümler</value><comment>Settings section label (Advanced tab, Developer Mode: the version list)</comment></data>
+  <data name="Settings.Section.Logs" xml:space="preserve"><value>Günlükler</value><comment>Settings section label (Advanced tab, Developer Mode: the session log)</comment></data>
   <data name="Settings.Section.YourAccount" xml:space="preserve"><value>Hesabın</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.Sync" xml:space="preserve"><value>Eşitleme</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.OtherAccounts" xml:space="preserve"><value>Diğer hesaplar</value><comment>Settings section label</comment></data>
@@ -3189,8 +3197,8 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Phone.Description" xml:space="preserve"><value>Bu kitaplığı telefonunda dinle ve indir.</value><comment>Phone app card subtitle</comment></data>
   <data name="Settings.Section.OtherComputers" xml:space="preserve"><value>Diğer bilgisayarlar</value><comment>Settings section label, Account &amp; Devices tab</comment></data>
   <data name="PcSync.Title" xml:space="preserve"><value>Başka bir bilgisayarla eşitle</value><comment>Sync with another computer card title</comment></data>
-  <data name="PcSync.Description" xml:space="preserve"><value>Favoriler, puanlar, çalma sayıları ve çalma listeleri iki bilgisayarda aynı kalır. Her biri kendi müzik dosyalarını tutar; şarkılar başlık, sanatçı ve süreye göre eşleştirilir.</value><comment>Sync with another computer card subtitle</comment></data>
-  <data name="PcSync.Help" xml:space="preserve"><value>Diğer bilgisayarda "{0}" ve "{1}" seçeneklerini aç, ardından {2} › {3} bölümünü aç. Onun adresini ve kendi hesabını buraya yaz.</value><comment>Sync with another computer, where to start on the other computer; {0} = the phone card title, {1} = the phone sync switch title, {2} = Connect a phone, {3} = Enter manually (filled from those strings)</comment></data>
+  <data name="PcSync.Description" xml:space="preserve"><value>Favorileri, puanları, çalma sayılarını ve çalma listelerini iki bilgisayarda da aynı tutar. Müzik dosyaları ayrı kalır.</value><comment>Sync with another computer card subtitle</comment></data>
+  <data name="PcSync.Help" xml:space="preserve"><value>Diğer bilgisayarda "{0}" ve "{1}" seçeneklerini aç, ardından {2} › {3} bölümündeki adresi ve hesabını buraya gir.</value><comment>Sync with another computer, where to start on the other computer; {0} = the phone card title, {1} = the phone sync switch title, {2} = Connect a phone, {3} = Enter manually (filled from those strings)</comment></data>
   <data name="PcSync.Address" xml:space="preserve"><value>Diğer bilgisayarda gösterilen adres</value><comment>Address box watermark</comment></data>
   <data name="PcSync.User" xml:space="preserve"><value>E-posta veya kullanıcı adı</value><comment>Email or username box watermark</comment></data>
   <data name="PcSync.Password" xml:space="preserve"><value>Parola</value><comment>Password box watermark</comment></data>
@@ -4559,6 +4567,7 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="DiscogsGenres.TitleOne" xml:space="preserve"><value>1 albüm için türleri al</value></data>
   <data name="DiscogsGenres.TitleMany" xml:space="preserve"><value>{0:N0} albüm için türleri al</value><comment>Get Genres from Discogs dialog. Plural forms, see Mobile.Count.Songs.</comment></data>
   <data name="DiscogsGenres.Subtitle" xml:space="preserve"><value>Her albümü Discogs'ta arar ve stillerini albümün türleri olarak önerir. Uygula'yı seçene kadar hiçbir şey kaydedilmez.</value></data>
+  <data name="DiscogsGenres.ReadyHint" xml:space="preserve"><value>Albümleri aramak için Bul'a basın, ardından değiştirilecekleri işaretleyin.</value></data>
   <data name="DiscogsGenres.Use" xml:space="preserve"><value>Kullan</value></data>
   <data name="DiscogsGenres.SourceStyles" xml:space="preserve"><value>Stiller</value></data>
   <data name="DiscogsGenres.SourceGenres" xml:space="preserve"><value>Türler</value></data>
