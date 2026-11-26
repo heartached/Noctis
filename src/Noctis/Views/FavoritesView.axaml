@@ -38,7 +38,9 @@
 
     <Grid RowDefinitions="*">
         <!-- Right margin trimmed to 2 so the vertical scrollbar sits at the window edge. -->
-        <DockPanel Grid.Row="0" Classes="favorites-dock">
+        <!-- The top margin is moved inside the scroller, room for a first-row cover's hover
+             grow (UpdateFirstRowRoom in code-behind). -->
+        <DockPanel x:Name="FavoritesDock" Grid.Row="0" Classes="favorites-dock">
 
         <!-- Content area with overlay for empty state -->
         <Grid>

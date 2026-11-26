@@ -162,6 +162,12 @@ public class AlbumHoverShotsTests
             Hover(edge); Shot("edge-hover2", edge, 500);
             win.MouseMove(away); Pump(500);
 
+            // Discord 11-25: a first-row cover grew down over its title (no room above it).
+            var top = tiles[1];
+            Shot("toprow-rest", top, 10);
+            Hover(top); Shot("toprow-hover", top, 500);
+            win.MouseMove(away); Pump(500);
+
             var mid = tiles[cols + 2];
             Hover(mid); Shot("middle-hover", mid, 500);
             win.MouseMove(away); Pump(400);
