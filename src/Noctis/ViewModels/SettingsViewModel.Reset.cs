@@ -32,7 +32,8 @@ namespace Noctis.ViewModels;
 ///     only the way back is forgotten), *.corrupt-* quarantines, settings.json.bak (old
 ///     settings, credentials included)
 ///   animated_artwork_bulk_ledger.json, lyrics_bulk_ledger.json, animated_artwork_no_autofetch.json,
-///     animated_artwork_autofetch_ledger.json (album pages' fetch), *-backfill.progress,
+///     animated_artwork_autofetch_ledger.json (album pages' fetch), artist_video_no_autofetch.json,
+///     artist_video_autofetch_ledger.json, artist_video_index.json (artist pages' video), *-backfill.progress,
 ///     mp3_decoder_fallback.txt, musixmatch_token (anonymous token, fetched again)
 ///   tidal-auth.json (signed out, as the other services' sign-ins live in settings.json)
 ///   computers.json (each computer's own sign-ins and window/device/size settings, GitHub #230;
@@ -72,6 +73,9 @@ public partial class SettingsViewModel
         // "no match" memory. StopLibraryRunsAsync drops the fetcher so the next page reloads
         // them, which read these old files straight back.
         "animated_artwork_no_autofetch.json", "animated_artwork_autofetch_ledger.json",
+        // Artist pages' video (Settings › Artwork › Artist videos): the same, plus the Apple
+        // artist each library artist resolved to.
+        "artist_video_no_autofetch.json", "artist_video_autofetch_ledger.json", "artist_video_index.json",
     };
 
     /// <summary>File patterns deleted in the data folder itself (not below it).</summary>
