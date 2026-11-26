@@ -169,8 +169,11 @@
                          an accent-tinted plate with an accent outline. App.SetAccent re-derives both. -->
                     <SolidColorBrush x:Key="SelectionFillBrush" Color="{StaticResource SystemAccentColor}" Opacity="0.2" />
                     <SolidColorBrush x:Key="SelectionStrokeBrush" Color="{StaticResource SystemAccentColor}" Opacity="0.9" />
-                    <!-- GitHub #218: the soft glow behind a hovered album (Album Hover Zoom). -->
-                    <BoxShadows x:Key="AlbumHoverGlow">0 0 24 1 #3DFFFFFF</BoxShadows>
+                    <!-- GitHub #218: the soft shadow under a hovered album (Album Hover Zoom). Dark and
+                         tight (Discord 11-25): the old 24px white glow was a light plate behind the
+                         white title text and spilled past a selected tile's outline; this one fits in
+                         the grid's 4-5px edge room, so edge tiles get it too (TileHoverZoom). -->
+                    <BoxShadows x:Key="AlbumHoverGlow">0 1 3 0 #B3000000</BoxShadows>
                     <SolidColorBrush x:Key="ToggleTrackOffBrush" Color="#484C54" />
                     <SolidColorBrush x:Key="ToggleKnobOffBrush" Color="White" />
                     <SolidColorBrush x:Key="ArtworkPlaceholderBackground" Color="#2E2E2E" />
@@ -334,7 +337,7 @@
                          an accent-tinted plate with an accent outline. App.SetAccent re-derives both. -->
                     <SolidColorBrush x:Key="SelectionFillBrush" Color="{StaticResource SystemAccentColor}" Opacity="0.2" />
                     <SolidColorBrush x:Key="SelectionStrokeBrush" Color="{StaticResource SystemAccentColor}" Opacity="0.9" />
-                    <BoxShadows x:Key="AlbumHoverGlow">0 8 24 0 #40000000</BoxShadows>
+                    <BoxShadows x:Key="AlbumHoverGlow">0 1 3 0 #40000000</BoxShadows>
                     <SolidColorBrush x:Key="ToggleTrackOffBrush" Color="#484C54" />
                     <SolidColorBrush x:Key="ToggleKnobOffBrush" Color="White" />
                     <SolidColorBrush x:Key="ArtworkPlaceholderBackground" Color="#2E2E2E" />
@@ -1643,9 +1646,13 @@
          cover and its glow) grows to 104% round the cover's own centre; the title lines stay
          put (Discord 11-21: the whole tile grew, so the cover grew downward and the text
          moved). Every other tile stays as it is (GitHub #250: the neighbours used to step back
-         to 97%, which read as the whole grid moving). LibraryAlbumsView lifts the hovered tile
+         to 97%, which read as the whole grid moving). TileHoverZoom lifts the hovered tile
          above its neighbours, anchors the cover at the grid's edges so it is not clipped there
-         and drops the glow (.glow-cut) where the scroller's edge would cut it.
+         and tags the tile .glow-fits when its shadow is drawn whole; only then is it shown
+         (Discord 11-25: a .glow-cut tag set after :pointerover flashed an edge tile's glow on
+         its first hover, then hid it on every later one). A Ctrl-selected tile neither grows
+         nor casts the shadow: its selection plate is the hover surface, and a grown cover or
+         its shadow would run over the plate's outline (Discord 11-25).
          The Button is unclipped: an Avalonia 12 TemplatedControl clips to its bounds, which
          cut the glow (then on the Button's template) down to a faint hard-edged box round the
          whole tile (Discord 11-21). Render transforms and opacity only, nothing re-lays out. -->
@@ -1683,8 +1690,11 @@
     <Style Selector=".hover-zoom Button.album-tile:pointerover Panel.tile-art">
         <Setter Property="RenderTransform" Value="scale(1.04)" />
     </Style>
-    <Style Selector=".hover-zoom Button.album-tile:pointerover:not(.glow-cut) Border.tile-glow">
+    <Style Selector=".hover-zoom Button.album-tile:pointerover.glow-fits:not(.ctrl-selected) Border.tile-glow">
         <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector=".hover-zoom Button.album-tile.ctrl-selected:pointerover Panel.tile-art">
+        <Setter Property="RenderTransform" Value="scale(1)" />
     </Style>
 
     <Style Selector="Button.browse-item:pointerover">

@@ -343,7 +343,7 @@ public class AlbumHoverZoomTests
             Assert.False(v.ClipToBounds, $"{v.GetType().Name} clips the hovered cover's glow");
 
         // The top-left tile: grows inside the viewport (inward where it has no room; wide spacing
-        // leaves room), and the viewport's edge would cut its glow, so none.
+        // leaves room), and its shadow (small since Discord 11-25) fits, so it shows whole.
         var corner = tiles[0];
         p = corner.TranslatePoint(new Point(corner.Bounds.Width / 2, 40), win)!.Value;
         win.MouseMove(p); Pump(2); await Task.Delay(350); Pump(3);
@@ -351,15 +351,16 @@ public class AlbumHoverZoomTests
         var sv = view.GetVisualDescendants().OfType<ScrollViewer>().First(s => s.IsEffectivelyVisible);
         var tl = Cover(corner).TranslatePoint(default, sv)!.Value;
         Assert.True(tl.X >= -0.01 && tl.Y >= -0.01, $"top-left cover clipped at {tl}");
-        Assert.Contains("glow-cut", corner.Classes);
-        Assert.Equal(0, Glow(corner).Opacity, 2);
+        Assert.Contains("glow-fits", corner.Classes);
+        Assert.Equal(1, Glow(corner).Opacity, 2);
         win.Close();
     }
 
     /// <summary>Discord 11-23 ("the hover thingy for albums doesn't apply for songs here"): the
     /// same zoom on the Favorites grid, songs and albums alike. Only the hovered cover grows,
     /// round its own centre, with its glow; the title lines stay put; no other tile moves; a
-    /// Ctrl-selected tile's plate does not grow with it. Off, nothing.</summary>
+    /// Ctrl-selected tile neither grows nor glows (Discord 11-25), its plate keeps its size.
+    /// Off, nothing.</summary>
     [AvaloniaTheory]
     [InlineData(true)]
     [InlineData(false)]
@@ -407,6 +408,21 @@ public class AlbumHoverZoomTests
 
         var ring = mid.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("select-ring"));
         _o.WriteLine($"on={on}: scale={Scale(Art(mid)):0.###} glow={Glow(mid).Opacity:0.##} ring={Scale(ring):0.###} others=[{string.Join(",", Transformed(tiles, mid))}]");
+        // Discord 11-25: a selected tile's plate is its hover surface; a grown cover or its shadow
+        // ran over the plate's red outline, so a selected tile neither grows nor casts it.
+        Assert.Equal(1, Scale(Art(mid)), 2);
+        Assert.Equal(0, Glow(mid).Opacity, 2);
+        Assert.Equal(centre, Centre(Cover(mid)));
+        Assert.True(IsIdentity(mid), "the whole tile was transformed");
+        Assert.Equal(1, Scale(ring), 2);        // the selection plate keeps its size
+
+        // Deselected (Ctrl-click again) and hovered once more: it grows round its centre with
+        // its shadow, as an unselected tile does.
+        win.MouseDown(p, Avalonia.Input.MouseButton.Left, TestKeys.Primary);
+        win.MouseUp(p, Avalonia.Input.MouseButton.Left, TestKeys.Primary);
+        win.MouseMove(new Point(5, 995)); Pump(2); await Task.Delay(350); Pump(3);
+        win.MouseMove(p); Pump(2); await Task.Delay(350); Pump(3);
+        Assert.DoesNotContain("ctrl-selected", mid.Classes);
         if (on)
         {
             Assert.Equal(1.04, Scale(Art(mid)), 2);
@@ -419,11 +435,112 @@ public class AlbumHoverZoomTests
             Assert.Equal(1, Scale(Art(mid)), 2);
             Assert.Equal(0, Glow(mid).Opacity, 2);
         }
-        Assert.True(IsIdentity(mid), "the whole tile was transformed");
-        Assert.Equal(1, Scale(ring), 2);        // the selection plate keeps its size
         Assert.Equal(text, TextAt(mid));        // the title lines stay put
         Assert.Empty(Transformed(tiles, mid));  // no other tile moves
         Assert.Equal(bounds, tiles.Select(t => t.Bounds).ToList());
         win.Close();
+    }
+
+    /// <summary>Discord 11-25 ("Albums Hover Edge Bug"): a tile in an edge column or the first row
+    /// glowed once, the first time it was hovered, then never again. Its glow-cut class was set
+    /// in PointerEntered, after :pointerover had already started the glow, so the first hover
+    /// flashed it and faded it out; the class stayed, so every later hover had none. The glow is
+    /// now a small dark shadow that fits inside the grid's own edge room, and it only shows once
+    /// the tile is known to have room for it. Every hover of an edge tile glows like any other
+    /// tile, and the glow stays inside the scroller (drawn whole). Row grid and Masonry, both
+    /// spacings.</summary>
+    [AvaloniaTheory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task EdgeTiles_GlowOnEveryHover_InsideTheViewport(bool wide, bool masonry)
+    {
+        EnsureAppStyles();
+        var lib = new FakeLibraryService();
+        for (var i = 0; i < 60; i++)
+            ((List<Album>)lib.Albums).Add(new Album { Id = Guid.NewGuid(), Name = $"Album {i:00}", Artist = "Artist", Year = 2020, Tracks = new List<Track>() });
+        var persistence = new TestPersistenceService();
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, persistence, new FakeAnimatedCoverService());
+        var settings = new SettingsViewModel(persistence, lib, new NoOpPlayHistory());
+        settings.AlbumHoverZoom = true;
+        settings.AlbumGridWideSpacing = wide;
+        settings.AlbumGridMasonry = masonry;
+        var vm = new LibraryAlbumsViewModel(lib, player, new SidebarViewModel(persistence, lib), settings);
+        vm.AlbumSortMode = "title";
+        var view = new LibraryAlbumsView { DataContext = vm };
+        var win = new Window { Width = 1600, Height = 1200, Content = view };
+        win.Show(); Pump();
+        vm.IsActive = true;
+        List<Button> Tiles() => view.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("album-tile") && b.IsEffectivelyVisible).ToList();
+        var deadline = Environment.TickCount64 + 5000;
+        while (Environment.TickCount64 < deadline && Tiles().Count < 15) { Pump(1); await Task.Delay(5); }
+        Pump(4);
+        var tiles = Tiles().OrderBy(t => t.TranslatePoint(default, view)!.Value.Y).ThenBy(t => t.TranslatePoint(default, view)!.Value.X).ToList();
+        var sv = view.GetVisualDescendants().OfType<ScrollViewer>().First(s => s.IsEffectivelyVisible);
+        var cols = vm.GridColumns;
+
+        // Left column (second row), right column (second row), top-left corner, a middle tile.
+        foreach (var idx in new[] { cols, 2 * cols - 1, 0, cols + 1 })
+        {
+            var t = tiles[idx];
+            var glow = Glow(t);
+            for (var pass = 1; pass <= 3; pass++)
+            {
+                var p = t.TranslatePoint(new Point(t.Bounds.Width / 2, 40), win)!.Value;
+                win.MouseMove(p);
+                var samples = new List<double>();
+                for (var k = 0; k < 4; k++) { Pump(1); await Task.Delay(30); samples.Add(glow.Opacity); }
+                await Task.Delay(300); Pump(3);
+                samples.Add(glow.Opacity);
+                var at = Art(t).GetVisualParent()!.TranslatePoint(Art(t).Bounds.Position, sv)!.Value;
+                _o.WriteLine($"wide={wide} masonry={masonry} tile {idx} pass {pass}: scale={Scale(Art(t)):0.###} origin={Art(t).RenderTransformOrigin}"
+                    + $" cover x {at.X:0.#}..{at.X + Art(t).Bounds.Width:0.#} y {at.Y:0.#} of {sv.Viewport.Width:0.#} glow=[{string.Join(" ", samples.Select(x => x.ToString("0.##")))}]");
+                Assert.Equal(1.04, Scale(Art(t)), 2);
+                Assert.True(glow.Opacity > 0.99, $"tile {idx} hover {pass}: no glow ({glow.Opacity:0.##})");
+                // Rising only: no flash-then-fade.
+                for (var k = 1; k < samples.Count; k++)
+                    Assert.True(samples[k] >= samples[k - 1] - 0.01, $"tile {idx} hover {pass}: glow fell {samples[k - 1]:0.##} -> {samples[k]:0.##}");
+
+                // Drawn whole: the shadow's reach stays inside the scroller's viewport.
+                var shadow = glow.BoxShadow.Count > 0 ? glow.BoxShadow[0] : default;
+                var reach = shadow.Blur + shadow.Spread;
+                var tl = glow.TranslatePoint(new Point(shadow.OffsetX - reach, shadow.OffsetY - reach), sv)!.Value;
+                var br = glow.TranslatePoint(new Point(glow.Bounds.Width + shadow.OffsetX + reach, 0), sv)!.Value;
+                Assert.True(tl.X >= -0.5 && tl.Y >= -0.5 && br.X <= sv.Viewport.Width + 0.5,
+                    $"tile {idx}: glow ({tl.X:0.#},{tl.Y:0.#})-({br.X:0.#}) cut by the viewport {sv.Viewport.Width:0.#}");
+
+                win.MouseMove(new Point(800, 1195)); Pump(2); await Task.Delay(350); Pump(3);
+                Assert.Equal(0, glow.Opacity, 2);
+            }
+        }
+        win.Close();
+    }
+
+    /// <summary>Discord 11-25: the hover glow was white (#3DFFFFFF, 24px), a light plate behind
+    /// the white title text, and on a Ctrl-selected tile it spilled past the red selection
+    /// outline. The glow is a dark shadow in every theme now.</summary>
+    [AvaloniaFact]
+    public void HoverGlow_IsDark_InEveryTheme()
+    {
+        EnsureAppStyles();
+        var app = Application.Current!;
+        foreach (var variant in new[] { Avalonia.Styling.ThemeVariant.Dark, Avalonia.Styling.ThemeVariant.Light })
+        {
+            Assert.True(app.TryGetResource("AlbumHoverGlow", variant, out var v), $"no AlbumHoverGlow for {variant}");
+            var shadows = Assert.IsType<BoxShadows>(v);
+            foreach (var s in shadows)
+            {
+                Assert.True(s.Color.R == 0 && s.Color.G == 0 && s.Color.B == 0, $"{variant}: glow colour {s.Color} is not dark");
+                Assert.False(s.IsInset);
+            }
+        }
+        foreach (var theme in new[] { "Ink", "Smoke", "Midnight", "Dark" })
+        {
+            var dict = (Avalonia.Controls.ResourceDictionary)Avalonia.Markup.Xaml.AvaloniaXamlLoader.Load(new Uri($"avares://Noctis.UI/Assets/Themes/{theme}.axaml"));
+            if (!dict.TryGetResource("AlbumHoverGlow", null, out var v)) continue;
+            foreach (var s in Assert.IsType<BoxShadows>(v))
+                Assert.True(s.Color.R == 0 && s.Color.G == 0 && s.Color.B == 0, $"{theme}: glow colour {s.Color} is not dark");
+        }
     }
 }
