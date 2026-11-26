@@ -179,10 +179,27 @@ public sealed class RouletteView : UserControl
         AutomationName(_spin, "Spin");
         _spin.Click += (_, _) => Spin();
 
-        _play = Pill("Play", () => { if (Pick is { } a) _host.PlayTracks(a.TrackIds); });
-        _shuffle = Pill("Shuffle", () => { if (Pick is { } a) _host.PlayTracks(Shuffled(a.TrackIds)); });
-        _playNext = Pill("Play next", () => { if (Pick is { } a) _host.QueueTracks(a.TrackIds, playNext: true); });
-        _addToQueue = Pill("Add to queue", () => { if (Pick is { } a) _host.QueueTracks(a.TrackIds, playNext: false); });
+        // A server album (GitHub #268) has no library tracks: Noctis fetches its songs from the server.
+        _play = Pill("Play", () =>
+        {
+            if (Pick is { ServerAlbumId: { } server }) _host.PlayServerAlbum(server, shuffle: false);
+            else if (Pick is { } a) _host.PlayTracks(a.TrackIds);
+        });
+        _shuffle = Pill("Shuffle", () =>
+        {
+            if (Pick is { ServerAlbumId: { } server }) _host.PlayServerAlbum(server, shuffle: true);
+            else if (Pick is { } a) _host.PlayTracks(Shuffled(a.TrackIds));
+        });
+        _playNext = Pill("Play next", () =>
+        {
+            if (Pick is { ServerAlbumId: { } server }) _host.QueueServerAlbum(server, playNext: true);
+            else if (Pick is { } a) _host.QueueTracks(a.TrackIds, playNext: true);
+        });
+        _addToQueue = Pill("Add to queue", () =>
+        {
+            if (Pick is { ServerAlbumId: { } server }) _host.QueueServerAlbum(server, playNext: false);
+            else if (Pick is { } a) _host.QueueTracks(a.TrackIds, playNext: false);
+        });
         _open = Pill("Open album", () => { if (Pick is { } a) _host.ShowAlbum(a.AlbumId); });
         // Wraps in a narrow window (a song has four pills).
         var pillRow = new WrapPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center };
@@ -293,7 +310,9 @@ public sealed class RouletteView : UserControl
             (albums, songs) = await Task.Run(() =>
             {
                 var tracks = _host.LoadTracks();
-                return (AlbumCatalog.Group(tracks), SongCatalog.Build(tracks, now));
+                // The media servers' albums ride the reel too (GitHub #268).
+                var withServers = AlbumCatalog.WithServerAlbums(AlbumCatalog.Group(tracks), _host.LoadServerAlbums());
+                return (withServers, SongCatalog.Build(tracks, now));
             });
         }
         catch (Exception ex)
@@ -579,7 +598,10 @@ public sealed class RouletteView : UserControl
         _artist.Text = album?.Artist ?? "";
         var year = album is { Year: > 0 } ? album.Year.ToString(CultureInfo.InvariantCulture) : "";
         // A song: "Album · 2006" under its artist.
-        _year.Text = album is { IsSong: true, AlbumTitle.Length: > 0 } ? (year.Length > 0 ? album.AlbumTitle + " · " + year : album.AlbumTitle) : year;
+        _year.Text = album is { IsSong: true, AlbumTitle.Length: > 0 } ? (year.Length > 0 ? album.AlbumTitle + " · " + year : album.AlbumTitle)
+            // A server album says which server it plays from: "2006 · Home Navidrome".
+            : album is { IsServer: true, ServerName.Length: > 0 } ? (year.Length > 0 ? year + " · " + album.ServerName : album.ServerName)
+            : year;
         _details.Opacity = spinning ? 0 : 1;
         foreach (var b in new[] { _play, _shuffle, _playNext, _addToQueue }) b.IsEnabled = album is not null;
         _open.IsEnabled = album is { AlbumId.Length: > 0 };
@@ -596,8 +618,49 @@ public sealed class RouletteView : UserControl
         var index = _reel.Motion.SlotAt(slot);
         if (index < 0 || index >= _pool.Count) return;
         var album = _pool[index];
+        if (album.ArtworkPath is null) RequestServerCover(album);
         _reel.SetSlot(slot, _covers.Get(album.ArtworkPath), _theme.PlaceholderFor(album.Key));
     }
+
+    private readonly HashSet<string> _serverCoversAsked = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// A server album's cover is downloaded by Noctis the first time it reaches the reel (not
+    /// for the whole server up front); once it is on disk the slots showing it are filled again.
+    /// </summary>
+    private void RequestServerCover(RouletteAlbum album)
+    {
+        if (album.ServerAlbumId is not { } id || !_serverCoversAsked.Add(id)) return;
+        _ = FetchServerCoverAsync(album, id);
+    }
+
+    private async Task FetchServerCoverAsync(RouletteAlbum album, string id)
+    {
+        string? path;
+        try { path = await _host.ServerAlbumArtworkAsync(id); }
+        catch (Exception ex)
+        {
+            _host.Log("server cover: " + ex.Message);
+            return;
+        }
+        if (string.IsNullOrEmpty(path)) return;
+        void Apply()
+        {
+            album.ArtworkPath = path;
+            var motion = _reel.Motion;
+            for (var i = 0; i < motion.Length; i++)
+            {
+                var index = motion.SlotAt(i);
+                if (index >= 0 && index < _pool.Count && ReferenceEquals(_pool[index], album)) FillSlot(i);
+            }
+            _reel.InvalidateVisual();
+        }
+        if (Dispatcher.UIThread.CheckAccess()) Apply();
+        else Dispatcher.UIThread.Post(Apply);
+    }
+
+    /// <summary>Tests: the server covers asked for so far.</summary>
+    public IReadOnlyCollection<string> ServerCoversAsked => _serverCoversAsked;
 
     private void RefreshSlots(string path)
     {
@@ -613,7 +676,11 @@ public sealed class RouletteView : UserControl
     /// <summary>Starts decoding the pool's covers so a spin finds them ready.</summary>
     private void Warm()
     {
-        foreach (var a in _pool) _covers.Get(a.ArtworkPath);
+        foreach (var a in _pool)
+        {
+            if (a.ArtworkPath is null) RequestServerCover(a);
+            _covers.Get(a.ArtworkPath);
+        }
         for (var i = 0; i < _reel.Motion.Length; i++) FillSlot(i);
     }
 

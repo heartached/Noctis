@@ -9535,4 +9535,10 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Settings.DiscogsGenresSub" xml:space="preserve"><value>用 Discogs 上的风格标记专辑流派。保存前你会检查每一项更改。</value></data>
   <data name="Palette.DiscogsGenres" xml:space="preserve"><value>从 Discogs 获取流派…</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.DiscogsGenresSub" xml:space="preserve"><value>用 Discogs 风格标记专辑流派</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Settings.Server.Add" xml:space="preserve"><value>添加服务器</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.Remove" xml:space="preserve"><value>移除</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.UseServer" xml:space="preserve"><value>使用此服务器</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.NameLabel" xml:space="preserve"><value>名称（可选）</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.NameWatermark" xml:space="preserve"><value>家里的服务器</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.AmpacheHint" xml:space="preserve"><value>Ampache：请使用 Subsonic 密码（在 Ampache 账户中设置）或 API 密钥登录，而不是登录密码。</value><comment>Music Server (GitHub #268)</comment></data>
 </root>

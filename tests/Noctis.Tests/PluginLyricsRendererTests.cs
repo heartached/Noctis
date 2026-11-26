@@ -80,7 +80,7 @@ public class PluginLyricsRendererTests : IDisposable
     [Fact]
     public void TheKit_IsApi18_AndAnOlderHostRefusesTheCall()
     {
-        Assert.Equal("1.8", PluginApi.Version);
+        Assert.True(PluginApi.Minor >= 8); // 1.9 added the media servers' albums on top
         IPluginHost old = new OldHost();
         var ex = Assert.Throws<NotSupportedException>(() => old.RegisterLyricsRenderer(new TimedWords()));
         Assert.Contains("1.8", ex.Message);

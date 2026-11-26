@@ -27,6 +27,13 @@ public class SourceConnection
 
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The name the user gave this server (GitHub #268: several servers side by side), or
+    /// empty for none, in which case the app shows the preset and host. <see cref="Name"/>
+    /// keeps the picked preset ("Navidrome", "Gonic", …) for media servers.
+    /// </summary>
+    public string Label { get; set; } = string.Empty;
     public SourceType Type { get; set; } = SourceType.Local;
     public string BaseUriOrPath { get; set; } = string.Empty;
     public string Username { get; set; } = string.Empty;

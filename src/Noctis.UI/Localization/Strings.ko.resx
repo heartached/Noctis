@@ -9535,4 +9535,10 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Settings.DiscogsGenresSub" xml:space="preserve"><value>Discogs의 스타일로 앨범 장르를 태그합니다. 저장하기 전에 모든 변경 사항을 확인합니다.</value></data>
   <data name="Palette.DiscogsGenres" xml:space="preserve"><value>Discogs에서 장르 가져오기…</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.DiscogsGenresSub" xml:space="preserve"><value>Discogs 스타일로 앨범 장르 태그</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Settings.Server.Add" xml:space="preserve"><value>서버 추가</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.Remove" xml:space="preserve"><value>제거</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.UseServer" xml:space="preserve"><value>이 서버 사용</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.NameLabel" xml:space="preserve"><value>이름(선택)</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.NameWatermark" xml:space="preserve"><value>집 서버</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.AmpacheHint" xml:space="preserve"><value>Ampache: 로그인 비밀번호가 아니라 Subsonic 비밀번호(Ampache 계정에서 설정) 또는 API 키로 로그인하세요.</value><comment>Music Server (GitHub #268)</comment></data>
 </root>

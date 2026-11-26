@@ -429,8 +429,9 @@ public class SettingsViewModelPersistenceTests : IDisposable
         var vm = CreateViewModel();
         await vm.LoadAsync();
         Assert.True(vm.IsMediaServerConnected);
-        Assert.Equal("https://music.example.com", vm.MediaServerUrl);
-        Assert.Equal("demo", vm.MediaServerUsername);
+        var entry = Assert.Single(vm.MediaServers); // GitHub #268: listed as a connected server
+        Assert.Equal("https://music.example.com", entry.Url);
+        Assert.Equal("demo", entry.Username);
         Assert.Equal(string.Empty, vm.MediaServerPassword); // secret never surfaces in the box
 
         // The trap: an unrelated save merges from disk and must not drop the connection.

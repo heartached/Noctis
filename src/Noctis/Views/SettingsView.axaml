@@ -8762,23 +8762,46 @@
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap" MaxWidth="560"
                                        HorizontalAlignment="Left" Margin="-2,0,0,0"/>
 
-                            <!-- Connected summary -->
+                            <!-- Connected servers (GitHub #268: several side by side). Each row:
+                                 name, preset, address and account, an on/off switch, Remove. -->
                             <StackPanel>
                             <controls:CollapsibleContent IsOpen="{Binding IsMediaServerConnected}" Lift="10" Margin="-2,0,0,0" Motion="Glide">
-                            <StackPanel Spacing="3" Margin="0,8,0,0">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <TextBlock Classes="server-field-label" Text="{loc:T Settings.TYPE}" Width="68" VerticalAlignment="Center"/>
-                                    <TextBlock Text="{Binding MediaServerType}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"/>
-                                </StackPanel>
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <TextBlock Classes="server-field-label" Text="{loc:T Settings.SERVER}" Width="68" VerticalAlignment="Center"/>
-                                    <TextBlock Text="{Binding MediaServerUrl}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"/>
-                                </StackPanel>
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <TextBlock Classes="server-field-label" Text="{loc:T Settings.ACCOUNT}" Width="68" VerticalAlignment="Center"/>
-                                    <TextBlock Text="{Binding MediaServerUsername}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </StackPanel>
+                            <ItemsControl x:Name="MediaServerList" ItemsSource="{Binding MediaServers}" Margin="0,8,0,0">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Spacing="6"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:MediaServerEntryViewModel">
+                                        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+                                            <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <TextBlock Classes="server-field-label" Text="{Binding Flavor}" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding Url}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="{Binding Username}" FontSize="12" Opacity="0.6" VerticalAlignment="Center"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                            <controls:LottieToggle Grid.Column="1"
+                                                                  AutomationProperties.Name="{Binding DisplayName}"
+                                                                  ToolTip.Tip="{loc:T Settings.Server.UseServer}"
+                                                                  IsChecked="{Binding IsEnabled}"
+                                                                  VerticalAlignment="Center"/>
+                                            <Button Grid.Column="2" Classes="pill-action"
+                                                    AutomationProperties.Name="{loc:T Settings.Server.Remove}"
+                                                    Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).RemoveMediaServerCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    Padding="12,6" CornerRadius="999" Cursor="Hand" VerticalAlignment="Center">
+                                                <TextBlock Text="{loc:T Settings.Server.Remove}" FontSize="12" VerticalAlignment="Center"/>
+                                            </Button>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                             </controls:CollapsibleContent>
 
                             <!-- Connection form (hidden while connected): labeled 2×2 grid,
@@ -8787,9 +8810,10 @@
                                  and long input scrolls inside the boxes. Left-aligned, the grid
                                  sized its star columns to content and the boxes resized on every
                                  keystroke. -->
-                            <controls:CollapsibleContent IsOpen="{Binding !IsMediaServerConnected}" Lift="10" Margin="-2,0,0,0" Motion="Glide">
+                            <controls:CollapsibleContent IsOpen="{Binding IsMediaServerFormOpen}" Lift="10" Margin="-2,0,0,0" Motion="Glide">
+                            <StackPanel>
                             <Grid
-                                  ColumnDefinitions="*,12,*" RowDefinitions="Auto,Auto"
+                                  ColumnDefinitions="*,12,*" RowDefinitions="Auto,Auto,Auto"
                                   HorizontalAlignment="Stretch" Margin="0,10,0,0">
                                 <StackPanel Grid.Row="0" Grid.Column="0" Spacing="4" Margin="0,0,0,10">
                                     <TextBlock Classes="server-field-label" Text="{loc:T Settings.SERVERTYPE}"/>
@@ -8839,7 +8863,24 @@
                                         </TextBox.KeyBindings>
                                     </TextBox>
                                 </StackPanel>
+                                <StackPanel Grid.Row="2" Grid.Column="0" Spacing="4" Margin="0,10,0,0">
+                                    <TextBlock Classes="server-field-label" Text="{loc:T Settings.Server.NameLabel}"/>
+                                    <TextBox Classes="metadata-info-field"
+                                             AutomationProperties.Name="{loc:T Settings.Server.NameLabel}"
+                                             Text="{Binding MediaServerName}"
+                                             Watermark="{loc:T Settings.Server.NameWatermark}"
+                                             IsEnabled="{Binding !IsMediaServerBusy}">
+                                        <TextBox.KeyBindings>
+                                            <KeyBinding Gesture="Enter" Command="{Binding ConnectMediaServerCommand}"/>
+                                        </TextBox.KeyBindings>
+                                    </TextBox>
+                                </StackPanel>
                             </Grid>
+                            <TextBlock Text="{loc:T Settings.Server.AmpacheHint}"
+                                       IsVisible="{Binding IsAmpacheSelected}"
+                                       FontSize="12" Opacity="0.6" TextWrapping="Wrap" MaxWidth="560"
+                                       HorizontalAlignment="Left" Margin="0,8,0,0"/>
+                            </StackPanel>
                             </controls:CollapsibleContent>
                             </StackPanel>
 
@@ -8861,10 +8902,11 @@
                             </StackPanel>
                         </StackPanel>
 
-                        <!-- Connect (top-right, mirrors the account cards) -->
-                        <Button Grid.Column="1"
-                                AutomationProperties.Name="{loc:T Settings.Connect}"
-                                IsVisible="{Binding !IsMediaServerConnected}"
+                        <!-- Connect (top-right, mirrors the account cards); Cancel under it while adding
+                             another server; Add server while servers are connected. -->
+                        <StackPanel Grid.Column="1" Spacing="6" VerticalAlignment="Top">
+                        <Button AutomationProperties.Name="{loc:T Settings.Connect}"
+                                IsVisible="{Binding IsMediaServerFormOpen}"
                                 IsEnabled="{Binding !IsMediaServerBusy}"
                                 Classes="pill-action accent-btn"
                                 Command="{Binding ConnectMediaServerCommand}"
@@ -8887,15 +8929,27 @@
                             </Panel>
                         </Button>
 
-                        <Button Grid.Column="1"
-                                AutomationProperties.Name="{loc:T Settings.Disconnect}"
-                                IsVisible="{Binding IsMediaServerConnected}"
-                                Command="{Binding DisconnectMediaServerCommand}"
+                        <Button AutomationProperties.Name="{loc:T Settings.Cancel}"
+                                IsVisible="{Binding IsAddingMediaServer}"
+                                IsEnabled="{Binding !IsMediaServerBusy}"
+                                Command="{Binding CancelAddMediaServerCommand}"
                                 Classes="pill-action"
                                 Padding="14,8" CornerRadius="999" Cursor="Hand"
-                                VerticalAlignment="Top" Margin="0,4,0,0">
-                            <TextBlock Text="{loc:T Settings.Disconnect}" FontSize="13" VerticalAlignment="Center"/>
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.Cancel}" FontSize="13" VerticalAlignment="Center"/>
                         </Button>
+
+                        <Button x:Name="AddMediaServerButton"
+                                AutomationProperties.Name="{loc:T Settings.Server.Add}"
+                                IsVisible="{Binding IsMediaServerConnected}"
+                                IsEnabled="{Binding !IsAddingMediaServer}"
+                                Command="{Binding AddMediaServerCommand}"
+                                Classes="pill-action"
+                                Padding="14,8" CornerRadius="999" Cursor="Hand"
+                                Margin="0,4,0,0">
+                            <TextBlock Text="{loc:T Settings.Server.Add}" FontSize="13" VerticalAlignment="Center"/>
+                        </Button>
+                        </StackPanel>
                     </Grid>
                 </StackPanel>
             </Border>

@@ -4528,4 +4528,10 @@ Eine Playlist namens „{0}“ mit diesen Titeln erstellen?</value><comment>Drag
   <data name="Settings.DiscogsGenresSub" xml:space="preserve"><value>Versieht die Genres deiner Alben mit ihren Stilen auf Discogs. Du prüfst jede Änderung, bevor sie gespeichert wird.</value></data>
   <data name="Palette.DiscogsGenres" xml:space="preserve"><value>Genres von Discogs holen…</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.DiscogsGenresSub" xml:space="preserve"><value>Album-Genres mit Discogs-Stilen taggen</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Settings.Server.Add" xml:space="preserve"><value>Server hinzufügen</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.Remove" xml:space="preserve"><value>Entfernen</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.UseServer" xml:space="preserve"><value>Diesen Server verwenden</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.NameLabel" xml:space="preserve"><value>NAME (OPTIONAL)</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.NameWatermark" xml:space="preserve"><value>Heimserver</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.AmpacheHint" xml:space="preserve"><value>Ampache: Melde dich mit deinem Subsonic-Passwort (in deinem Ampache-Konto festgelegt) oder deinem API-Schlüssel an, nicht mit deinem Login-Passwort.</value><comment>Music Server (GitHub #268)</comment></data>
 </root>

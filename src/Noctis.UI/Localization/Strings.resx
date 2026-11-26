@@ -4537,4 +4537,10 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="Settings.DiscogsGenresSub" xml:space="preserve"><value>Tag your albums' genres with their styles on Discogs. You review every change before it's saved.</value></data>
   <data name="Palette.DiscogsGenres" xml:space="preserve"><value>Get genres from Discogs…</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.DiscogsGenresSub" xml:space="preserve"><value>Tag album genres with Discogs styles</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Settings.Server.Add" xml:space="preserve"><value>Add server</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.Remove" xml:space="preserve"><value>Remove</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.UseServer" xml:space="preserve"><value>Use this server</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.NameLabel" xml:space="preserve"><value>NAME (OPTIONAL)</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.NameWatermark" xml:space="preserve"><value>Home server</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.AmpacheHint" xml:space="preserve"><value>Ampache: sign in with your Subsonic password (set in your Ampache account) or your API key, not your login password.</value><comment>Music Server (GitHub #268)</comment></data>
 </root>

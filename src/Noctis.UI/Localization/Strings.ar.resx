@@ -9535,4 +9535,10 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Settings.DiscogsGenresSub" xml:space="preserve"><value>يوسم أنواع ألبوماتك بأنماطها في Discogs. تراجع كل تغيير قبل حفظه.</value></data>
   <data name="Palette.DiscogsGenres" xml:space="preserve"><value>جلب الأنواع من Discogs…</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.DiscogsGenresSub" xml:space="preserve"><value>وسم أنواع الألبومات بأنماط Discogs</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Settings.Server.Add" xml:space="preserve"><value>إضافة خادم</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.Remove" xml:space="preserve"><value>إزالة</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.UseServer" xml:space="preserve"><value>استخدام هذا الخادم</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.NameLabel" xml:space="preserve"><value>الاسم (اختياري)</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.NameWatermark" xml:space="preserve"><value>خادم المنزل</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.AmpacheHint" xml:space="preserve"><value>Ampache: سجّل الدخول بكلمة مرور Subsonic (تُعيَّن في حسابك على Ampache) أو بمفتاح API، وليس بكلمة مرور تسجيل الدخول.</value><comment>Music Server (GitHub #268)</comment></data>
 </root>

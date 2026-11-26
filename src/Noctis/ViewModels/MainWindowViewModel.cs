@@ -541,6 +541,8 @@ public partial class MainWindowViewModel : ViewModelBase
         Plugins.PlaylistSource = () => Sidebar.Playlists.ToArray();
         // API 1.6: plugins decode songs with the ffmpeg the converter and the BPM/key analysis use.
         Plugins.FfmpegPathSource = () => App.Services?.GetService<IAudioConverterService>()?.GetFfmpegPath();
+        // API 1.9: plugins (Album Roulette) read and play the media servers' albums (GitHub #268).
+        Plugins.MediaServer = mediaServer;
         Plugins.AlbumOpener = albumId =>
         {
             if (_library.GetAlbumById(albumId) is not { } album) return false;

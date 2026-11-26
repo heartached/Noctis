@@ -189,7 +189,7 @@ public class PluginManifestTests
         var v = Version.Parse(System.Reflection.CustomAttributeExtensions
             .GetCustomAttribute<System.Reflection.AssemblyFileVersionAttribute>(typeof(PluginApi).Assembly)!.Version);
         Assert.Equal((PluginApi.Major, PluginApi.Minor), (v.Major, v.Minor));
-        Assert.Equal("1.8", PluginApi.Version);
+        Assert.Equal("1.9", PluginApi.Version);
     }
 
     [Theory]
