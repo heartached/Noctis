@@ -1,3 +1,4 @@
+using System.Net.NetworkInformation;
 using System.Threading;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -23,6 +24,7 @@ public partial class PlayerViewModel
     private int _streamGeneration;
     private MusicVideoStream? _stream;
     private bool _streamRefreshing;
+    private int _streamFailures;
 
     /// <summary>Set once at start-up (MainWindowViewModel); null keeps the feature inert.</summary>
     public MusicVideoStreamService? MusicVideoStreams
@@ -54,6 +56,17 @@ public partial class PlayerViewModel
 
     /// <summary>Clock for the stream URL's expiry (tests move it).</summary>
     internal Func<DateTime> StreamClock { get; set; } = () => DateTime.UtcNow;
+
+    /// <summary>Waits between attempts to bring back a stream that broke mid-song: the first
+    /// try 2 s after the failure, then 5 s, then 15 s; after that the song keeps its artwork.</summary>
+    internal static readonly TimeSpan[] StreamRetryDelays =
+        { TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15) };
+
+    /// <summary>The wait between attempts (tests skip it).</summary>
+    internal Func<TimeSpan, CancellationToken, Task> StreamRetryDelay { get; set; } = Task.Delay;
+
+    /// <summary>Whether any network is up (tests switch it): offline, an attempt does not run yt-dlp.</summary>
+    internal Func<bool> IsNetworkUp { get; set; } = NetworkInterface.GetIsNetworkAvailable;
 
     /// <summary>Opens the "Music Video from YouTube" dialog for a song (set by the app).</summary>
     public static Func<Track, Task>? OpenMusicVideoPicker { get; set; }
@@ -105,6 +118,7 @@ public partial class PlayerViewModel
         var wasStreaming = IsStreamingMusicVideo;
         _stream = null;
         _streamRefreshing = false;
+        _streamFailures = 0;
         IsStreamingMusicVideo = false;
         if (wasStreaming && _resolvedMusicVideoPath == null) CurrentMusicVideoPath = null;
         OnPropertyChanged(nameof(CanPickMusicVideo));
@@ -186,5 +200,70 @@ public partial class PlayerViewModel
         }
         _streamRefreshing = false;
         ShowStream(fresh);
+    }
+
+    /// <summary>
+    /// The video layer reports that the stream broke mid-song (network drop, 403/410 from
+    /// googlevideo, decoder error, the stream ending long before the video does, no frames).
+    /// The artwork shows meanwhile; a fresh URL is resolved after <see cref="StreamRetryDelays"/>
+    /// and the layer starts it at the song's position as it is then. A few tries per song, then
+    /// the song keeps its artwork; a track change cancels and starts over.
+    /// </summary>
+    [RelayCommand]
+    private void MusicVideoStreamFailed(string? url)
+    {
+        var stream = _stream;
+        var service = _musicVideoStreams;
+        // A late report from a stream already replaced (refresh, track change) changes nothing.
+        if (stream == null || service == null || _streamRefreshing || !string.Equals(url, stream.Url, StringComparison.Ordinal))
+            return;
+        _streamRefreshing = true; // the expiry refresh waits while this runs
+        IsStreamingMusicVideo = false;
+        if (_resolvedMusicVideoPath == null) CurrentMusicVideoPath = null;
+        var generation = _streamGeneration;
+        var ct = _streamCts?.Token ?? CancellationToken.None;
+        MusicVideoStreamTask = RecoverMusicVideoStreamAsync(service, stream, generation, ct);
+    }
+
+    private async Task RecoverMusicVideoStreamAsync(MusicVideoStreamService service, MusicVideoStream stream, int generation, CancellationToken ct)
+    {
+        try
+        {
+            while (_streamFailures < StreamRetryDelays.Length)
+            {
+                var delay = StreamRetryDelays[_streamFailures++];
+                await StreamRetryDelay(delay, ct);
+                if (ct.IsCancellationRequested || generation != _streamGeneration) return;
+                if (!IsNetworkUp())
+                {
+                    DebugLogger.Info(DebugLogger.Category.State, "MusicVideo.RetryOffline", $"attempt {_streamFailures}");
+                    continue; // offline: no yt-dlp call, the next attempt when it is due
+                }
+                MusicVideoStream? fresh = null;
+                try
+                {
+                    fresh = await Task.Run(() => service.RefreshAsync(stream, ct), ct);
+                }
+                catch (OperationCanceledException) { return; }
+                catch (Exception ex)
+                {
+                    DebugLogger.Warn(DebugLogger.Category.State, "MusicVideo.RetryFailed", ex.Message);
+                }
+                if (ct.IsCancellationRequested || generation != _streamGeneration) return;
+                if (fresh != null)
+                {
+                    DebugLogger.Info(DebugLogger.Category.Playback, "MusicVideo.StreamRecovered", $"attempt {_streamFailures}");
+                    _streamRefreshing = false;
+                    ShowStream(fresh);
+                    return;
+                }
+            }
+        }
+        catch (OperationCanceledException) { return; }
+        if (generation != _streamGeneration) return;
+        // Given up for this song: the artwork stays, and nothing more is tried until the next one.
+        DebugLogger.Info(DebugLogger.Category.Playback, "MusicVideo.StreamGaveUp", stream.VideoId);
+        _stream = null;
+        _streamRefreshing = false;
     }
 }
