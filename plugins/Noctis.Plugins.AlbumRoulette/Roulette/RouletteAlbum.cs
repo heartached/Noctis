@@ -21,6 +21,18 @@ public sealed record RouletteAlbum(
     DateTimeOffset? LastPlayed,
     IReadOnlyList<string> Artists)
 {
+    /// <summary>The album's cover. A server album's arrives later (<see cref="ServerAlbumId"/>), so it can be set.</summary>
+    public string? ArtworkPath { get; set; } = ArtworkPath;
+
+    /// <summary>Set for an album of the user's media servers (GitHub #268): it has no library
+    /// tracks (<see cref="TrackIds"/> is empty) and plays through the server.</summary>
+    public string? ServerAlbumId { get; init; }
+
+    /// <summary>The server it plays from (server albums only).</summary>
+    public string ServerName { get; init; } = "";
+
+    public bool IsServer => ServerAlbumId is not null;
+
     /// <summary>"Single" and "EP" are their own; everything else (albums, live, soundtracks,
     /// compilations, remixes) counts as an album.</summary>
     public ReleaseKind Kind => ReleaseType.ToLowerInvariant() switch
@@ -90,9 +102,49 @@ public static class SongCatalog
     }
 }
 
+/// <summary>An album of one of the user's media servers, as Album Roulette keeps it
+/// (its own type, so nothing here needs plugin API 1.9's ServerAlbumInfo to load).</summary>
+public sealed record RemoteAlbum(string Id, string Title, string Artist, int Year, string Genre, string ServerName, string? ArtworkPath);
+
 /// <summary>Turns library tracks into albums (one per album, a track without an album is a single of its own).</summary>
 public static class AlbumCatalog
 {
+    public const string ServerKeyPrefix = "r:";
+
+    /// <summary>
+    /// The library's albums plus the media servers' albums (GitHub #268). A server album that
+    /// is also in the library (same album artist and title) is left out: the library copy
+    /// plays from this computer and has the play counts. Stable order (Album of the Day).
+    /// </summary>
+    public static IReadOnlyList<RouletteAlbum> WithServerAlbums(IReadOnlyList<RouletteAlbum> library, IEnumerable<RemoteAlbum> server)
+    {
+        var known = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var a in library) known.Add(NameKey(a.Artist, a.Title));
+        var result = new List<RouletteAlbum>(library);
+        var added = false;
+        foreach (var r in server)
+        {
+            if (string.IsNullOrEmpty(r.Id) || !known.Add(NameKey(r.Artist, r.Title))) continue;
+            var title = (r.Title ?? "").Trim();
+            var artist = (r.Artist ?? "").Trim();
+            result.Add(new RouletteAlbum(
+                ServerKeyPrefix + r.Id, title, artist, Math.Max(0, r.Year), (r.Genre ?? "").Trim(), "Album",
+                Array.Empty<string>(), "", r.ArtworkPath, 0, null,
+                artist.Length > 0 ? new[] { artist } : Array.Empty<string>())
+            {
+                ServerAlbumId = r.Id,
+                ServerName = r.ServerName ?? "",
+                Language = ScriptLanguage.Detect(title, title, artist),
+            });
+            added = true;
+        }
+        if (added) result.Sort((a, b) => string.CompareOrdinal(a.Key, b.Key));
+        return result;
+    }
+
+    private static string NameKey(string? artist, string? title)
+        => (artist ?? "").Trim().ToLowerInvariant() + "|" + (title ?? "").Trim().ToLowerInvariant();
+
     public static IReadOnlyList<RouletteAlbum> Group(IEnumerable<TrackInfo> tracks)
     {
         var groups = new Dictionary<string, List<TrackInfo>>(StringComparer.Ordinal);

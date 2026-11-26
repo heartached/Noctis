@@ -3205,34 +3205,47 @@ public partial class SettingsViewModel : ViewModelBase
     // Named presets rather than a protocol pair: Navidrome/Airsonic/Gonic users
     // shouldn't have to know they are "a Subsonic". Everything except Jellyfin
     // speaks the Subsonic protocol underneath (SourceType.Navidrome).
+    // "Subsonic (other)" stays last: connections saved before presets existed fall back to it.
     public string[] MediaServerTypeOptions { get; } =
-        { "Jellyfin", "Navidrome", "Airsonic", "Gonic", "Subsonic (other)" };
-    [ObservableProperty] private string _mediaServerType = "Jellyfin";
+        { "Jellyfin", "Navidrome", "Ampache", "Airsonic", "Gonic", "Subsonic (other)" };
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsAmpacheSelected))] private string _mediaServerType = "Jellyfin";
     [ObservableProperty] private string _mediaServerUrl = "";
     [ObservableProperty] private string _mediaServerUsername = "";
     [ObservableProperty] private string _mediaServerPassword = "";
-    [ObservableProperty] private bool _isMediaServerConnected;
+    /// <summary>Optional name for the server being added ("Home", "Friend's Ampache").</summary>
+    [ObservableProperty] private string _mediaServerName = "";
+    /// <summary>True while at least one server is connected (GitHub #268: there can be several).</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsMediaServerFormOpen))] private bool _isMediaServerConnected;
+    /// <summary>"Add server" was clicked while servers are connected: the form shows under the list.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsMediaServerFormOpen))] private bool _isAddingMediaServer;
     [ObservableProperty] private bool _isMediaServerBusy;
     [ObservableProperty] private string _mediaServerStatusText = Loc.T("Settings.NotConnected");
     /// <summary>True while the status line shows a failure — drives the red status styling.</summary>
     [ObservableProperty] private bool _hasMediaServerError;
 
+    /// <summary>The connection form shows with no server yet, or after "Add server".</summary>
+    public bool IsMediaServerFormOpen => !IsMediaServerConnected || IsAddingMediaServer;
+
+    /// <summary>Ampache's Subsonic API does not take the login password (Ampache stores it
+    /// hashed); the form says which password to use.</summary>
+    public bool IsAmpacheSelected => MediaServerType == "Ampache";
+
     /// <summary>Switching preset starts a fresh form: stale credentials for another
     /// server would only produce a confusing failed connect.</summary>
     partial void OnMediaServerTypeChanged(string value)
     {
-        if (!_settingsLoaded || IsMediaServerConnected) return;
+        if (!_settingsLoaded || IsMediaServerBusy) return;
         MediaServerUrl = string.Empty;
         MediaServerUsername = string.Empty;
         MediaServerPassword = string.Empty;
-        MediaServerStatusText = Loc.T("Settings.NotConnected");
+        if (!IsMediaServerConnected) MediaServerStatusText = Loc.T("Settings.NotConnected");
         HasMediaServerError = false;
     }
 
-    /// <summary>The persisted server connection while connected; null otherwise.</summary>
-    private SourceConnection? _mediaServerConnection;
+    /// <summary>The connected servers, in priority order (an album on several plays from the first).</summary>
+    public ObservableCollection<MediaServerEntryViewModel> MediaServers { get; } = new();
 
-    /// <summary>Raised after Connect/Disconnect so the shell can show/hide the Server section.</summary>
+    /// <summary>Raised after Connect/Remove/Enable so the shell can show/hide the Server section.</summary>
     public event EventHandler? MediaServerConnectionChanged;
 
     // ── Preferences ──
@@ -4156,28 +4169,21 @@ public partial class SettingsViewModel : ViewModelBase
             }
             RefreshScrobbleNotes();
 
-            // Media server (v1: a single Subsonic/Jellyfin connection)
-            var serverConnection = _settings.SourceConnections
-                .FirstOrDefault(c => c.Type is SourceType.Navidrome or SourceType.Jellyfin);
-            if (serverConnection != null)
+            // Media servers (GitHub #268: every stored Subsonic/Jellyfin connection, in
+            // order). A settings file from a build with one server holds one such
+            // connection, so it loads unchanged as the only entry. The credential
+            // (Subsonic password / Jellyfin token) stays in the connection object only —
+            // never surfaced back into the password box.
+            MediaServers.Clear();
+            foreach (var serverConnection in _settings.SourceConnections
+                         .Where(c => c.Type is SourceType.Navidrome or SourceType.Jellyfin))
+                MediaServers.Add(CreateMediaServerEntry(serverConnection));
+            if (MediaServers.Count > 0)
             {
-                _mediaServerConnection = serverConnection;
-                // Prefer the stored flavor ("Gonic", "Airsonic", …); connections saved
-                // before flavors existed carry the client's generic protocol name, so
-                // fall back to the protocol's default preset.
-                MediaServerType = MediaServerTypeOptions.Contains(serverConnection.Name)
-                    ? serverConnection.Name
-                    : serverConnection.Type == SourceType.Jellyfin
-                        ? MediaServerTypeOptions[0]
-                        : MediaServerTypeOptions[^1];
-                MediaServerUrl = serverConnection.BaseUriOrPath;
-                MediaServerUsername = serverConnection.Username;
-                // The credential (Subsonic password / Jellyfin token) stays in the
-                // connection object only — never surfaced back into the password box.
-                IsMediaServerConnected = true;
-                MediaServerStatusText = Loc.T("Settings.ConnectedTo", serverConnection.BaseUriOrPath);
-                _mediaServer?.SetActiveConnection(serverConnection);
-                MediaServerConnectionChanged?.Invoke(this, EventArgs.Empty);
+                MediaServerStatusText = MediaServers.Count == 1
+                    ? Loc.T("Settings.ConnectedTo", MediaServers[0].Url)
+                    : Loc.T("Settings.Server.Connected");
+                ApplyMediaServers();
             }
 
             if (_discord != null)
@@ -4733,15 +4739,14 @@ public partial class SettingsViewModel : ViewModelBase
         // Not a secret, so it is kept even while disconnected (logout leaves the server in place).
         _settings.ListenBrainzApiUrl = ListenBrainzApiUrl?.Trim() ?? string.Empty;
 
-        // Media server: this VM owns the single Subsonic/Jellyfin connection, so the
-        // stored list is rebuilt from the connected state on every save (the on-disk
-        // merge above would otherwise revert a connect/disconnect). Connector types
+        // Media servers: this VM owns the Subsonic/Jellyfin connections, so the
+        // stored list is rebuilt from the connected servers on every save (the on-disk
+        // merge above would otherwise revert a connect/remove). Connector types
         // this UI doesn't manage (Local/Smb/WebDav) are passed through untouched.
         var preservedConnections = _settings.SourceConnections
             .Where(c => c.Type is not (SourceType.Navidrome or SourceType.Jellyfin))
             .ToList();
-        if (_mediaServerConnection != null)
-            preservedConnections.Add(_mediaServerConnection);
+        preservedConnections.AddRange(MediaServers.Select(e => e.Connection));
         _settings.SourceConnections = preservedConnections;
 
         // Volume rides the same save: the shutdown path calls SetVolume right before
@@ -7751,8 +7756,11 @@ public partial class SettingsViewModel : ViewModelBase
         _serverErrorDismissTimer?.Stop();
         if (!HasMediaServerError) return;
         HasMediaServerError = false;
-        if (!IsMediaServerConnected && !IsMediaServerBusy)
-            MediaServerStatusText = Loc.T("Settings.NotConnected");
+        if (IsMediaServerBusy) return;
+        // A failed "Add server" under connected servers falls back to their status.
+        MediaServerStatusText = IsMediaServerConnected
+            ? Loc.T("Settings.Server.Connected")
+            : Loc.T("Settings.NotConnected");
     }
 
     /// <summary>
@@ -7765,7 +7773,80 @@ public partial class SettingsViewModel : ViewModelBase
     internal static SourceType MediaServerOptionToSourceType(string? option) =>
         option is null or "Jellyfin" ? SourceType.Jellyfin : SourceType.Navidrome;
 
-    /// <summary>Validates the typed server details and, on success, persists the connection.</summary>
+    /// <summary>The picker preset for a stored connection: its stored flavor ("Gonic",
+    /// "Airsonic", …); connections saved before flavors existed carry the client's generic
+    /// protocol name, so they fall back to the protocol's default preset.</summary>
+    internal string MediaServerFlavorOf(SourceConnection connection) =>
+        MediaServerTypeOptions.Contains(connection.Name)
+            ? connection.Name
+            : connection.Type == SourceType.Jellyfin
+                ? MediaServerTypeOptions[0]
+                : MediaServerTypeOptions[^1];
+
+    private MediaServerEntryViewModel CreateMediaServerEntry(SourceConnection connection) =>
+        new(connection, MediaServerFlavorOf(connection), _ =>
+        {
+            ApplyMediaServers();
+            QueueSettingsSave();
+        });
+
+    /// <summary>Hands the enabled servers to the service and refreshes the connected state.</summary>
+    private void ApplyMediaServers()
+    {
+        IsMediaServerConnected = MediaServers.Count > 0;
+        if (!IsMediaServerConnected) IsAddingMediaServer = false;
+        _mediaServer?.SetConnections(MediaServers.Select(e => e.Connection).ToArray());
+        MediaServerConnectionChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>The same server again (type, address and account): reconnecting it replaces
+    /// the entry and keeps its id (stable Jellyfin DeviceId and track ids).</summary>
+    private MediaServerEntryViewModel? FindSameMediaServer(SourceType type, string url, string username)
+    {
+        var normalized = NormalizeServerUrl(url);
+        return MediaServers.FirstOrDefault(e =>
+            e.Connection.Type == type
+            && string.Equals(NormalizeServerUrl(e.Url), normalized, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(e.Username, username.Trim(), StringComparison.OrdinalIgnoreCase));
+
+        static string NormalizeServerUrl(string value) =>
+            Noctis.Services.MediaServer.MediaServerUrl.TryNormalizeBase(value, out _, out _) ?? value.Trim().TrimEnd('/');
+    }
+
+    /// <summary>"Add server": opens the empty form under the connected servers.</summary>
+    [RelayCommand]
+    private void AddMediaServer()
+    {
+        MediaServerUrl = string.Empty;
+        MediaServerUsername = string.Empty;
+        MediaServerPassword = string.Empty;
+        MediaServerName = string.Empty;
+        HasMediaServerError = false;
+        IsAddingMediaServer = true;
+    }
+
+    [RelayCommand]
+    private void CancelAddMediaServer()
+    {
+        MediaServerPassword = string.Empty;
+        IsAddingMediaServer = false;
+        ClearTransientServerError();
+    }
+
+    /// <summary>Removes one server (its albums leave the Server section) and saves.</summary>
+    [RelayCommand]
+    private async Task RemoveMediaServer(MediaServerEntryViewModel? entry)
+    {
+        if (entry == null || !MediaServers.Remove(entry)) return;
+        HasMediaServerError = false;
+        MediaServerStatusText = MediaServers.Count == 0
+            ? Loc.T("Settings.NotConnected")
+            : Loc.T("Settings.Server.Connected");
+        ApplyMediaServers();
+        await SaveAsync();
+    }
+
+    /// <summary>Validates the typed server details and, on success, adds (or updates) the server and persists it.</summary>
     [RelayCommand]
     private async Task ConnectMediaServer()
     {
@@ -7788,8 +7869,9 @@ public partial class SettingsViewModel : ViewModelBase
         MediaServerStatusText = Loc.T("Settings.Connecting");
         try
         {
+            var existing = FindSameMediaServer(type, MediaServerUrl, MediaServerUsername);
             var (result, connection) = await _mediaServer.ConnectAsync(
-                type, MediaServerUrl, MediaServerUsername, MediaServerPassword, _mediaServerConnection?.Id);
+                type, MediaServerUrl, MediaServerUsername, MediaServerPassword, existing?.Connection.Id);
             if (!result.Success)
             {
                 ShowTransientServerError(result.Message);
@@ -7799,13 +7881,20 @@ public partial class SettingsViewModel : ViewModelBase
             // Keep the picked flavor ("Navidrome", "Gonic", …) rather than the client's
             // generic protocol name, so the connected summary echoes what the user chose.
             connection.Name = MediaServerType ?? connection.Name;
-            _mediaServerConnection = connection;
-            MediaServerUrl = connection.BaseUriOrPath; // normalized by the client
-            MediaServerPassword = string.Empty;        // never keep the password in a bound field
-            IsMediaServerConnected = true;
+            connection.Label = MediaServerName?.Trim() ?? string.Empty;
+            var entry = CreateMediaServerEntry(connection);
+            var index = existing != null ? MediaServers.IndexOf(existing) : -1;
+            if (index >= 0) MediaServers[index] = entry;
+            else MediaServers.Add(entry);
+
+            // The form empties for the next server; never keep the password in a bound field.
+            MediaServerUrl = string.Empty;
+            MediaServerUsername = string.Empty;
+            MediaServerPassword = string.Empty;
+            MediaServerName = string.Empty;
+            IsAddingMediaServer = false;
             MediaServerStatusText = result.Message;
-            _mediaServer.SetActiveConnection(connection);
-            MediaServerConnectionChanged?.Invoke(this, EventArgs.Empty);
+            ApplyMediaServers();
             await SaveAsync();
         }
         finally
@@ -7814,16 +7903,15 @@ public partial class SettingsViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Removes every server (Reset and older callers).</summary>
     [RelayCommand]
     private async Task DisconnectMediaServer()
     {
-        _mediaServerConnection = null;
-        IsMediaServerConnected = false;
+        MediaServers.Clear();
         MediaServerPassword = string.Empty;
         MediaServerStatusText = Loc.T("Settings.NotConnected");
         HasMediaServerError = false;
-        _mediaServer?.SetActiveConnection(null);
-        MediaServerConnectionChanged?.Invoke(this, EventArgs.Empty);
+        ApplyMediaServers();
         await SaveAsync();
     }
 
@@ -9378,18 +9466,18 @@ public partial class SettingsViewModel : ViewModelBase
             _listenBrainz?.Logout();
             _listenBrainz?.SetApiUrl(null);
 
-            // Media server — drop the connection (SyncToSettings would otherwise
-            // re-persist the stale one over the freshly defaulted file).
-            _mediaServerConnection = null;
+            // Media servers — drop them all (SyncToSettings would otherwise
+            // re-persist the stale ones over the freshly defaulted file).
+            MediaServers.Clear();
             MediaServerType = MediaServerTypeOptions[0];
             MediaServerUrl = "";
             MediaServerUsername = "";
             MediaServerPassword = "";
-            IsMediaServerConnected = false;
+            MediaServerName = "";
+            IsAddingMediaServer = false;
             MediaServerStatusText = Loc.T("Settings.NotConnected");
             HasMediaServerError = false;
-            _mediaServer?.SetActiveConnection(null);
-            MediaServerConnectionChanged?.Invoke(this, EventArgs.Empty);
+            ApplyMediaServers();
 
             // Disconnect Discord if connected (Loon rides its lifecycle)
             if (_discord != null)

@@ -416,7 +416,8 @@ public sealed class SubsonicClient : IMediaServerClient
             Year = GetInt(album, "year"),
             SongCount = GetInt(album, "songCount"),
             Duration = TimeSpan.FromSeconds(Math.Max(0, GetInt(album, "duration"))),
-            CoverArtId = GetId(album, "coverArt")
+            CoverArtId = GetId(album, "coverArt"),
+            Genre = GetString(album, "genre") ?? string.Empty
         };
     }
 

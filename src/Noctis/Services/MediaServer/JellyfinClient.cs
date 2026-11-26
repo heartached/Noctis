@@ -295,7 +295,8 @@ public sealed class JellyfinClient : IMediaServerClient
             Year = GetInt(item, "ProductionYear"),
             SongCount = GetInt(item, "ChildCount"),
             Duration = TimeSpan.FromTicks(Math.Max(0, GetLong(item, "RunTimeTicks"))),
-            CoverArtId = hasPrimaryImage ? id : null
+            CoverArtId = hasPrimaryImage ? id : null,
+            Genre = FirstOfArray(item, "Genres") ?? string.Empty
         };
     }
 

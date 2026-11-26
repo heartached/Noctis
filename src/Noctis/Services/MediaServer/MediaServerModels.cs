@@ -15,6 +15,29 @@ public sealed class ServerAlbum
 
     /// <summary>Server-side artwork id (Subsonic coverArt / Jellyfin item id); null when the album has none.</summary>
     public string? CoverArtId { get; init; }
+
+    /// <summary>The album's genre as the server lists it; empty when it has none.</summary>
+    public string Genre { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The server connection this album was listed by (<see cref="SourceConnection.Id"/>), so
+    /// its tracks, cover and stream URLs come from that server (GitHub #268). Stamped by
+    /// <see cref="MediaServerService"/>; <see cref="Guid.Empty"/> on a bare client result.
+    /// </summary>
+    public Guid ConnectionId { get; internal set; }
+
+    /// <summary>The display name of that server ("Home Navidrome", "Ampache (music.example.com)").</summary>
+    public string ServerName { get; internal set; } = string.Empty;
+
+    /// <summary>
+    /// The same album on lower-priority servers (same album artist and title). The unified
+    /// list shows it once, from the first server in the user's order; these are tried in
+    /// order when that server cannot return its tracks.
+    /// </summary>
+    public IReadOnlyList<ServerAlbum> Alternates { get; internal set; } = Array.Empty<ServerAlbum>();
+
+    /// <summary>Stable id across servers: "&lt;connection id&gt;:&lt;server album id&gt;".</summary>
+    public string Key => $"{ConnectionId:N}:{Id}";
 }
 
 /// <summary>Categorised outcome of a connect/test attempt, for the Settings status line.</summary>

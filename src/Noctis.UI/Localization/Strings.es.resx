@@ -4537,4 +4537,10 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Settings.DiscogsGenresSub" xml:space="preserve"><value>Etiqueta los géneros de tus álbumes con sus estilos en Discogs. Revisas cada cambio antes de guardarlo.</value></data>
   <data name="Palette.DiscogsGenres" xml:space="preserve"><value>Obtener géneros de Discogs…</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.DiscogsGenresSub" xml:space="preserve"><value>Etiquetar géneros de álbumes con estilos de Discogs</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Settings.Server.Add" xml:space="preserve"><value>Añadir servidor</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.Remove" xml:space="preserve"><value>Quitar</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.UseServer" xml:space="preserve"><value>Usar este servidor</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.NameLabel" xml:space="preserve"><value>NOMBRE (OPCIONAL)</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.NameWatermark" xml:space="preserve"><value>Servidor de casa</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.AmpacheHint" xml:space="preserve"><value>Ampache: inicia sesión con tu contraseña de Subsonic (configurada en tu cuenta de Ampache) o tu clave de API, no con tu contraseña de acceso.</value><comment>Music Server (GitHub #268)</comment></data>
 </root>

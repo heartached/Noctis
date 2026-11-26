@@ -4537,4 +4537,10 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.DiscogsGenresSub" xml:space="preserve"><value>Проставляет жанры альбомов по их стилям на Discogs. Вы проверяете каждое изменение перед сохранением.</value></data>
   <data name="Palette.DiscogsGenres" xml:space="preserve"><value>Получить жанры из Discogs…</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.DiscogsGenresSub" xml:space="preserve"><value>Проставить жанры альбомов по стилям Discogs</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Settings.Server.Add" xml:space="preserve"><value>Добавить сервер</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.Remove" xml:space="preserve"><value>Удалить</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.UseServer" xml:space="preserve"><value>Использовать этот сервер</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.NameLabel" xml:space="preserve"><value>НАЗВАНИЕ (НЕОБЯЗАТЕЛЬНО)</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.NameWatermark" xml:space="preserve"><value>Домашний сервер</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.AmpacheHint" xml:space="preserve"><value>Ampache: входите с паролем Subsonic (задаётся в учётной записи Ampache) или ключом API, а не с паролем для входа.</value><comment>Music Server (GitHub #268)</comment></data>
 </root>

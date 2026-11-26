@@ -43,7 +43,8 @@ public class ServerGridFooter
 }
 
 /// <summary>
-/// The "Server" section: browse the connected media server's albums, open an
+/// The "Server" section: browse the connected media servers' albums (one merged
+/// list when there are several, GitHub #268), open an
 /// album's track list, and search server-side — all on demand, nothing enters
 /// the local library. Tracks play through the regular queue (their FilePath is
 /// the server stream URL).
@@ -369,22 +370,26 @@ public partial class ServerViewModel : ViewModelBase, ISearchable
         }
     }
 
-    private static string BuildAlbumMeta(ServerAlbum album)
+    private string BuildAlbumMeta(ServerAlbum album)
     {
-        var parts = new List<string>(3);
+        var parts = new List<string>(4);
         if (!string.IsNullOrWhiteSpace(album.Artist)) parts.Add(album.Artist);
         if (album.Year > 0) parts.Add(album.Year.ToString());
         if (album.SongCount > 0) parts.Add(Noctis.Localization.Loc.Plural("Count.Songs", album.SongCount));
+        // With several servers, say which one the album plays from.
+        if (_mediaServer.Connections.Count > 1 && !string.IsNullOrWhiteSpace(album.ServerName)) parts.Add(album.ServerName);
         return string.Join(" · ", parts);
     }
 
     private void SyncConfiguredState()
     {
-        var connection = _mediaServer.ActiveConnection;
-        IsConfigured = connection != null;
-        ServerLabel = connection == null
+        var connections = _mediaServer.Connections;
+        IsConfigured = _mediaServer.IsConfigured;
+        // Every server whose albums are in the grid (GitHub #268), in the app's language.
+        ServerLabel = connections.Count == 0
             ? string.Empty
-            : $"Connected to {connection.Name} at {connection.BaseUriOrPath}";
+            : Noctis.Localization.Loc.T("Settings.ConnectedTo",
+                string.Join(", ", connections.Select(MediaServerService.DisplayName)));
     }
 
     private void ResetForConnectionChange()

@@ -19,6 +19,7 @@ public class MediaServerPresetTests
     [Theory]
     [InlineData("Jellyfin", SourceType.Jellyfin)]
     [InlineData("Navidrome", SourceType.Navidrome)]
+    [InlineData("Ampache", SourceType.Navidrome)] // Ampache's Subsonic API (GitHub #268)
     [InlineData("Airsonic", SourceType.Navidrome)]
     [InlineData("Gonic", SourceType.Navidrome)]
     [InlineData("Subsonic (other)", SourceType.Navidrome)]
@@ -133,7 +134,7 @@ public class MediaServerPresetTests
             await vm.LoadAsync();
 
             Assert.True(vm.IsMediaServerConnected);
-            Assert.Equal("Gonic", vm.MediaServerType);
+            Assert.Equal("Gonic", Assert.Single(vm.MediaServers).Flavor);
         }
         finally
         {
@@ -165,7 +166,7 @@ public class MediaServerPresetTests
                 new PersistenceService(root), new FakeLibraryService(), new NoOpPlayHistoryService());
             await vm.LoadAsync();
 
-            Assert.Equal("Subsonic (other)", vm.MediaServerType);
+            Assert.Equal("Subsonic (other)", Assert.Single(vm.MediaServers).Flavor);
         }
         finally
         {

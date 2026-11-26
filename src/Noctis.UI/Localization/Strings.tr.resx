@@ -4590,4 +4590,10 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="Settings.DiscogsGenresSub" xml:space="preserve"><value>Albümlerinin türlerini Discogs'taki stilleriyle etiketler. Her değişikliği kaydedilmeden önce gözden geçirirsin.</value></data>
   <data name="Palette.DiscogsGenres" xml:space="preserve"><value>Discogs'tan türleri al…</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.DiscogsGenresSub" xml:space="preserve"><value>Albüm türlerini Discogs stilleriyle etiketle</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Settings.Server.Add" xml:space="preserve"><value>Sunucu ekle</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.Remove" xml:space="preserve"><value>Kaldır</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.UseServer" xml:space="preserve"><value>Bu sunucuyu kullan</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.NameLabel" xml:space="preserve"><value>AD (İSTEĞE BAĞLI)</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.NameWatermark" xml:space="preserve"><value>Ev sunucusu</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.AmpacheHint" xml:space="preserve"><value>Ampache: Giriş parolanızla değil, Subsonic parolanızla (Ampache hesabınızda belirlenir) veya API anahtarınızla oturum açın.</value><comment>Music Server (GitHub #268)</comment></data>
 </root>
