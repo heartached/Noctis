@@ -9541,4 +9541,38 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Settings.Server.NameLabel" xml:space="preserve"><value>الاسم (اختياري)</value><comment>Music Server (GitHub #268)</comment></data>
   <data name="Settings.Server.NameWatermark" xml:space="preserve"><value>خادم المنزل</value><comment>Music Server (GitHub #268)</comment></data>
   <data name="Settings.Server.AmpacheHint" xml:space="preserve"><value>Ampache: سجّل الدخول بكلمة مرور Subsonic (تُعيَّن في حسابك على Ampache) أو بمفتاح API، وليس بكلمة مرور تسجيل الدخول.</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Section.MusicVideos" xml:space="preserve"><value>الفيديوهات الموسيقية</value><comment>Settings section label (Lyrics tab)</comment></data>
+  <data name="Settings.MusicVideoAutoFind" xml:space="preserve"><value>العثور على الفيديوهات الموسيقية تلقائيًا</value><comment>Settings ▸ Lyrics ▸ Music videos toggle (Discord 11-25)</comment></data>
+  <data name="Settings.MusicVideoAutoFindHint" xml:space="preserve"><value>الأغاني التي ليس لها فيديو موسيقي خاص تحصل على فيديو من YouTube يُبث بلا صوت خلف كلمات الأغنية. يرسل اسم الفنان وعنوان الأغنية إلى YouTube.</value><comment>Settings ▸ Lyrics ▸ Music videos toggle hint</comment></data>
+  <data name="Settings.MusicVideoToolNeeded" xml:space="preserve"><value>يتطلب البحث عن الفيديوهات على YouTube أداة yt-dlp.</value><comment>Shown when yt-dlp is missing for music video search/streaming</comment></data>
+  <data name="MusicVideo.Title" xml:space="preserve"><value>فيديو موسيقي من YouTube</value><comment>Music Video from YouTube dialog title</comment></data>
+  <data name="MusicVideo.PasteLink" xml:space="preserve"><value>الصق رابط YouTube</value><comment>Music video dialog: label of the link box</comment></data>
+  <data name="MusicVideo.LinkWatermark" xml:space="preserve"><value>youtube.com/watch?v=… أو youtu.be/…</value><comment>Music video dialog: link box placeholder</comment></data>
+  <data name="MusicVideo.Stream" xml:space="preserve"><value>بث</value><comment>Music video dialog: play the pasted video from YouTube without downloading</comment></data>
+  <data name="MusicVideo.StreamTip" xml:space="preserve"><value>تشغيله من YouTube خلف الكلمات دون تنزيله</value><comment>Tooltip of Stream</comment></data>
+  <data name="MusicVideo.Download" xml:space="preserve"><value>تنزيل</value><comment>Music video dialog: download the pasted video</comment></data>
+  <data name="MusicVideo.DownloadTip" xml:space="preserve"><value>حفظه كفيديو خلفية لكلمات هذه الأغنية</value><comment>Tooltip of Download</comment></data>
+  <data name="MusicVideo.Results" xml:space="preserve"><value>نتائج البحث</value><comment>Music video dialog: heading of the YouTube search results</comment></data>
+  <data name="MusicVideo.Use" xml:space="preserve"><value>استخدام</value><comment>Music video dialog: use this search result</comment></data>
+  <data name="MusicVideo.Current" xml:space="preserve"><value>الحالي</value><comment>Music video dialog: badge on the video the song plays now</comment></data>
+  <data name="MusicVideo.NoVideo" xml:space="preserve"><value>عدم استخدام فيديو لهذه الأغنية</value><comment>Music video dialog button</comment></data>
+  <data name="MusicVideo.BackToAutomatic" xml:space="preserve"><value>العودة إلى الاختيار التلقائي</value><comment>Music video dialog button: forget the user's choice</comment></data>
+  <data name="MusicVideo.BackToAutomaticTip" xml:space="preserve"><value>انسَ اختيارك واترك المطابقة التلقائية تقرر</value><comment>Tooltip of Back to automatic</comment></data>
+  <data name="MusicVideo.Close" xml:space="preserve"><value>إغلاق</value><comment>Music video dialog: close button</comment></data>
+  <data name="MusicVideo.CurrentAutomatic" xml:space="preserve"><value>لم يُختر شيء بعد: المطابقة التلقائية هي التي تقرر.</value><comment>Music video dialog: the song has no choice yet</comment></data>
+  <data name="MusicVideo.CurrentNone" xml:space="preserve"><value>تُشغَّل هذه الأغنية دون فيديو.</value><comment>Music video dialog: the user chose no video</comment></data>
+  <data name="MusicVideo.CurrentNoMatch" xml:space="preserve"><value>لم يعثر البحث التلقائي على تطابق جيد.</value><comment>Music video dialog: the automatic search found nothing</comment></data>
+  <data name="MusicVideo.CurrentUser" xml:space="preserve"><value>اختيارك: {0}</value><comment>Music video dialog; {0} = video title</comment></data>
+  <data name="MusicVideo.CurrentAuto" xml:space="preserve"><value>مطابقة تلقائية: {0}</value><comment>Music video dialog; {0} = video title</comment></data>
+  <data name="MusicVideo.NotALink" xml:space="preserve"><value>هذا ليس رابط فيديو على YouTube.</value><comment>Music video dialog link status</comment></data>
+  <data name="MusicVideo.LookingUp" xml:space="preserve"><value>جارٍ البحث عن الفيديو…</value><comment>Music video dialog link status</comment></data>
+  <data name="MusicVideo.LinkNotFound" xml:space="preserve"><value>لم يعثر YouTube على فيديو لهذا الرابط.</value><comment>Music video dialog link status</comment></data>
+  <data name="MusicVideo.LinkFailed" xml:space="preserve"><value>تعذّرت قراءة الرابط: {0}</value><comment>Music video dialog link status; {0} = reason</comment></data>
+  <data name="MusicVideo.Searching" xml:space="preserve"><value>جارٍ البحث في YouTube…</value><comment>Music video dialog search status</comment></data>
+  <data name="MusicVideo.NoResults" xml:space="preserve"><value>لا توجد نتائج.</value><comment>Music video dialog search status</comment></data>
+  <data name="MusicVideo.SearchFailed" xml:space="preserve"><value>فشل البحث: {0}</value><comment>Music video dialog search status; {0} = reason</comment></data>
+  <data name="Menu.MusicVideoFromYouTube" xml:space="preserve"><value>فيديو موسيقي من YouTube</value><comment>Song menu ▸ Lyrics Background Video row (no ellipsis)</comment></data>
+  <data name="PlaybackBar.MusicVideoFromYouTube" xml:space="preserve"><value>فيديو موسيقي من YouTube</value><comment>Island ⋯ menu on the lyrics page</comment></data>
+  <data name="Lyrics.WrongVideo" xml:space="preserve"><value>فيديو خاطئ؟</value><comment>Lyrics page button next to the Audio / Video switch while a YouTube video streams</comment></data>
+  <data name="Lyrics.WrongVideoTip" xml:space="preserve"><value>اختر فيديو آخر أو الصق رابطًا أو أوقف الفيديو لهذه الأغنية</value><comment>Tooltip of Wrong video?</comment></data>
 </root>

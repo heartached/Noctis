@@ -1503,6 +1503,11 @@ public class AppSettings : IJsonOnDeserializing
     /// with the song) instead of replacing the cover. Off by default.</summary>
     public bool MusicVideoAsBackground { get; set; }
 
+    /// <summary>Discord #feedback 11-25: a song without a music video of its own gets one found
+    /// on YouTube (yt-dlp search), streamed muted behind the lyrics. Off by default: it sends
+    /// the song's artist and title to YouTube.</summary>
+    public bool MusicVideoAutoFind { get; set; }
+
     /// <summary>Opt-in fullscreen focus — dims everything but the active line and its
     /// closest neighbors while the lyrics page is fullscreen.</summary>
     public bool LyricsFullScreenFocusEnabled { get; set; }

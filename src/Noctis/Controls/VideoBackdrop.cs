@@ -228,10 +228,16 @@ public sealed class VideoBackdrop : Control
         }
     }
 
+    /// <summary>An http(s) stream (a music video from YouTube, 11-25) rather than a file.</summary>
+    internal static bool IsRemoteSource(string? source) =>
+        !string.IsNullOrEmpty(source)
+        && (source.StartsWith("https://", StringComparison.OrdinalIgnoreCase) || source.StartsWith("http://", StringComparison.OrdinalIgnoreCase));
+
     private void Refresh()
     {
         var source = Source;
-        var active = IsActive && !string.IsNullOrEmpty(source) && File.Exists(source)
+        var remote = IsRemoteSource(source);
+        var active = IsActive && !string.IsNullOrEmpty(source) && (remote || File.Exists(source))
                      && this.IsAttachedToVisualTree();
         Teardown();
         if (!active || string.IsNullOrEmpty(source)) return;
@@ -248,8 +254,11 @@ public sealed class VideoBackdrop : Control
             try
             {
                 // Probe the clip's dimensions first so the buffer keeps its aspect ratio.
-                using var probe = new Media(SharedLibVlc.Instance, source, FromType.FromPath);
-                probe.Parse(MediaParseOptions.ParseLocal, timeout: 3000).GetAwaiter().GetResult();
+                // A stream is probed over the network (a little longer; on a timeout the
+                // buffer falls back to 16:9, which is what music videos are anyway).
+                using var probe = new Media(SharedLibVlc.Instance, source, remote ? FromType.FromLocation : FromType.FromPath);
+                probe.Parse(remote ? MediaParseOptions.ParseNetwork : MediaParseOptions.ParseLocal, timeout: remote ? 6000 : 3000)
+                    .GetAwaiter().GetResult();
                 int vw = 0, vh = 0;
                 foreach (var track in probe.Tracks)
                 {
@@ -260,7 +269,7 @@ public sealed class VideoBackdrop : Control
                     break;
                 }
                 var (bw, bh) = FitBuffer(vw, vh, maxSide);
-                session = new Session(this, bw, bh, probe.Duration);
+                session = new Session(this, bw, bh, probe.Duration, remote);
             }
             catch
             {
@@ -273,13 +282,17 @@ public sealed class VideoBackdrop : Control
             {
                 // A synced music video plays once and follows the song; a backdrop loops.
                 // Its start position is applied once it is attached below.
+                var from = remote ? FromType.FromLocation : FromType.FromPath;
                 using var media = !synced
-                    ? new Media(SharedLibVlc.Instance, source, FromType.FromPath, ":no-audio", ":input-repeat=65535")
-                    : new Media(SharedLibVlc.Instance, source, FromType.FromPath, ":no-audio");
+                    ? new Media(SharedLibVlc.Instance, source, from, ":no-audio", ":input-repeat=65535")
+                    : remote
+                        ? new Media(SharedLibVlc.Instance, source, from, ":no-audio", ":network-caching=1500")
+                        : new Media(SharedLibVlc.Instance, source, from, ":no-audio");
                 session.Player.Play(media);
                 if (synced) session.SetRate(rate);
                 if (startPaused) session.SetPaused(true);
-                DebugLogger.Info(DebugLogger.Category.Playback, "Backdrop.Play", $"src={Path.GetFileName(source)}");
+                // A stream URL carries the user's IP: never into the log.
+                DebugLogger.Info(DebugLogger.Category.Playback, "Backdrop.Play", remote ? "src=<stream>" : $"src={Path.GetFileName(source)}");
             }
             catch
             {
@@ -341,10 +354,11 @@ public sealed class VideoBackdrop : Control
         private readonly MediaPlayer.LibVLCVideoLockCb _lockCb;
         private readonly MediaPlayer.LibVLCVideoDisplayCb _displayCb;
 
-        public Session(VideoBackdrop owner, int width, int height, long lengthMs)
+        public Session(VideoBackdrop owner, int width, int height, long lengthMs, bool remote = false)
         {
             _owner = owner;
             _lengthMs = lengthMs;
+            _remote = remote;
             _stride = width * 4;
             _bufferBytes = _stride * height;
             _buffer = Marshal.AllocHGlobal(_bufferBytes);
@@ -375,6 +389,13 @@ public sealed class VideoBackdrop : Control
         }
 
         private int _syncInFlight;
+        // A stream seeks over the network: its clock lags a moment after each seek, and
+        // re-seeking on that lag made it stutter from seek to seek. So a stream gets a wider
+        // tolerance and a pause after each seek before the next correction.
+        private readonly bool _remote;
+        private long _lastSeekTick;
+        internal const int RemoteSyncToleranceMs = 900;
+        internal const int RemoteSeekCooldownMs = 2500;
 
         /// <summary>
         /// Keeps the clip within <see cref="SyncToleranceMs"/> of the song. Reading and
@@ -385,6 +406,7 @@ public sealed class VideoBackdrop : Control
         public void SyncTo(long targetMs, bool force = false)
         {
             if (_dead) return;
+            if (_remote && !force && Environment.TickCount64 - Interlocked.Read(ref _lastSeekTick) < RemoteSeekCooldownMs) return;
             if (Interlocked.CompareExchange(ref _syncInFlight, 1, 0) != 0) return;
             ThreadPool.QueueUserWorkItem(_ =>
             {
@@ -392,16 +414,19 @@ public sealed class VideoBackdrop : Control
                 {
                     var length = Player.Length;
                     if (length > 0) _lengthMs = length; // 0 once ended — keep the last known
-                    switch (PlanSync(Player.State == VLCState.Ended, Player.Time, targetMs, _lengthMs, SyncToleranceMs, force))
+                    var tolerance = _remote ? RemoteSyncToleranceMs : SyncToleranceMs;
+                    switch (PlanSync(Player.State == VLCState.Ended, Player.Time, targetMs, _lengthMs, tolerance, force))
                     {
                         case SyncAction.Seek:
                             Player.Time = targetMs;
+                            Interlocked.Exchange(ref _lastSeekTick, Environment.TickCount64);
                             break;
                         case SyncAction.Restart:
                             Player.Stop();
                             Player.Play();
                             Player.Time = targetMs;
                             if (_paused) Player.SetPause(true);
+                            Interlocked.Exchange(ref _lastSeekTick, Environment.TickCount64);
                             break;
                     }
                 }

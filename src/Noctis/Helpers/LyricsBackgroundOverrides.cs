@@ -33,6 +33,11 @@ public static class LyricsBackgroundOverrides
     public static ICommand ClearForAlbumCommand { get; } =
         new RelayCommand<object?>(p => { if (p is Album a) Settings?.ClearLyricsBackgroundOverride(KeyForAlbum(a)); });
 
+    /// <summary>Song menu ▸ Lyrics Background Video ▸ Music Video from YouTube: paste a link
+    /// (stream or download it) or pick the song's music video from a YouTube search.</summary>
+    public static ICommand MusicVideoFromYouTubeCommand { get; } =
+        new AsyncRelayCommand<object?>(p => p is Track t ? MetadataHelper.OpenMusicVideoPicker(t) : Task.CompletedTask);
+
     /// <summary>True when the key has its own clip on disk (drives the "Use default video" item).</summary>
     public static bool HasOverride(string key) => Settings?.HasLyricsBackgroundOverride(key) == true;
 

@@ -33,6 +33,72 @@ public static class MetadataHelper
         }
     }
 
+    /// <summary>
+    /// "Music Video from YouTube" for one song (Discord #feedback 11-25): the lyrics page's
+    /// island ⋯ and "Wrong video?" button, and the song menu's Lyrics Background Video submenu.
+    /// </summary>
+    public static async Task OpenMusicVideoPicker(Track track)
+    {
+        if (track == null || track.IsRemoteStream) return;
+        var services = App.Services;
+        if (services?.GetService<Services.YouTube.MusicVideoStreamService>() is not { } streams) return;
+        var tool = services.GetService<Services.YouTube.YtDlpTool>();
+        var http = services.GetService<HttpClient>();
+        var settings = services.GetService<MainWindowViewModel>()?.Settings;
+        var ffmpeg = services.GetService<IAudioConverterService>();
+
+        Func<string, IProgress<double>?, CancellationToken, Task>? download = null;
+        if (tool != null && settings != null)
+        {
+            download = async (url, progress, ct) =>
+            {
+                // As the Lyrics Background Video picker: a run folder of its own, the clip
+                // copied under the data folder as this song's own background video.
+                var runDir = Path.Combine(Path.GetTempPath(), "noctis-backdrops", "run-" + Guid.NewGuid().ToString("N")[..8]);
+                try
+                {
+                    Directory.CreateDirectory(runDir);
+                    string? ffmpegPath = null;
+                    try { ffmpegPath = ffmpeg?.GetFfmpegPath(); } catch { }
+                    var produced = await tool.DownloadVideoAsync(url, runDir, ffmpegPath,
+                        Services.YouTube.YtDlpParsing.StreamMaxHeight, progress, ct);
+                    ct.ThrowIfCancellationRequested();
+                    await settings.SetLyricsBackgroundOverrideAsync(LyricsBackgroundOverrides.KeyForTrack(track), produced);
+                }
+                finally
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        // yt-dlp/ffmpeg may still hold a file for a moment after a cancel.
+                        for (var i = 0; i < 40; i++)
+                        {
+                            try { if (Directory.Exists(runDir)) Directory.Delete(runDir, true); return; }
+                            catch (IOException) { }
+                            catch (UnauthorizedAccessException) { }
+                            await Task.Delay(100);
+                        }
+                    });
+                }
+            };
+        }
+
+        var vm = new MusicVideoPickerViewModel(track, streams,
+            http == null ? null : (url, ct) => LoadVideoThumbnailAsync(http, url, ct),
+            download,
+            tool == null ? null : (progress, ct) => tool.InstallAsync(progress, ct));
+        await ShowDialogOwned(new MusicVideoPickerDialog(vm));
+    }
+
+    private static async Task<Avalonia.Media.Imaging.Bitmap?> LoadVideoThumbnailAsync(HttpClient http, string url, CancellationToken ct)
+    {
+        using var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+        if (!response.IsSuccessStatusCode) return null;
+        var bytes = await HttpSafety.ReadBytesBoundedAsync(response.Content, HttpSafety.MaxImageBytes, ct);
+        if (!HttpSafety.LooksLikeImage(bytes)) return null;
+        using var ms = new MemoryStream(bytes);
+        return Avalonia.Media.Imaging.Bitmap.DecodeToWidth(ms, 192);
+    }
+
     public static async Task OpenReplayGainScannerDialog(IReadOnlyList<Track> tracks)
     {
         if (tracks == null || tracks.Count == 0) return;

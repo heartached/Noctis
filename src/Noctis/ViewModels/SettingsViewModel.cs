@@ -3919,6 +3919,7 @@ public partial class SettingsViewModel : ViewModelBase
             MusicVideoRoundedCorners = _settings.MusicVideoRoundedCorners;
             MusicVideoUseVideoAudio = _settings.MusicVideoUseVideoAudio;
             MusicVideoAsBackground = _settings.MusicVideoAsBackground;
+            MusicVideoAutoFind = _settings.MusicVideoAutoFind;
             LyricsFullScreenFocusEnabled = _settings.LyricsFullScreenFocusEnabled;
             LyricsFullScreenHideIsland = _settings.LyricsFullScreenHideIsland;
             LyricsMinLineOpacity = Math.Clamp(_settings.LyricsMinLineOpacity, 0, 60);
@@ -4543,6 +4544,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.MusicVideoRoundedCorners = MusicVideoRoundedCorners;
         _settings.MusicVideoUseVideoAudio = MusicVideoUseVideoAudio;
         _settings.MusicVideoAsBackground = MusicVideoAsBackground;
+        _settings.MusicVideoAutoFind = MusicVideoAutoFind;
         _settings.LyricsFullScreenFocusEnabled = LyricsFullScreenFocusEnabled;
         _settings.LyricsFullScreenHideIsland = LyricsFullScreenHideIsland;
         _settings.LyricsMinLineOpacity = LyricsMinLineOpacity;
@@ -4968,6 +4970,7 @@ public partial class SettingsViewModel : ViewModelBase
         _player.MusicVideoCornerRadius = MusicVideoRoundedCorners ? 18 : 0;
         _player.MusicVideoAudioEnabled = MusicVideoUseVideoAudio;
         _player.MusicVideoAsBackground = MusicVideoAsBackground;
+        _player.MusicVideoAutoFindEnabled = MusicVideoAutoFind;
         _player.LyricsFullScreenFocusEnabled = LyricsFullScreenFocusEnabled;
         _player.LyricsFullScreenHideIsland = LyricsFullScreenHideIsland;
         _player.LyricsMinLineOpacity = LyricsMinLineOpacity;
@@ -9242,6 +9245,7 @@ public partial class SettingsViewModel : ViewModelBase
             MusicVideoRoundedCorners = defaultSettings.MusicVideoRoundedCorners;
             MusicVideoUseVideoAudio = defaultSettings.MusicVideoUseVideoAudio;
             MusicVideoAsBackground = defaultSettings.MusicVideoAsBackground;
+            MusicVideoAutoFind = defaultSettings.MusicVideoAutoFind;
             LyricsFullScreenFocusEnabled = defaultSettings.LyricsFullScreenFocusEnabled;
             LyricsFullScreenHideIsland = defaultSettings.LyricsFullScreenHideIsland;
             LyricsMinLineOpacity = defaultSettings.LyricsMinLineOpacity;

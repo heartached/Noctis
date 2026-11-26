@@ -33,7 +33,7 @@ public sealed class YtDlpRunException : InvalidOperationException
 /// and a forced check + one retry when a run is blocked. A user-set or PATH copy is never
 /// replaced; for those the UI only says an update is available.
 /// </summary>
-public sealed class YtDlpTool
+public sealed class YtDlpTool : IYouTubeVideoSource
 {
     private const string UpdateStateFileName = "yt-dlp-update.json";
 
@@ -361,6 +361,38 @@ public sealed class YtDlpTool
             DownloadToScratchAsync("VideoDownload", exe, targetDir, template => YtDlpParsing.VideoDownloadArgs(url, template, ffmpegDir, maxHeight, js), progress, ct),
             onStatus, ct);
     }
+
+    // ── Music video streaming (lyrics page) ──────────────────────────────────
+
+    /// <inheritdoc/>
+    public Task<IReadOnlyList<YouTubeVideoInfo>> SearchAsync(string query, int count, CancellationToken ct) =>
+        RunWithBlockedRetryAsync<IReadOnlyList<YouTubeVideoInfo>>("VideoSearch", async (exe, js) =>
+        {
+            var (code, stdout, stderr) = await RunLoggedAsync("VideoSearch", exe, YtDlpParsing.SearchArgs(query, count, js), null, ct).ConfigureAwait(false);
+            var found = YtDlpParsing.ParseVideoInfos(stdout);
+            // --ignore-errors: one unavailable result must not lose the others.
+            if (code != 0 && found.Count == 0) throw new YtDlpRunException(code, stderr, Tail(stderr) ?? "Search failed.");
+            return found;
+        }, null, ct);
+
+    /// <inheritdoc/>
+    public Task<YouTubeVideoInfo?> GetInfoAsync(string url, CancellationToken ct) =>
+        RunWithBlockedRetryAsync<YouTubeVideoInfo?>("VideoInfo", async (exe, js) =>
+        {
+            var (code, stdout, stderr) = await RunLoggedAsync("VideoInfo", exe, YtDlpParsing.InfoArgs(url, js), null, ct).ConfigureAwait(false);
+            if (code != 0) throw new YtDlpRunException(code, stderr, Tail(stderr) ?? "Could not read the video.");
+            return YtDlpParsing.ParseVideoInfos(stdout).FirstOrDefault();
+        }, null, ct);
+
+    /// <inheritdoc/>
+    public Task<string> ResolveStreamUrlAsync(string videoId, int maxHeight, CancellationToken ct) =>
+        RunWithBlockedRetryAsync("VideoStream", async (exe, js) =>
+        {
+            var (code, stdout, stderr) = await RunLoggedAsync("VideoStream", exe,
+                YtDlpParsing.StreamUrlArgs(YouTubeLinks.WatchUrl(videoId), maxHeight, js), null, ct).ConfigureAwait(false);
+            var url = code == 0 ? YtDlpParsing.ParseStreamUrl(stdout) : null;
+            return url ?? throw new YtDlpRunException(code, stderr, Tail(stderr) ?? "No stream URL.");
+        }, null, ct);
 
     private async Task<string> DownloadToScratchAsync(string operation, string exe, string targetDir,
         Func<string, IReadOnlyList<string>> buildArgs, IProgress<double>? progress, CancellationToken ct)

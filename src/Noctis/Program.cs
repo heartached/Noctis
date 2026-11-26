@@ -654,6 +654,13 @@ internal class Program
                 sp.GetRequiredService<HttpClient>(),
                 sp.GetRequiredService<IPersistenceService>().DataDirectory,
                 () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings().YtDlpPath ?? string.Empty));
+        // Discord #feedback 11-25: music videos streamed from YouTube behind the lyrics; the
+        // per-song choices live in music_video_choices.json.
+        services.AddSingleton<Services.YouTube.MusicVideoStreamService>(sp =>
+            new Services.YouTube.MusicVideoStreamService(
+                sp.GetRequiredService<Services.YouTube.YtDlpTool>(),
+                new Services.YouTube.MusicVideoChoiceStore(Path.Combine(
+                    sp.GetRequiredService<IPersistenceService>().DataDirectory, "music_video_choices.json"))));
 
         // Background BPM/key analysis pipeline. Decodes via ffmpeg out-of-process
         // (reusing AudioConverterService for ffmpeg discovery) and runs managed DSP;
