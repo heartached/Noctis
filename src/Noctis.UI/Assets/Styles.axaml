@@ -1734,6 +1734,16 @@
     <Style Selector="Button.album-tile:pressed">
         <Setter Property="RenderTransform" Value="scale(1)"/>
     </Style>
+    <!-- Artist portraits (Artists page) neither (owner 11-26, "blinks on click"). They keep their
+         hover grow, Button:pointerover's scale(1.045) on the Button itself, so a press under the
+         pointer holds that size (no jump at press or release); a press dragged off the disc
+         rests at full size. After Button:pressed so both win. -->
+    <Style Selector="Button.artist-tile:pressed">
+        <Setter Property="RenderTransform" Value="scale(1)"/>
+    </Style>
+    <Style Selector="Button.artist-tile:pressed:pointerover">
+        <Setter Property="RenderTransform" Value="scale(1.045)"/>
+    </Style>
 
     <!-- Artist credit links (ArtistCreditLink): the hover/press box sits behind the one name
          under the pointer, so the credit as a whole must not zoom or shrink (Discord, Luwi
