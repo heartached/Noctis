@@ -2229,7 +2229,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Spectrogram.FileMissing" xml:space="preserve"><value>Файл не найден на диске.</value><comment>Spectrogram pop-up error</comment></data>
   <data name="Spectrogram.Failed" xml:space="preserve"><value>Ошибка анализа: {0}</value><comment>Spectrogram pop-up error; {0} = the error</comment></data>
   <data name="Spectrogram.Verdict.Checking" xml:space="preserve"><value>Проверка…</value><comment>Spectrogram verdict row while the source-quality check runs</comment></data>
-  <data name="Spectrogram.Verdict.LooksGenuine" xml:space="preserve"><value>Похоже на настоящий</value><comment>Spectrogram verdict: lossless file whose frequency content looks like a real lossless source</comment></data>
+  <data name="Spectrogram.Verdict.LooksGenuine" xml:space="preserve"><value>Признаков сжатия с потерями нет</value><comment>Spectrogram verdict: lossless file whose frequency content looks like a real lossless source</comment></data>
   <data name="Spectrogram.Verdict.ProbablyLossy" xml:space="preserve"><value>Вероятно, из источника с потерями</value><comment>Spectrogram verdict: lossless file that probably came from an MP3/AAC</comment></data>
   <data name="Spectrogram.Verdict.ProbablyUpsampled" xml:space="preserve"><value>Вероятно, повышена частота из CD-качества</value><comment>Spectrogram verdict: hi-res file that is probably CD audio upsampled</comment></data>
   <data name="Spectrogram.Verdict.ProbablyReencoded" xml:space="preserve"><value>Вероятно, перекодирован из меньшего битрейта</value><comment>Spectrogram verdict: lossy file whose cutoff is far below what its bitrate keeps</comment></data>

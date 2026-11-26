@@ -5947,7 +5947,7 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="Spectrogram.FileMissing" xml:space="preserve"><value>在磁碟上找不到該檔案。</value><comment>Spectrogram pop-up error</comment></data>
   <data name="Spectrogram.Failed" xml:space="preserve"><value>分析失敗：{0}</value><comment>Spectrogram pop-up error; {0} = the error</comment></data>
   <data name="Spectrogram.Verdict.Checking" xml:space="preserve"><value>正在檢查…</value><comment>Spectrogram verdict row while the source-quality check runs</comment></data>
-  <data name="Spectrogram.Verdict.LooksGenuine" xml:space="preserve"><value>看起來是真無損</value><comment>Spectrogram verdict: lossless file whose frequency content looks like a real lossless source</comment></data>
+  <data name="Spectrogram.Verdict.LooksGenuine" xml:space="preserve"><value>未發現有損壓縮痕跡</value><comment>Spectrogram verdict: lossless file whose frequency content looks like a real lossless source</comment></data>
   <data name="Spectrogram.Verdict.ProbablyLossy" xml:space="preserve"><value>可能來自有損音源</value><comment>Spectrogram verdict: lossless file that probably came from an MP3/AAC</comment></data>
   <data name="Spectrogram.Verdict.ProbablyUpsampled" xml:space="preserve"><value>可能由 CD 音質升頻而來</value><comment>Spectrogram verdict: hi-res file that is probably CD audio upsampled</comment></data>
   <data name="Spectrogram.Verdict.ProbablyReencoded" xml:space="preserve"><value>可能由更低位元率重新編碼</value><comment>Spectrogram verdict: lossy file whose cutoff is far below what its bitrate keeps</comment></data>
