@@ -6518,7 +6518,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Plugins.Card.Installing" xml:space="preserve"><value>جارٍ التثبيت</value></data>
   <data name="Plugins.Card.On" xml:space="preserve"><value>مفعّلة</value></data>
   <data name="Plugins.Card.Off" xml:space="preserve"><value>متوقفة</value></data>
-  <data name="Plugins.Card.Verified" xml:space="preserve"><value>إضافة Noctis رسمية</value></data>
+  <data name="Plugins.Card.Verified" xml:space="preserve"><value>موثّق</value></data>
   <data name="Plugins.Card.A11yOfficial" xml:space="preserve"><value>{0}، إضافة رسمية من Noctis</value></data>
   <data name="Plugins.Card.A11yCommunity" xml:space="preserve"><value>{0}، إضافة من المجتمع من {1}</value></data>
   <data name="Plugins.Card.A11yCommunityNoAuthor" xml:space="preserve"><value>{0}، إضافة من المجتمع</value></data>

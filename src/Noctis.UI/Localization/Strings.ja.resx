@@ -6518,7 +6518,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Plugins.Card.Installing" xml:space="preserve"><value>インストール中</value></data>
   <data name="Plugins.Card.On" xml:space="preserve"><value>オン</value></data>
   <data name="Plugins.Card.Off" xml:space="preserve"><value>オフ</value></data>
-  <data name="Plugins.Card.Verified" xml:space="preserve"><value>Noctis 公式プラグイン</value></data>
+  <data name="Plugins.Card.Verified" xml:space="preserve"><value>認証済み</value></data>
   <data name="Plugins.Card.A11yOfficial" xml:space="preserve"><value>{0}、Noctis の公式プラグイン</value></data>
   <data name="Plugins.Card.A11yCommunity" xml:space="preserve"><value>{0}、{1} 作のコミュニティプラグイン</value></data>
   <data name="Plugins.Card.A11yCommunityNoAuthor" xml:space="preserve"><value>{0}、コミュニティプラグイン</value></data>

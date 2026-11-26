@@ -6518,7 +6518,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Plugins.Card.Installing" xml:space="preserve"><value>正在安装</value></data>
   <data name="Plugins.Card.On" xml:space="preserve"><value>开</value></data>
   <data name="Plugins.Card.Off" xml:space="preserve"><value>关</value></data>
-  <data name="Plugins.Card.Verified" xml:space="preserve"><value>Noctis 官方插件</value></data>
+  <data name="Plugins.Card.Verified" xml:space="preserve"><value>已认证</value></data>
   <data name="Plugins.Card.A11yOfficial" xml:space="preserve"><value>{0}，Noctis 官方插件</value></data>
   <data name="Plugins.Card.A11yCommunity" xml:space="preserve"><value>{0}，{1} 制作的社区插件</value></data>
   <data name="Plugins.Card.A11yCommunityNoAuthor" xml:space="preserve"><value>{0}，社区插件</value></data>
