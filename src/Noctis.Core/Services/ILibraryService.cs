@@ -224,6 +224,18 @@ public interface ILibraryService
     /// <summary>Sets/clears the snooze expiry on the given tracks and saves the library.</summary>
     Task SetTracksSnoozedAsync(IReadOnlyList<Track> tracks, DateTime? until);
 
+    /// <summary>
+    /// User state from another device (sync) as one change: <paramref name="apply"/> sets every
+    /// field, then one save (so one sync-ledger record, of the whole new state) and the file tags
+    /// when the rating or "not liked" changed. A save per field let the ledger's background record
+    /// catch the track half applied and stamp the old rating as a newer change of this computer.
+    /// </summary>
+    Task ApplyTrackUserStateAsync(Track track, Action<Track> apply)
+    {
+        apply(track);
+        return SaveTrackUserStateAsync(new[] { track });
+    }
+
     /// <summary>Rebuilds indexes and raises LibraryUpdated after a track's metadata has been edited.</summary>
     void NotifyMetadataChanged();
 
