@@ -291,6 +291,25 @@ public static class MetadataHelper
         }
     }
 
+    private static ArtistVideoAutoFetcher? _artistVideoFetcher;
+
+    /// <summary>
+    /// Settings › Artwork › Artist videos: the one fetcher behind every artist page's video,
+    /// queued and paced with <see cref="AlbumArtworkFetcher"/>. Null without the app's services (tests).
+    /// </summary>
+    internal static ArtistVideoAutoFetcher? ArtistVideoFetcher
+    {
+        get
+        {
+            if (_artistVideoFetcher != null) return _artistVideoFetcher;
+            var services = App.Services;
+            if (services?.GetService<ITunesArtworkService>() is not { } itunes ||
+                services.GetService<IPersistenceService>() is not { } persistence)
+                return null;
+            return _artistVideoFetcher = ArtistVideoAutoFetcher.For(itunes, persistence, AlbumArtworkFetcher);
+        }
+    }
+
     /// <summary>
     /// Settings › Reset Everything: stops both whole-library runs and waits for them to end, so
     /// neither saves its ledger (or a cover / lyric file) after the data folder is emptied, and
@@ -308,6 +327,7 @@ public static class MetadataHelper
         _libraryArtworkRun = null;
         // Its block list and "no match" memory belong to the old data; the next page reloads them.
         _albumArtworkFetcher = null;
+        _artistVideoFetcher = null;
         // GitHub #195: the background lookup of new songs stops too.
         if (App.Services?.GetService<Services.Lyrics.LyricsAutoFindService>() is { } autoLyrics)
         {

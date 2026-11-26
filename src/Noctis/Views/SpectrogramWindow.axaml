@@ -54,6 +54,44 @@
             <Setter Property="FontSize" Value="12" />
             <Setter Property="Opacity" Value="0.45" />
         </Style>
+
+        <!-- The "is this really lossless?" verdict: a small tinted pill with a dot (neutral
+             grey for Can't tell / Checking, green for Looks genuine / Matches, amber for
+             Probably ...), then the numbers behind it in the quiet caption tone. -->
+        <Style Selector="Border.sg-verdict">
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="9,3,10,3" />
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
+        </Style>
+        <Style Selector="Border.sg-verdict Ellipse">
+            <Setter Property="Width" Value="7" />
+            <Setter Property="Height" Value="7" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Fill" Value="#8C8C8C" />
+        </Style>
+        <Style Selector="Border.sg-verdict TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Border.sg-verdict.good">
+            <Setter Property="Background" Value="#2B3FB67A" />
+        </Style>
+        <Style Selector="Border.sg-verdict.good Ellipse">
+            <Setter Property="Fill" Value="#3FB67A" />
+        </Style>
+        <Style Selector="Border.sg-verdict.warn">
+            <Setter Property="Background" Value="#2EF2A33A" />
+        </Style>
+        <Style Selector="Border.sg-verdict.warn Ellipse">
+            <Setter Property="Fill" Value="#F2A33A" />
+        </Style>
+        <Style Selector="TextBlock.sg-verdict-detail">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Opacity" Value="0.6" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
     </Window.Styles>
 
     <!-- Owner 10-08: the rounded pill pop-up every tool uses. PillDialogHost draws the
@@ -83,8 +121,23 @@
                 </Border>
 
                 <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
-                    <TextBlock x:Name="TitleText" Text="{Binding Title}" FontSize="18" FontWeight="Bold"
-                               TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Title}" />
+                    <!-- Title + the explicit "E" badge, as the album header / track rows pair them
+                         (the title hugs its text and trims; the badge follows it). -->
+                    <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Left">
+                        <TextBlock x:Name="TitleText" Grid.Column="0" Text="{Binding Title}" FontSize="18" FontWeight="Bold"
+                                   Classes="one-line-explicit-title" ToolTip.Tip="{Binding Title}" />
+                        <Border x:Name="ExplicitBadge"
+                                Grid.Column="1"
+                                Classes="explicit-badge"
+                                Margin="8,0,0,0"
+                                IsVisible="{Binding IsExplicit}"
+                                ToolTip.Tip="{loc:T AlbumDetail.ExplicitTip}">
+                            <TextBlock Text="E"
+                                       Classes="explicit-badge-text"
+                                       FontSize="10"
+                                       Opacity="0.95" />
+                        </Border>
+                    </Grid>
                     <TextBlock x:Name="SubtitleText" Text="{Binding Subtitle}" FontSize="13" Opacity="0.7"
                                TextTrimming="CharacterEllipsis" />
                     <ItemsControl x:Name="ChipList" ItemsSource="{Binding TechChips}" Margin="0,8,0,0">
@@ -121,6 +174,26 @@
                         <Image x:Name="PlotImage"
                                Source="{Binding Image}"
                                Stretch="Fill" />
+                        <!-- The detected cutoff: a thin dashed line across the plot with a tiny
+                             label at its right end (placed in code, composed-image coordinates). -->
+                        <Canvas x:Name="CutoffMarker"
+                                IsVisible="{Binding HasCutoffMarker}"
+                                IsHitTestVisible="False">
+                            <Line x:Name="CutoffLine"
+                                  Stroke="#D9FFFFFF"
+                                  StrokeThickness="1"
+                                  StrokeDashArray="5,4" />
+                            <Border x:Name="CutoffLabelBox"
+                                    Background="#B3000000"
+                                    CornerRadius="4"
+                                    Padding="5,1,5,2">
+                                <TextBlock x:Name="CutoffLabel"
+                                           Text="{Binding CutoffMarkerLabel}"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Foreground="#E6FFFFFF" />
+                            </Border>
+                        </Canvas>
                     </Panel>
                 </Viewbox>
 
@@ -155,16 +228,41 @@
                 Padding="28,14"
                 BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
                 BorderThickness="0,1,0,0">
-            <Grid ColumnDefinitions="*,Auto">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <!-- Verdict: shown once the plot is up ("Checking..." while it runs). -->
+                <StackPanel x:Name="VerdictRow"
+                            Grid.Column="0"
+                            Orientation="Horizontal"
+                            Spacing="8"
+                            Margin="0,0,16,0"
+                            VerticalAlignment="Center"
+                            Background="Transparent"
+                            IsVisible="{Binding HasVerdict}"
+                            ToolTip.Tip="{Binding VerdictTip}">
+                    <Border x:Name="VerdictPill"
+                            Classes="sg-verdict"
+                            Classes.good="{Binding IsVerdictGood}"
+                            Classes.warn="{Binding IsVerdictWarn}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Ellipse />
+                            <TextBlock x:Name="VerdictText" Text="{Binding VerdictText}" />
+                        </StackPanel>
+                    </Border>
+                    <TextBlock x:Name="VerdictDetail"
+                               Classes="sg-verdict-detail"
+                               Text="{Binding VerdictDetail}"
+                               IsVisible="{Binding VerdictDetail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                </StackPanel>
                 <TextBlock x:Name="CaptionText"
-                           Grid.Column="0"
+                           Grid.Column="1"
                            Classes="sg-caption"
                            Text="{Binding AnalysisCaption}"
                            VerticalAlignment="Center"
+                           HorizontalAlignment="Right"
                            TextTrimming="CharacterEllipsis"
                            Margin="0,0,16,0" />
                 <Button x:Name="CloseButton"
-                        Grid.Column="1"
+                        Grid.Column="2"
                         Classes="pill-secondary"
                         Content="{loc:T Spectrogram.Close}"
                         Command="{Binding CloseCommand}"

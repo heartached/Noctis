@@ -21,9 +21,13 @@
                         AutomationProperties.Name="{Binding CollectionName}"
                         Command="{Binding $parent[controls:ArtworkChooserCard].PreviewCommand}"
                         CommandParameter="{Binding}">
-                    <Border CornerRadius="10" ClipToBounds="True"
-                            Background="#1AFFFFFF">
+                    <!-- One rounded clip for everything in the tile. The grey well is only
+                         there while the cover loads: under a loaded cover its anti-aliased
+                         rounded edge bled grey through the cover's edge pixels. -->
+                    <Border CornerRadius="10" ClipToBounds="True">
                         <Panel>
+                            <Border Background="#1AFFFFFF"
+                                    IsVisible="{Binding Poster, Converter={x:Static ObjectConverters.IsNull}}"/>
                             <Image Source="{Binding Poster}"
                                    Stretch="UniformToFill"
                                    RenderOptions.BitmapInterpolationMode="HighQuality"/>
@@ -142,6 +146,12 @@
                 <Setter Property="Background" Value="Transparent" />
             </Style>
             <Style Selector="Button.chooser-poster:pressed /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="Transparent" />
+            </Style>
+            <!-- A cover that does not preview has no command to run, so the poster is disabled,
+                 and Fluent's disabled fill (#33FFFFFF, 3px corners) sat under the 10px-rounded
+                 cover: a grey spot at each corner (owner 11-26). -->
+            <Style Selector="Button.chooser-poster:disabled /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="Background" Value="Transparent" />
             </Style>
             <Style Selector="Button.chooser-poster Border.play-badge">

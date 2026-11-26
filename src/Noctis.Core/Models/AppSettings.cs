@@ -514,6 +514,12 @@ public class AppSettings : IJsonOnDeserializing
     /// every album opened.</summary>
     public bool AnimatedArtworkAutoFetch { get; set; }
 
+    /// <summary>Settings › Artwork › Artist videos: play an artist's Apple Music motion video
+    /// behind their page's header when one exists (only while <see cref="EnableAnimatedCovers"/>
+    /// is on), kept in the same size-capped cache as the album loops. Off by default: it asks
+    /// Apple about every artist page opened.</summary>
+    public bool ArtistVideos { get; set; }
+
     /// <summary>The cap of that cache in MB; one of <see cref="AnimatedArtworkCacheSizeChoices"/>.</summary>
     public int AnimatedArtworkCacheMb { get; set; } = 1024;
 

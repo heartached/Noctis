@@ -2228,6 +2228,21 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Spectrogram.NeedsFfmpeg" xml:space="preserve"><value>Для спектрограммы нужен ffmpeg. Укажите путь к ffmpeg в настройках и повторите попытку.</value><comment>Spectrogram pop-up error</comment></data>
   <data name="Spectrogram.FileMissing" xml:space="preserve"><value>Файл не найден на диске.</value><comment>Spectrogram pop-up error</comment></data>
   <data name="Spectrogram.Failed" xml:space="preserve"><value>Ошибка анализа: {0}</value><comment>Spectrogram pop-up error; {0} = the error</comment></data>
+  <data name="Spectrogram.Verdict.Checking" xml:space="preserve"><value>Проверка…</value><comment>Spectrogram verdict row while the source-quality check runs</comment></data>
+  <data name="Spectrogram.Verdict.LooksGenuine" xml:space="preserve"><value>Похоже на настоящий</value><comment>Spectrogram verdict: lossless file whose frequency content looks like a real lossless source</comment></data>
+  <data name="Spectrogram.Verdict.ProbablyLossy" xml:space="preserve"><value>Вероятно, из источника с потерями</value><comment>Spectrogram verdict: lossless file that probably came from an MP3/AAC</comment></data>
+  <data name="Spectrogram.Verdict.ProbablyUpsampled" xml:space="preserve"><value>Вероятно, повышена частота из CD-качества</value><comment>Spectrogram verdict: hi-res file that is probably CD audio upsampled</comment></data>
+  <data name="Spectrogram.Verdict.ProbablyReencoded" xml:space="preserve"><value>Вероятно, перекодирован из меньшего битрейта</value><comment>Spectrogram verdict: lossy file whose cutoff is far below what its bitrate keeps</comment></data>
+  <data name="Spectrogram.Verdict.MatchesBitrate" xml:space="preserve"><value>Соответствует битрейту</value><comment>Spectrogram verdict: lossy file whose cutoff fits its bitrate</comment></data>
+  <data name="Spectrogram.Verdict.CantTell" xml:space="preserve"><value>Сложно сказать</value><comment>Spectrogram verdict: no conclusion</comment></data>
+  <data name="Spectrogram.Verdict.TooQuiet" xml:space="preserve"><value>слишком мало звука для оценки</value><comment>Spectrogram verdict detail when there is too little sound to judge</comment></data>
+  <data name="Spectrogram.Verdict.Cutoff" xml:space="preserve"><value>срез ≈ {0} кГц</value><comment>Spectrogram verdict detail and plot marker label; {0} = frequency in kHz (e.g. 16.0)</comment></data>
+  <data name="Spectrogram.Verdict.ContentUpTo" xml:space="preserve"><value>сигнал до {0} кГц</value><comment>Spectrogram verdict detail; {0} = highest frequency with content, in kHz</comment></data>
+  <data name="Spectrogram.Verdict.CutoffMp3Low" xml:space="preserve"><value>срез ≈ {0} кГц, типично для MP3 128 кбит/с</value><comment>Spectrogram verdict detail; {0} = cutoff in kHz</comment></data>
+  <data name="Spectrogram.Verdict.CutoffMp3Mid" xml:space="preserve"><value>срез ≈ {0} кГц, типично для MP3 160–192 кбит/с</value><comment>Spectrogram verdict detail; {0} = cutoff in kHz</comment></data>
+  <data name="Spectrogram.Verdict.CutoffMp3High" xml:space="preserve"><value>срез ≈ {0} кГц, типично для MP3 320 или AAC</value><comment>Spectrogram verdict detail; {0} = cutoff in kHz</comment></data>
+  <data name="Spectrogram.Verdict.Padded24" xml:space="preserve"><value>24-битный контейнер, 16-битный звук</value><comment>Spectrogram verdict detail: a 24-bit file whose lowest 8 bits are always zero</comment></data>
+  <data name="Spectrogram.Verdict.Tip" xml:space="preserve"><value>Оценка по частотному содержимому; для тихих, старых или узкополосных записей она может ошибаться.</value><comment>Tooltip on the Spectrogram verdict row</comment></data>
 
   <!-- StatisticsView.axaml (auto-migrated) -->
   <data name="Statistics.ListeningStatistics" xml:space="preserve"><value>Статистика прослушивания</value><comment>Text in StatisticsView.axaml</comment></data>
@@ -4599,4 +4614,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="PlaybackBar.MusicVideoFromYouTube" xml:space="preserve"><value>Клип с YouTube</value><comment>Island ⋯ menu on the lyrics page</comment></data>
   <data name="Lyrics.WrongVideo" xml:space="preserve"><value>Не то видео?</value><comment>Lyrics page button next to the Audio / Video switch while a YouTube video streams</comment></data>
   <data name="Lyrics.WrongVideoTip" xml:space="preserve"><value>Выберите другое видео, вставьте ссылку или отключите видео для этой песни</value><comment>Tooltip of Wrong video?</comment></data>
+  <data name="Settings.ArtistVideos" xml:space="preserve"><value>Видео исполнителей</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ArtistVideosDesc" xml:space="preserve"><value>Воспроизводит видео исполнителя из Apple Music за его страницей, если оно есть. Ищет каждого исполнителя, которого вы открываете.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="ArtistDetail.RemoveArtistVideo" xml:space="preserve"><value>Удалить видео исполнителя</value><comment>Header in ArtistDetailView.axaml</comment></data>
 </root>

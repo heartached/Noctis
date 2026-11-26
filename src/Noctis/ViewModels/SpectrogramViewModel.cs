@@ -35,14 +35,25 @@ public sealed partial class SpectrogramViewModel : ObservableObject, IDisposable
     private static readonly Analyzer DefaultAnalyzer = (ffmpeg, track, columns, progress, ct) =>
         SpectrogramRenderer.ComputeAsync(ffmpeg, track.FilePath, track.SampleRate, track.Duration, columns, progress, ct);
 
+    /// <summary>The fake-24-bit check: true = 16-bit audio padded, null = can't tell.
+    /// <see cref="BitDepthProbe.IsPadded16BitAsync"/> in the app; tests swap in a fake.</summary>
+    internal delegate Task<bool?> BitProbe(string ffmpegPath, Track track, CancellationToken ct);
+
+    private static readonly BitProbe DefaultBitProbe = (ffmpeg, track, ct) =>
+        BitDepthProbe.IsPadded16BitAsync(ffmpeg, track.FilePath, track.BitsPerSample, track.Duration, ct);
+
     private readonly Track _track;
     private readonly IAudioConverterService _converter;
     private readonly Analyzer _analyze;
+    private readonly BitProbe _bitProbe;
     private readonly CancellationTokenSource _cts = new();
     private bool _started;
     private bool _disposed;
 
     public string Title => string.IsNullOrWhiteSpace(_track.Title) ? Path.GetFileName(_track.FilePath) : _track.Title;
+
+    /// <summary>Shows the "E" badge after the title, as the track lists do.</summary>
+    public bool IsExplicit => _track.IsExplicit;
 
     /// <summary>"Artist · Album", leaving out whichever part is blank (an untagged file used
     /// to read " · Album" with a dangling separator).</summary>
@@ -65,6 +76,22 @@ public sealed partial class SpectrogramViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool _hasError;
     [ObservableProperty] private string _errorText = string.Empty;
 
+    // "Is this really lossless?": computed after the plot is shown, never before it.
+    [ObservableProperty] private bool _hasVerdict;
+    [ObservableProperty] private bool _isCheckingVerdict;
+    [ObservableProperty] private string _verdictText = string.Empty;
+    [ObservableProperty] private string _verdictDetail = string.Empty;
+    [ObservableProperty] private bool _isVerdictGood;
+    [ObservableProperty] private bool _isVerdictWarn;
+    [ObservableProperty] private bool _hasCutoffMarker;
+    [ObservableProperty] private double _cutoffMarkerY;
+    [ObservableProperty] private string _cutoffMarkerLabel = string.Empty;
+
+    /// <summary>The detector's numbers behind the verdict (null until it lands).</summary>
+    public SourceQualityResult? Verdict { get; private set; }
+
+    public string VerdictTip => Loc.T("Spectrogram.Verdict.Tip");
+
     /// <summary>No duration to measure against (some streams, broken headers): the decoder
     /// never reports a fraction (SpectrogramRenderer only reports when it knows the expected
     /// length), so the bar runs indeterminate instead of sitting at 0 %.</summary>
@@ -81,11 +108,12 @@ public sealed partial class SpectrogramViewModel : ObservableObject, IDisposable
     public SpectrogramViewModel(Track track, IAudioConverterService converter)
         : this(track, converter, null) { }
 
-    internal SpectrogramViewModel(Track track, IAudioConverterService converter, Analyzer? analyze)
+    internal SpectrogramViewModel(Track track, IAudioConverterService converter, Analyzer? analyze, BitProbe? bitProbe = null)
     {
         _track = track;
         _converter = converter;
         _analyze = analyze ?? DefaultAnalyzer;
+        _bitProbe = bitProbe ?? DefaultBitProbe;
         TechChips = BuildChips(track);
     }
 
@@ -179,6 +207,9 @@ public sealed partial class SpectrogramViewModel : ObservableObject, IDisposable
             Image = composed;
             IsBusy = false;
             IsReady = true;
+
+            // The verdict only starts once the plot is up, and runs off the UI thread.
+            await RunVerdictAsync(ffmpeg, data, ct);
         }
         catch (OperationCanceledException)
         {
@@ -191,12 +222,96 @@ public sealed partial class SpectrogramViewModel : ObservableObject, IDisposable
         }
     }
 
+    private async Task RunVerdictAsync(string ffmpeg, SpectrogramData data, CancellationToken ct)
+    {
+        VerdictText = Loc.T("Spectrogram.Verdict.Checking");
+        VerdictDetail = string.Empty;
+        IsCheckingVerdict = true;
+        HasVerdict = true;
+
+        var info = new SourceQualityInput(_track.IsLossless, ShortFormat(_track.Codec, _track.FilePath),
+            _track.BitsPerSample, _track.Bitrate);
+        var detect = Task.Run(() => SourceQualityDetector.Analyze(data, info), ct);
+        // Only files that claim more than 16 bits get the second (cheap) ffmpeg pass.
+        var probe = _track.BitsPerSample > 16 && !_track.IsDsd
+            ? Task.Run(() => _bitProbe(ffmpeg, _track, ct), ct)
+            : Task.FromResult<bool?>(null);
+
+        SourceQualityResult result;
+        try { result = await detect; }
+        catch (OperationCanceledException) { return; }
+        catch
+        {
+            HasVerdict = false;
+            IsCheckingVerdict = false;
+            return;
+        }
+        bool? padded = null;
+        try { padded = await probe; }
+        catch (OperationCanceledException) { return; }
+        catch { /* ffmpeg missing or failed: that part is left out */ }
+        if (ct.IsCancellationRequested || _disposed) return;
+
+        Verdict = result;
+        var (text, detail, tone) = DescribeVerdict(result, padded);
+        VerdictText = text;
+        VerdictDetail = detail;
+        IsVerdictGood = tone > 0;
+        IsVerdictWarn = tone < 0;
+        IsCheckingVerdict = false;
+
+        // The dashed marker: only for a real shelf well below Nyquist.
+        if (result.CutoffWellBelowNyquist && result.DropDbPerKhz >= SourceQualityDetector.SteepDbPerKhz
+            && result.CutoffHz is { } hz)
+        {
+            CutoffMarkerY = TopPad + PlotHeight - hz / result.NyquistHz * PlotHeight;
+            CutoffMarkerLabel = Loc.T("Spectrogram.Verdict.Cutoff", Khz(hz));
+            HasCutoffMarker = true;
+        }
+    }
+
+    private static string Khz(double hz) => (hz / 1000).ToString("0.0", CultureInfo.CurrentCulture);
+
+    /// <summary>The verdict as its short text, the detail behind it, and a tone
+    /// (1 = good, 0 = neutral, -1 = "Probably ...").</summary>
+    internal static (string Text, string Detail, int Tone) DescribeVerdict(SourceQualityResult r, bool? padded16)
+    {
+        string cutoff = r.CutoffHz is { } c ? Loc.T("Spectrogram.Verdict.Cutoff", Khz(c)) : string.Empty;
+        string upTo = r.CutoffHz is { } u ? Loc.T("Spectrogram.Verdict.ContentUpTo", Khz(u)) : string.Empty;
+        var (text, detail, tone) = r.Verdict switch
+        {
+            SourceQualityVerdict.LooksGenuine => (Loc.T("Spectrogram.Verdict.LooksGenuine"), upTo, 1),
+            SourceQualityVerdict.MatchesBitrate => (Loc.T("Spectrogram.Verdict.MatchesBitrate"), upTo, 1),
+            SourceQualityVerdict.ProbablyLossySource => (Loc.T("Spectrogram.Verdict.ProbablyLossy"), r.CutoffClass switch
+            {
+                LossyCutoffClass.Mp3Low => Loc.T("Spectrogram.Verdict.CutoffMp3Low", Khz(r.CutoffHz!.Value)),
+                LossyCutoffClass.Mp3Mid => Loc.T("Spectrogram.Verdict.CutoffMp3Mid", Khz(r.CutoffHz!.Value)),
+                LossyCutoffClass.Mp3High => Loc.T("Spectrogram.Verdict.CutoffMp3High", Khz(r.CutoffHz!.Value)),
+                _ => cutoff,
+            }, -1),
+            SourceQualityVerdict.ProbablyUpsampled => (Loc.T("Spectrogram.Verdict.ProbablyUpsampled"), cutoff, -1),
+            SourceQualityVerdict.ProbablyReencoded => (Loc.T("Spectrogram.Verdict.ProbablyReencoded"), cutoff, -1),
+            _ => (Loc.T("Spectrogram.Verdict.CantTell"),
+                r.CutoffHz is null ? Loc.T("Spectrogram.Verdict.TooQuiet") : string.Empty, 0),
+        };
+        if (padded16 == true)
+        {
+            var fake = Loc.T("Spectrogram.Verdict.Padded24");
+            detail = detail.Length == 0 ? fake : detail + " · " + fake;
+            tone = -1;
+        }
+        return (text, detail, tone);
+    }
+
     private void Fail(string message)
     {
         ErrorText = message;
         HasError = true;
         IsBusy = false;
     }
+
+    /// <summary>Left and right edge of the plot area inside the composed image.</summary>
+    public static (double Left, double Right) PlotSpan => (LeftAxis, LeftAxis + PlotWidth);
 
     /// <summary>Total size of the composed image; the view sizes the plot frame from it.</summary>
     public static Size ComposedSize => new(LeftAxis + PlotWidth + RightScale, TopPad + PlotHeight + BottomAxis);

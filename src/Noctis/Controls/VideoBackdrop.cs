@@ -107,6 +107,17 @@ public sealed class VideoBackdrop : Control
         private set => SetAndRaise(HasVideoStreamProperty, ref _hasVideoStream, value);
     }
 
+    /// <summary>True once the current clip's first frame is on screen, false again when it is
+    /// torn down: what still art over or under the clip cross-fades on (artist page hero).</summary>
+    public static readonly DirectProperty<VideoBackdrop, bool> HasFrameProperty =
+        AvaloniaProperty.RegisterDirect<VideoBackdrop, bool>(nameof(HasFrame), o => o.HasFrame);
+    private bool _hasFrame;
+    public bool HasFrame
+    {
+        get => _hasFrame;
+        private set => SetAndRaise(HasFrameProperty, ref _hasFrame, value);
+    }
+
     /// <summary>Music-video mode: the clip's playback speed, following the song's (Playback
     /// speed 0.75x-2x). Without it a sped-up song drifts past the tolerance every tick and the
     /// clip stutters from re-seek to re-seek.</summary>
@@ -339,6 +350,7 @@ public sealed class VideoBackdrop : Control
         var session = _session;
         _session = null;
         _current = null;
+        HasFrame = false;
         session?.ShutDown();
         InvalidateVisual();
     }
@@ -575,6 +587,7 @@ public sealed class VideoBackdrop : Control
                     _owner._current = bitmap; // first real frame reveals the clip
                     _owner._currentDrawn = false;
                     _owner.HasVideoStream = true;
+                    _owner.HasFrame = true;
                     _owner.InvalidateVisual();
                 }
                 finally { _framePending = false; }

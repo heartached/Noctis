@@ -5946,6 +5946,21 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Spectrogram.NeedsFfmpeg" xml:space="preserve"><value>スペクトログラムには ffmpeg が必要です。設定で ffmpeg のパスを指定してから、もう一度お試しください。</value><comment>Spectrogram pop-up error</comment></data>
   <data name="Spectrogram.FileMissing" xml:space="preserve"><value>ディスク上にファイルが見つかりませんでした。</value><comment>Spectrogram pop-up error</comment></data>
   <data name="Spectrogram.Failed" xml:space="preserve"><value>解析に失敗しました: {0}</value><comment>Spectrogram pop-up error; {0} = the error</comment></data>
+  <data name="Spectrogram.Verdict.Checking" xml:space="preserve"><value>確認中…</value><comment>Spectrogram verdict row while the source-quality check runs</comment></data>
+  <data name="Spectrogram.Verdict.LooksGenuine" xml:space="preserve"><value>本物らしい</value><comment>Spectrogram verdict: lossless file whose frequency content looks like a real lossless source</comment></data>
+  <data name="Spectrogram.Verdict.ProbablyLossy" xml:space="preserve"><value>非可逆音源由来の可能性あり</value><comment>Spectrogram verdict: lossless file that probably came from an MP3/AAC</comment></data>
+  <data name="Spectrogram.Verdict.ProbablyUpsampled" xml:space="preserve"><value>CD 品質からのアップサンプリングの可能性あり</value><comment>Spectrogram verdict: hi-res file that is probably CD audio upsampled</comment></data>
+  <data name="Spectrogram.Verdict.ProbablyReencoded" xml:space="preserve"><value>低いビットレートからの再エンコードの可能性あり</value><comment>Spectrogram verdict: lossy file whose cutoff is far below what its bitrate keeps</comment></data>
+  <data name="Spectrogram.Verdict.MatchesBitrate" xml:space="preserve"><value>ビットレートと一致</value><comment>Spectrogram verdict: lossy file whose cutoff fits its bitrate</comment></data>
+  <data name="Spectrogram.Verdict.CantTell" xml:space="preserve"><value>判定できません</value><comment>Spectrogram verdict: no conclusion</comment></data>
+  <data name="Spectrogram.Verdict.TooQuiet" xml:space="preserve"><value>判定するには音が少なすぎます</value><comment>Spectrogram verdict detail when there is too little sound to judge</comment></data>
+  <data name="Spectrogram.Verdict.Cutoff" xml:space="preserve"><value>カットオフ ≈ {0} kHz</value><comment>Spectrogram verdict detail and plot marker label; {0} = frequency in kHz (e.g. 16.0)</comment></data>
+  <data name="Spectrogram.Verdict.ContentUpTo" xml:space="preserve"><value>{0} kHz まで成分あり</value><comment>Spectrogram verdict detail; {0} = highest frequency with content, in kHz</comment></data>
+  <data name="Spectrogram.Verdict.CutoffMp3Low" xml:space="preserve"><value>カットオフ ≈ {0} kHz（MP3 128 kbps によくある値）</value><comment>Spectrogram verdict detail; {0} = cutoff in kHz</comment></data>
+  <data name="Spectrogram.Verdict.CutoffMp3Mid" xml:space="preserve"><value>カットオフ ≈ {0} kHz（MP3 160–192 kbps によくある値）</value><comment>Spectrogram verdict detail; {0} = cutoff in kHz</comment></data>
+  <data name="Spectrogram.Verdict.CutoffMp3High" xml:space="preserve"><value>カットオフ ≈ {0} kHz（MP3 320 kbps や AAC によくある値）</value><comment>Spectrogram verdict detail; {0} = cutoff in kHz</comment></data>
+  <data name="Spectrogram.Verdict.Padded24" xml:space="preserve"><value>24 ビットの入れ物に 16 ビットの音声</value><comment>Spectrogram verdict detail: a 24-bit file whose lowest 8 bits are always zero</comment></data>
+  <data name="Spectrogram.Verdict.Tip" xml:space="preserve"><value>周波数成分からの推定です。静かな録音、古い録音、帯域の狭い録音では外れることがあります。</value><comment>Tooltip on the Spectrogram verdict row</comment></data>
   <!-- StatisticsView.axaml (auto-migrated) -->
   <data name="Statistics.ListeningStatistics" xml:space="preserve">
     <value>リスニング統計</value>
@@ -9603,4 +9618,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="PlaybackBar.MusicVideoFromYouTube" xml:space="preserve"><value>YouTube のミュージックビデオ</value><comment>Island ⋯ menu on the lyrics page</comment></data>
   <data name="Lyrics.WrongVideo" xml:space="preserve"><value>動画が違う？</value><comment>Lyrics page button next to the Audio / Video switch while a YouTube video streams</comment></data>
   <data name="Lyrics.WrongVideoTip" xml:space="preserve"><value>別の動画を選ぶ、リンクを貼り付ける、またはこの曲の動画をオフにします</value><comment>Tooltip of Wrong video?</comment></data>
+  <data name="Settings.ArtistVideos" xml:space="preserve"><value>アーティストビデオ</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ArtistVideosDesc" xml:space="preserve"><value>アーティストの Apple Music ビデオがあれば、ページの背景で再生します。開いたアーティストごとに検索します。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="ArtistDetail.RemoveArtistVideo" xml:space="preserve"><value>アーティストビデオを削除</value><comment>Header in ArtistDetailView.axaml</comment></data>
 </root>

@@ -11,7 +11,7 @@ namespace Noctis.Services;
 /// developer token is required; everything used here is part of the same
 /// surface area as bendodson.com/projects/itunes-artwork-finder.
 /// </summary>
-public sealed class ITunesArtworkService
+public sealed partial class ITunesArtworkService
 {
     private const string SearchUrl = "https://itunes.apple.com/search";
     private const string LookupUrl = "https://itunes.apple.com/lookup";
@@ -146,7 +146,11 @@ public sealed class ITunesArtworkService
         int Height,
         string Codec,
         long Bandwidth,
-        bool IsHls);
+        bool IsHls)
+    {
+        /// <summary>The HLS VIDEO-RANGE ("SDR", "PQ", "HLG"); empty when the playlist gave none.</summary>
+        public string VideoRange { get; init; } = string.Empty;
+    }
 
     /// <summary>
     /// One album (or playlist) that has motion artwork, as the chooser shows it: what it is, a
@@ -1197,7 +1201,10 @@ public sealed class ITunesArtworkService
                 ? $"Animated Artwork ({p}p {codecFamily})"
                 : $"Animated Artwork ({codecFamily})";
 
-            list.Add(new AnimatedArtworkVariant(label, url, width, height, codec, bandwidth, true));
+            list.Add(new AnimatedArtworkVariant(label, url, width, height, codec, bandwidth, true)
+            {
+                VideoRange = ParseAttribute(pendingInfo, "VIDEO-RANGE"),
+            });
             pendingInfo = null;
         }
 

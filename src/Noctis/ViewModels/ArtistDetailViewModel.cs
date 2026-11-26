@@ -565,6 +565,9 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         _ = LoadAboutAsync();
         // The Overview carries a Similar Artists row, so load on open — unless it is folded.
         if (IsOverviewSimilarExpanded) _ = LoadSimilarAsync();
+        // Settings › Artwork › Artist videos: the page is on screen from construction.
+        WatchArtistVideoSettings();
+        StartArtistVideo();
 
         // A scan's progressive fill publishes only the tracks found SO FAR every 1.5 s, so
         // rebuilding on it shrank the lists mid-scan and re-ran Classify each time; the
@@ -744,6 +747,9 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
             if (value && _settings != null) ReleaseSortMode = _settings.ArtistReleaseSortMode;
             if (value && _settings != null) IsOverviewSimilarExpanded = _settings.ArtistSimilarExpanded;
             if (value) AdoptAlbumsView();
+            // The hero's video plays only on the page on screen.
+            if (value) StartArtistVideo();
+            else StopArtistVideo();
         }
     }
 
@@ -1494,6 +1500,8 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
 
     public void Dispose()
     {
+        StopArtistVideo();
+        UnwatchArtistVideoSettings();
         _cts.Cancel();
         _cts.Dispose();
         _songsGeneration++; // stops an in-flight Songs-tab slice fill
