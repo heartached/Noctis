@@ -4506,6 +4506,7 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="DiscogsGenres.TitleOne" xml:space="preserve"><value>Get genres for 1 album</value></data>
   <data name="DiscogsGenres.TitleMany" xml:space="preserve"><value>Get genres for {0:N0} albums</value><comment>Get Genres from Discogs dialog. Plural forms, see Mobile.Count.Songs.</comment></data>
   <data name="DiscogsGenres.Subtitle" xml:space="preserve"><value>Looks up each album on Discogs and proposes its styles as the album's genres. Nothing is saved until you choose Apply.</value></data>
+  <data name="DiscogsGenres.ReadyHint" xml:space="preserve"><value>Press Find to look up the albums, then tick the ones to change.</value></data>
   <data name="DiscogsGenres.Use" xml:space="preserve"><value>Use</value></data>
   <data name="DiscogsGenres.SourceStyles" xml:space="preserve"><value>Styles</value></data>
   <data name="DiscogsGenres.SourceGenres" xml:space="preserve"><value>Genres</value></data>

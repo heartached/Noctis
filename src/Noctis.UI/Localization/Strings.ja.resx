@@ -9504,6 +9504,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="DiscogsGenres.TitleOne" xml:space="preserve"><value>1 枚のアルバムのジャンルを取得</value></data>
   <data name="DiscogsGenres.TitleMany" xml:space="preserve"><value>{0:N0} 枚のアルバムのジャンルを取得</value><comment>Get Genres from Discogs dialog. Plural forms, see Mobile.Count.Songs.</comment></data>
   <data name="DiscogsGenres.Subtitle" xml:space="preserve"><value>各アルバムを Discogs で検索し、そのスタイルをアルバムのジャンルとして提案します。「適用」を選ぶまで何も保存されません。</value></data>
+  <data name="DiscogsGenres.ReadyHint" xml:space="preserve"><value>「検索」を押してアルバムを調べてから、変更するものにチェックを付けてください。</value></data>
   <data name="DiscogsGenres.Use" xml:space="preserve"><value>使用</value></data>
   <data name="DiscogsGenres.SourceStyles" xml:space="preserve"><value>スタイル</value></data>
   <data name="DiscogsGenres.SourceGenres" xml:space="preserve"><value>ジャンル</value></data>

@@ -4559,6 +4559,7 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="DiscogsGenres.TitleOne" xml:space="preserve"><value>1 albüm için türleri al</value></data>
   <data name="DiscogsGenres.TitleMany" xml:space="preserve"><value>{0:N0} albüm için türleri al</value><comment>Get Genres from Discogs dialog. Plural forms, see Mobile.Count.Songs.</comment></data>
   <data name="DiscogsGenres.Subtitle" xml:space="preserve"><value>Her albümü Discogs'ta arar ve stillerini albümün türleri olarak önerir. Uygula'yı seçene kadar hiçbir şey kaydedilmez.</value></data>
+  <data name="DiscogsGenres.ReadyHint" xml:space="preserve"><value>Albümleri aramak için Bul'a basın, ardından değiştirilecekleri işaretleyin.</value></data>
   <data name="DiscogsGenres.Use" xml:space="preserve"><value>Kullan</value></data>
   <data name="DiscogsGenres.SourceStyles" xml:space="preserve"><value>Stiller</value></data>
   <data name="DiscogsGenres.SourceGenres" xml:space="preserve"><value>Türler</value></data>

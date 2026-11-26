@@ -9504,6 +9504,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="DiscogsGenres.TitleOne" xml:space="preserve"><value>获取 1 张专辑的流派</value></data>
   <data name="DiscogsGenres.TitleMany" xml:space="preserve"><value>获取 {0:N0} 张专辑的流派</value><comment>Get Genres from Discogs dialog. Plural forms, see Mobile.Count.Songs.</comment></data>
   <data name="DiscogsGenres.Subtitle" xml:space="preserve"><value>在 Discogs 上查找每张专辑，并将其风格建议为专辑的流派。在你选择“应用”之前不会保存任何内容。</value></data>
+  <data name="DiscogsGenres.ReadyHint" xml:space="preserve"><value>按“查找”查询这些专辑，然后勾选要更改的专辑。</value></data>
   <data name="DiscogsGenres.Use" xml:space="preserve"><value>使用</value></data>
   <data name="DiscogsGenres.SourceStyles" xml:space="preserve"><value>风格</value></data>
   <data name="DiscogsGenres.SourceGenres" xml:space="preserve"><value>流派</value></data>

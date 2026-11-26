@@ -48,7 +48,8 @@ public partial class BulkDiscogsGenresViewModel : ViewModelBase
     [ObservableProperty] private bool _isRunning;
     [ObservableProperty] private bool _isApplying;
     [ObservableProperty] private double _progress;
-    [ObservableProperty] private string _statusMessage = L("BulkLyrics.Ready");
+    // The album ticks only take a click once Find proposed a genre: say so up front (owner 11-26).
+    [ObservableProperty] private string _statusMessage = L("DiscogsGenres.ReadyHint");
 
     public event EventHandler? Closed;
 
