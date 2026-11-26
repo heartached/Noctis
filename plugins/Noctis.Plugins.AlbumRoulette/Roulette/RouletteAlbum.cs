@@ -33,6 +33,10 @@ public sealed record RouletteAlbum(
 
     public bool IsServer => ServerAlbumId is not null;
 
+    /// <summary>False for a server album whose server does not say whether it was played: unknown
+    /// is not never, so the play filters leave it out. Library albums always know.</summary>
+    public bool PlaysKnown { get; init; } = true;
+
     /// <summary>"Single" and "EP" are their own; everything else (albums, live, soundtracks,
     /// compilations, remixes) counts as an album.</summary>
     public ReleaseKind Kind => ReleaseType.ToLowerInvariant() switch
@@ -47,7 +51,16 @@ public sealed record RouletteAlbum(
     /// <summary>1990 for 1994; 0 when the year is unknown.</summary>
     public int Decade => Year > 0 ? Year / 10 * 10 : 0;
 
-    public bool NeverPlayed => PlayCount <= 0 && LastPlayed is null;
+    public bool NeverPlayed => PlaysKnown && PlayCount <= 0 && LastPlayed is null;
+
+    /// <summary>True when it is known not to have been played since <paramref name="since"/>
+    /// (never played counts). A server album played on a date its server does not give is unknown.</summary>
+    public bool NotPlayedSince(DateTimeOffset since)
+    {
+        if (!PlaysKnown) return false;
+        if (LastPlayed is { } last) return last <= since;
+        return !IsServer || PlayCount <= 0;
+    }
 
     /// <summary>A song of its own (Song Roulette), not an album.</summary>
     public bool IsSong => Key.StartsWith(SongCatalog.KeyPrefix, StringComparison.Ordinal);
@@ -103,8 +116,11 @@ public static class SongCatalog
 }
 
 /// <summary>An album of one of the user's media servers, as Album Roulette keeps it
-/// (its own type, so nothing here needs plugin API 1.9's ServerAlbumInfo to load).</summary>
-public sealed record RemoteAlbum(string Id, string Title, string Artist, int Year, string Genre, string ServerName, string? ArtworkPath);
+/// (its own type, so nothing here needs plugin API 1.9's ServerAlbumInfo to load).
+/// <paramref name="PlayCount"/> and <paramref name="LastPlayed"/> are what its server says;
+/// both null = the server does not say.</summary>
+public sealed record RemoteAlbum(string Id, string Title, string Artist, int Year, string Genre, string ServerName, string? ArtworkPath,
+    int? PlayCount = null, DateTimeOffset? LastPlayed = null);
 
 /// <summary>Turns library tracks into albums (one per album, a track without an album is a single of its own).</summary>
 public static class AlbumCatalog
@@ -129,10 +145,11 @@ public static class AlbumCatalog
             var artist = (r.Artist ?? "").Trim();
             result.Add(new RouletteAlbum(
                 ServerKeyPrefix + r.Id, title, artist, Math.Max(0, r.Year), (r.Genre ?? "").Trim(), "Album",
-                Array.Empty<string>(), "", r.ArtworkPath, 0, null,
+                Array.Empty<string>(), "", r.ArtworkPath, Math.Max(0, r.PlayCount ?? 0), r.LastPlayed,
                 artist.Length > 0 ? new[] { artist } : Array.Empty<string>())
             {
                 ServerAlbumId = r.Id,
+                PlaysKnown = r.PlayCount is not null || r.LastPlayed is not null,
                 ServerName = r.ServerName ?? "",
                 Language = ScriptLanguage.Detect(title, title, artist),
             });

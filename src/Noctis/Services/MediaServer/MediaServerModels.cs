@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Net.Http;
+using System.Text.Json;
 using Noctis.Localization;
 
 namespace Noctis.Services.MediaServer;
@@ -18,6 +20,20 @@ public sealed class ServerAlbum
 
     /// <summary>The album's genre as the server lists it; empty when it has none.</summary>
     public string Genre { get; init; } = string.Empty;
+
+    /// <summary>
+    /// How many times the server counted the album played (Navidrome's <c>playCount</c>,
+    /// Jellyfin's UserData.PlayCount). Null when the server does not say: unknown is not
+    /// "never played", so Album Roulette's play filters leave such an album out.
+    /// </summary>
+    public int? PlayCount { get; internal set; }
+
+    /// <summary>When the server last saw it played (Navidrome's <c>played</c>, Jellyfin's
+    /// UserData.LastPlayedDate); null when never played or the server does not say.</summary>
+    public DateTimeOffset? LastPlayed { get; init; }
+
+    /// <summary>True when the server reported whether (and how often) the album was played.</summary>
+    public bool HasPlayInfo => PlayCount != null || LastPlayed != null;
 
     /// <summary>
     /// The server connection this album was listed by (<see cref="SourceConnection.Id"/>), so
@@ -110,4 +126,33 @@ public sealed class ServerSearchResult
         new Dictionary<Guid, string>();
 
     public static readonly ServerSearchResult Empty = new();
+}
+
+/// <summary>Reads the play counts and dates servers put on albums (GitHub #268 follow-up).</summary>
+internal static class ServerPlayInfo
+{
+    /// <summary>A play count field, or null when it is missing or not a number (a string number is accepted).</summary>
+    public static int? Count(JsonElement el, string name)
+    {
+        if (!el.TryGetProperty(name, out var v)) return null;
+        if (v.ValueKind == JsonValueKind.Number && v.TryGetInt64(out var l))
+            return (int)Math.Clamp(l, 0, int.MaxValue);
+        if (v.ValueKind == JsonValueKind.String &&
+            long.TryParse(v.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
+            return (int)Math.Clamp(parsed, 0, int.MaxValue);
+        return null;
+    }
+
+    /// <summary>An ISO 8601 date field ("2024-05-01T12:00:00Z"); one without a zone is taken as UTC. Null when missing or unreadable.</summary>
+    public static DateTimeOffset? Date(JsonElement el, string name)
+    {
+        if (!el.TryGetProperty(name, out var v) || v.ValueKind != JsonValueKind.String) return null;
+        var text = v.GetString();
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        if (!DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var date))
+            return null;
+        // Go's zero time ("0001-01-01T00:00:00Z") means "never".
+        return date.Year <= 1 ? null : date;
+    }
 }

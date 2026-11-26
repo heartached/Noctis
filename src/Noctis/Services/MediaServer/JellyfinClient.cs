@@ -103,7 +103,7 @@ public sealed class JellyfinClient : IMediaServerClient
 
     public async Task<IReadOnlyList<ServerAlbum>> GetAlbumsAsync(SourceConnection connection, int offset, int limit, CancellationToken ct = default)
     {
-        var query = "IncludeItemTypes=MusicAlbum&Recursive=true&SortBy=SortName&SortOrder=Ascending" +
+        var query = "IncludeItemTypes=MusicAlbum&Recursive=true&SortBy=SortName&SortOrder=Ascending&EnableUserData=true" +
                     $"&StartIndex={Math.Max(0, offset)}&Limit={Math.Clamp(limit, 1, 500)}";
         var result = await QueryItemsAsync(connection, query, ct);
         if (result == null) return Array.Empty<ServerAlbum>();
@@ -284,6 +284,7 @@ public sealed class JellyfinClient : IMediaServerClient
         var id = GetString(item, "Id");
         if (string.IsNullOrWhiteSpace(id)) return null;
 
+        var (playCount, lastPlayed) = ReadPlayInfo(item);
         var hasPrimaryImage = item.TryGetProperty("ImageTags", out var tags) &&
                               tags.ValueKind == JsonValueKind.Object &&
                               tags.TryGetProperty("Primary", out _);
@@ -296,8 +297,32 @@ public sealed class JellyfinClient : IMediaServerClient
             SongCount = GetInt(item, "ChildCount"),
             Duration = TimeSpan.FromTicks(Math.Max(0, GetLong(item, "RunTimeTicks"))),
             CoverArtId = hasPrimaryImage ? id : null,
-            Genre = FirstOfArray(item, "Genres") ?? string.Empty
+            Genre = FirstOfArray(item, "Genres") ?? string.Empty,
+            PlayCount = playCount,
+            LastPlayed = lastPlayed
         };
+    }
+
+    /// <summary>
+    /// The album's play info from its UserData. Jellyfin counts plays on the songs, so an
+    /// album's own PlayCount is often 0 even after its songs were played: a zero only means
+    /// "never played" when UnplayedItemCount says every song is unplayed. A count above 0, a
+    /// date, Played, or fewer unplayed songs than the album has all say it was played;
+    /// anything else stays unknown (null, null).
+    /// </summary>
+    internal static (int? PlayCount, DateTimeOffset? LastPlayed) ReadPlayInfo(JsonElement item)
+    {
+        if (!item.TryGetProperty("UserData", out var data) || data.ValueKind != JsonValueKind.Object)
+            return (null, null);
+        var count = ServerPlayInfo.Count(data, "PlayCount") ?? 0;
+        var last = ServerPlayInfo.Date(data, "LastPlayedDate");
+        var played = data.TryGetProperty("Played", out var p) && p.ValueKind == JsonValueKind.True;
+        var unplayed = ServerPlayInfo.Count(data, "UnplayedItemCount");
+        var songs = GetInt(item, "ChildCount");
+        if (count > 0 || last != null) return (count > 0 ? count : null, last);
+        if (played || (unplayed != null && songs > 0 && unplayed < songs)) return (1, null); // played, date unknown
+        if (unplayed != null && songs > 0) return (0, null); // every song unplayed
+        return (null, null);
     }
 
     private static Track MapSong(SourceConnection connection, JsonElement item, ServerAlbum? album)

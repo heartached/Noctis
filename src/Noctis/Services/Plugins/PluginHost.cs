@@ -2473,9 +2473,12 @@ public sealed class PluginHost
             for (var i = 0; i < albums.Count; i++)
             {
                 var a = albums[i];
+                var (playCount, lastPlayed) = Services.MediaServer.MediaServerService.CombinedPlayInfo(a);
                 result[i] = new ServerAlbumInfo(a.Key, a.Name, a.Artist, a.Year, a.Genre, a.SongCount, a.ServerName)
                 {
                     ArtworkPath = server.CachedArtworkPath(a),
+                    PlayCount = playCount,
+                    LastPlayed = lastPlayed,
                 };
             }
             return result;
