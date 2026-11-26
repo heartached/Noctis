@@ -1685,6 +1685,12 @@ Al guardar se reemplazan por la letra en pantalla. Un archivo de letra que no es
   <data name="Metadata.ArtSearchBoxHint" xml:space="preserve"><value>Álbum o artista</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
   <data name="Metadata.ArtNoMatches" xml:space="preserve"><value>No hay álbumes que coincidan en Apple Music. Prueba con otro nombre.</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
   <data name="Metadata.ArtDownloadFailed" xml:space="preserve"><value>Error en la descarga.</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibAlbums" xml:space="preserve"><value>Álbumes</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibSinglesEps" xml:space="preserve"><value>Sencillos y EP</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibAppearsOn" xml:space="preserve"><value>Aparece en</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibMatches" xml:space="preserve"><value>Mejores resultados</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibMoreBy" xml:space="preserve"><value>Más de {0}</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibReleases" xml:space="preserve"><value>{0} lanzamiento|{0} lanzamientos</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel). Plural forms, see Mobile.Count.Songs.</comment></data>
   <data name="Metadata.Downloading" xml:space="preserve"><value>Descargando…</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.SearchArtwork" xml:space="preserve"><value>Buscar portada</value><comment>Content in MetadataWindow.axaml</comment></data>
   <data name="Metadata.AddFromFile" xml:space="preserve"><value>Añadir desde archivo</value><comment>Content in MetadataWindow.axaml</comment></data>

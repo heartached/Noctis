@@ -131,6 +131,12 @@ public sealed class ITunesArtworkService
 
         /// <summary>Songs on the store album, 0 when it gave none.</summary>
         public int TrackCount { get; init; }
+
+        /// <summary>The store's id for the credited artist, 0 when it gave none.</summary>
+        public long ArtistId { get; init; }
+
+        /// <summary>The store's release date, null when it gave none.</summary>
+        public DateTime? ReleaseDate { get; init; }
     }
 
     public sealed record AnimatedArtworkVariant(
@@ -205,6 +211,147 @@ public sealed class ITunesArtworkService
             DebugLog.Write(LogSource, $"iTunes album search for \"{albumTerm}\" failed: {ex.Message}");
             return Array.Empty<ArtworkCandidate>();
         }
+    }
+
+    // ── Choose Artwork library (owner 11-26): see ArtworkLibrarySearch for the proven causes ──
+
+    /// <summary>The artist search: /search?entity=musicArtist (lenient: the whole "artist title"
+    /// query still finds the artist).</summary>
+    internal static string ArtistSearchUrl(string term, string? country)
+        => $"{SearchUrl}?term={Uri.EscapeDataString(term)}&media=music&entity=musicArtist&country={Storefront(country)}&limit=5";
+
+    /// <summary>An artist's releases, newest first: /lookup caps them at 200 and has no paging.</summary>
+    internal static string DiscographyUrl(long artistId, string? country)
+        => $"{LookupUrl}?id={artistId}&entity=album&limit={ArtworkLibrarySearch.MaxReleases}&sort=recent&country={Storefront(country)}";
+
+    /// <summary>The plain album search for the library (no attribute filter, a wide net).</summary>
+    internal static string LibraryAlbumSearchUrl(string term, string? country)
+        => $"{SearchUrl}?term={Uri.EscapeDataString(term)}&media=music&entity=album&country={Storefront(country)}&limit=50";
+
+    /// <summary>
+    /// The Choose Artwork pop-up's search (owner 11-26). In one go: the artist search, the album
+    /// search and the Apple Music web search for the query; the artist the query names is
+    /// resolved from those (<see cref="ArtworkLibrarySearch.ResolveArtist"/>) and their whole
+    /// discography read, then laid out by <see cref="ArtworkLibrarySearch.Arrange"/>. Searched in
+    /// the home storefront (the OS region, as the animated chooser). Cancellation propagates.
+    /// </summary>
+    /// <param name="preferArtist">The edited track's artist: breaks ties between artists.</param>
+    /// <param name="searchPreferredArtist">Also search <paramref name="preferArtist"/> by name when
+    /// the query holds it (a query made from the tags); a typed query is searched as typed.</param>
+    public async Task<ArtworkLibraryResult> SearchArtworkLibraryAsync(
+        string query, string? preferArtist, bool searchPreferredArtist = false, CancellationToken ct = default)
+    {
+        var q = (query ?? string.Empty).Trim();
+        if (q.Length == 0)
+            return ArtworkLibraryResult.Empty;
+
+        var country = Storefront(HomeStorefront);
+        var artistSearches = ArtworkLibrarySearch.ArtistSearchTerms(q, searchPreferredArtist ? preferArtist : null)
+            .Select(t => SearchArtistsAsync(t, country, ct))
+            .ToList();
+        var albums = SearchLibraryAlbumsAsync(q, country, ct);
+        var web = SearchAppleMusicAlbumsAsync(string.Empty, q, limit: 16, ct, country);
+        await Task.WhenAll(artistSearches.Cast<Task>().Append(albums).Append(web)).ConfigureAwait(false);
+        ct.ThrowIfCancellationRequested();
+
+        var hits = web.Result.Concat(albums.Result).ToList();
+        var known = artistSearches.SelectMany(s => s.Result)
+            .Concat(hits.Select(c => (c.ArtistName, c.ArtistId)))
+            .ToList();
+        var artist = ArtworkLibrarySearch.ResolveArtist(q, known, preferArtist);
+        var discography = artist is null
+            ? (IReadOnlyList<ArtworkCandidate>)Array.Empty<ArtworkCandidate>()
+            : await LookupArtistReleasesAsync(artist.Id, country, ct).ConfigureAwait(false);
+
+        var result = ArtworkLibrarySearch.Arrange(q, artist, discography, hits);
+        DebugLog.Write(LogSource,
+            $"artwork library \"{q}\" in {country}: {web.Result.Count} web + {albums.Result.Count} iTunes hit(s), " +
+            (artist is null ? "no artist" : $"artist \"{artist.Name}\" ({artist.Id}) rest \"{artist.Rest}\", {discography.Count} release(s)") +
+            $", {result.All.Count()} shown");
+        return result;
+    }
+
+    internal async Task<IReadOnlyList<(string Name, long Id)>> SearchArtistsAsync(string term, string? country, CancellationToken ct)
+    {
+        try
+        {
+            using var resp = await _http.GetAsync(ArtistSearchUrl(term, country), ct).ConfigureAwait(false);
+            if (!resp.IsSuccessStatusCode) return Array.Empty<(string, long)>();
+            var json = await HttpSafety.ReadStringBoundedAsync(resp.Content, ct: ct).ConfigureAwait(false);
+            return ParseArtists(json);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            DebugLog.Write(LogSource, $"artist search for \"{term}\" failed: {ex.Message}");
+            return Array.Empty<(string, long)>();
+        }
+    }
+
+    /// <summary>The artist rows of a /search?entity=musicArtist answer.</summary>
+    internal static IReadOnlyList<(string Name, long Id)> ParseArtists(string json)
+    {
+        var list = new List<(string, long)>();
+        using var doc = JsonDocument.Parse(json);
+        if (!doc.RootElement.TryGetProperty("results", out var results) || results.ValueKind != JsonValueKind.Array)
+            return list;
+        foreach (var item in results.EnumerateArray())
+        {
+            if (item.TryGetProperty("wrapperType", out var w) && w.GetString() == "artist" &&
+                item.TryGetProperty("artistId", out var idNode) && idNode.TryGetInt64(out var id) &&
+                item.TryGetProperty("artistName", out var n) && n.GetString() is { Length: > 0 } name)
+                list.Add((name, id));
+        }
+        return list;
+    }
+
+    /// <summary>The artist's releases (their own and the ones they appear on), newest first.</summary>
+    internal async Task<IReadOnlyList<ArtworkCandidate>> LookupArtistReleasesAsync(long artistId, string? country, CancellationToken ct)
+    {
+        try
+        {
+            using var resp = await _http.GetAsync(DiscographyUrl(artistId, country), ct).ConfigureAwait(false);
+            if (!resp.IsSuccessStatusCode)
+            {
+                DebugLog.Write(LogSource, $"discography of {artistId} returned HTTP {(int)resp.StatusCode}");
+                return Array.Empty<ArtworkCandidate>();
+            }
+            var json = await HttpSafety.ReadStringBoundedAsync(resp.Content, ct: ct).ConfigureAwait(false);
+            return ParseCandidates(json);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            DebugLog.Write(LogSource, $"discography of {artistId} failed: {ex.Message}");
+            return Array.Empty<ArtworkCandidate>();
+        }
+    }
+
+    private async Task<IReadOnlyList<ArtworkCandidate>> SearchLibraryAlbumsAsync(string term, string? country, CancellationToken ct)
+    {
+        try
+        {
+            using var resp = await _http.GetAsync(LibraryAlbumSearchUrl(term, country), ct).ConfigureAwait(false);
+            if (!resp.IsSuccessStatusCode) return Array.Empty<ArtworkCandidate>();
+            var json = await HttpSafety.ReadStringBoundedAsync(resp.Content, ct: ct).ConfigureAwait(false);
+            return ParseCandidates(json);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            DebugLog.Write(LogSource, $"album search for \"{term}\" failed: {ex.Message}");
+            return Array.Empty<ArtworkCandidate>();
+        }
+    }
+
+    /// <summary>The album rows of a /search or /lookup answer, in order.</summary>
+    internal static IReadOnlyList<ArtworkCandidate> ParseCandidates(string json)
+    {
+        var list = new List<ArtworkCandidate>();
+        using var doc = JsonDocument.Parse(json);
+        if (!doc.RootElement.TryGetProperty("results", out var results) || results.ValueKind != JsonValueKind.Array)
+            return list;
+        foreach (var item in results.EnumerateArray())
+            if (TryReadCandidate(item, out var c))
+                list.Add(c);
+        return list;
     }
 
     /// <summary>
@@ -857,17 +1004,27 @@ public sealed class ITunesArtworkService
             ? e.GetString() ?? string.Empty
             : string.Empty;
         var year = 0;
+        DateTime? released = null;
         if (item.TryGetProperty("releaseDate", out var r) && r.ValueKind == JsonValueKind.String &&
             r.GetString() is { Length: >= 4 } date)
+        {
             int.TryParse(date.AsSpan(0, 4), System.Globalization.NumberStyles.None,
                 System.Globalization.CultureInfo.InvariantCulture, out year);
+            if (DateTime.TryParse(date, System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out var d))
+                released = d;
+        }
         var trackCount = item.TryGetProperty("trackCount", out var tc) && tc.ValueKind == JsonValueKind.Number &&
                          tc.TryGetInt32(out var count) ? count : 0;
+        var artistId = item.TryGetProperty("artistId", out var ai) && ai.ValueKind == JsonValueKind.Number &&
+                       ai.TryGetInt64(out var aid) ? aid : 0;
         candidate = new ArtworkCandidate(id, name, artistName, thumb, standard, hiRes, viewUrl)
         {
             Explicitness = explicitness,
             ReleaseYear = year,
             TrackCount = trackCount,
+            ArtistId = artistId,
+            ReleaseDate = released,
         };
         return true;
     }

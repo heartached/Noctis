@@ -1676,6 +1676,12 @@ Kaydetmek bunları ekrandaki sözlerle değiştirir. Noctis'in yazmadığı bir 
   <data name="Metadata.ArtSearchBoxHint" xml:space="preserve"><value>Albüm veya sanatçı</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
   <data name="Metadata.ArtNoMatches" xml:space="preserve"><value>Apple Music'te eşleşen albüm yok. Başka bir ad dene.</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
   <data name="Metadata.ArtDownloadFailed" xml:space="preserve"><value>İndirme başarısız oldu.</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibAlbums" xml:space="preserve"><value>Albümler</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibSinglesEps" xml:space="preserve"><value>Single'lar ve EP'ler</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibAppearsOn" xml:space="preserve"><value>Yer aldığı çalışmalar</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibMatches" xml:space="preserve"><value>En iyi eşleşmeler</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibMoreBy" xml:space="preserve"><value>{0} sanatçısından daha fazlası</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibReleases" xml:space="preserve"><value>{0} yayın</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel). Plural forms, see Mobile.Count.Songs.</comment></data>
   <data name="Metadata.Downloading" xml:space="preserve"><value>İndiriliyor…</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.SearchArtwork" xml:space="preserve"><value>Kapak Ara</value><comment>Content in MetadataWindow.axaml</comment></data>
   <data name="Metadata.AddFromFile" xml:space="preserve"><value>Dosyadan ekle</value><comment>Content in MetadataWindow.axaml</comment></data>

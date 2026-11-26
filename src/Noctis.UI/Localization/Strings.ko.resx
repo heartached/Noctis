@@ -4537,6 +4537,12 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Metadata.ArtSearchBoxHint" xml:space="preserve"><value>앨범 또는 아티스트</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
   <data name="Metadata.ArtNoMatches" xml:space="preserve"><value>Apple Music에서 일치하는 앨범이 없습니다. 다른 이름으로 시도해 보세요.</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
   <data name="Metadata.ArtDownloadFailed" xml:space="preserve"><value>다운로드하지 못했습니다.</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibAlbums" xml:space="preserve"><value>앨범</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibSinglesEps" xml:space="preserve"><value>싱글 및 EP</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibAppearsOn" xml:space="preserve"><value>참여 작품</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibMatches" xml:space="preserve"><value>가장 일치하는 항목</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibMoreBy" xml:space="preserve"><value>{0}의 다른 작품</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibReleases" xml:space="preserve"><value>{0}개 작품</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel). Plural forms, see Mobile.Count.Songs.</comment></data>
   <data name="Metadata.Downloading" xml:space="preserve">
     <value>다운로드 중…</value>
     <comment>Text in MetadataWindow.axaml</comment>

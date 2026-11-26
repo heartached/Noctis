@@ -71,9 +71,80 @@ public partial class ArtworkChooserCard : UserControl
     public static readonly StyledProperty<ICommand?> PreviewCommandProperty =
         AvaloniaProperty.Register<ArtworkChooserCard, ICommand?>(nameof(PreviewCommand));
 
+    /// <summary>Owner 11-26: the results in titled sections (<see cref="ViewModels.ArtworkResultSection"/>);
+    /// while it holds any, they show instead of the flat <see cref="Items"/> grid.</summary>
+    public static readonly StyledProperty<IEnumerable?> SectionsProperty =
+        AvaloniaProperty.Register<ArtworkChooserCard, IEnumerable?>(nameof(Sections));
+
+    /// <summary>The artist whose artwork library is shown (the header); empty for none.</summary>
+    public static readonly StyledProperty<string?> LibraryTitleProperty =
+        AvaloniaProperty.Register<ArtworkChooserCard, string?>(nameof(LibraryTitle));
+
+    /// <summary>Under the header: "36 releases".</summary>
+    public static readonly StyledProperty<string?> LibraryDetailProperty =
+        AvaloniaProperty.Register<ArtworkChooserCard, string?>(nameof(LibraryDetail));
+
+    /// <summary>The wider, taller library card (five tiles a row) rather than the four-tile one.</summary>
+    public static readonly StyledProperty<bool> IsWideProperty =
+        AvaloniaProperty.Register<ArtworkChooserCard, bool>(nameof(IsWide));
+
+    public static readonly DirectProperty<ArtworkChooserCard, bool> ShowsSectionsProperty =
+        AvaloniaProperty.RegisterDirect<ArtworkChooserCard, bool>(nameof(ShowsSections), c => c.ShowsSections);
+
+    public static readonly DirectProperty<ArtworkChooserCard, bool> ShowsFlatResultsProperty =
+        AvaloniaProperty.RegisterDirect<ArtworkChooserCard, bool>(nameof(ShowsFlatResults), c => c.ShowsFlatResults);
+
+    public static readonly DirectProperty<ArtworkChooserCard, bool> ShowsLibraryHeaderProperty =
+        AvaloniaProperty.RegisterDirect<ArtworkChooserCard, bool>(nameof(ShowsLibraryHeader), c => c.ShowsLibraryHeader);
+
+    private bool _showsSections;
+    private bool _showsFlatResults;
+    private bool _showsLibraryHeader;
+    private System.Collections.Specialized.INotifyCollectionChanged? _watchedSections;
+
     public ArtworkChooserCard()
     {
         InitializeComponent();
+    }
+
+    public IEnumerable? Sections { get => GetValue(SectionsProperty); set => SetValue(SectionsProperty, value); }
+    public string? LibraryTitle { get => GetValue(LibraryTitleProperty); set => SetValue(LibraryTitleProperty, value); }
+    public string? LibraryDetail { get => GetValue(LibraryDetailProperty); set => SetValue(LibraryDetailProperty, value); }
+    public bool IsWide { get => GetValue(IsWideProperty); set => SetValue(IsWideProperty, value); }
+
+    /// <summary>Results showing, in sections.</summary>
+    public bool ShowsSections { get => _showsSections; private set => SetAndRaise(ShowsSectionsProperty, ref _showsSections, value); }
+
+    /// <summary>Results showing, as the flat grid (no sections given).</summary>
+    public bool ShowsFlatResults { get => _showsFlatResults; private set => SetAndRaise(ShowsFlatResultsProperty, ref _showsFlatResults, value); }
+
+    public bool ShowsLibraryHeader { get => _showsLibraryHeader; private set => SetAndRaise(ShowsLibraryHeaderProperty, ref _showsLibraryHeader, value); }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == SectionsProperty)
+        {
+            if (_watchedSections != null) _watchedSections.CollectionChanged -= OnSectionsChanged;
+            _watchedSections = change.NewValue as System.Collections.Specialized.INotifyCollectionChanged;
+            if (_watchedSections != null) _watchedSections.CollectionChanged += OnSectionsChanged;
+            UpdateResultsLayout();
+        }
+        else if (change.Property == HasResultsProperty || change.Property == LibraryTitleProperty)
+        {
+            UpdateResultsLayout();
+        }
+    }
+
+    private void OnSectionsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        => UpdateResultsLayout();
+
+    private void UpdateResultsLayout()
+    {
+        var sections = Sections?.GetEnumerator().MoveNext() == true;
+        ShowsSections = HasResults && sections;
+        ShowsFlatResults = HasResults && !sections;
+        ShowsLibraryHeader = ShowsSections && !string.IsNullOrEmpty(LibraryTitle);
     }
 
     public string? Title { get => GetValue(TitleProperty); set => SetValue(TitleProperty, value); }

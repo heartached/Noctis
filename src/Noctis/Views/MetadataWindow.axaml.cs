@@ -293,13 +293,15 @@ public partial class MetadataWindow : Window
 
     private SearchPopoverMotion? CreateArtworkSearchMotion()
     {
-        // Declared on the button bar, but shown centered over the preview.
+        // Declared on the button bar, but shown centered over the editor card. Owner 11-26: the
+        // library card is wide and tall; centred on the preview (right of the sidebar, below the
+        // header) it ran past the card's bottom edge.
         if (ArtworkButtonsBar is null
             || FlyoutBase.GetAttachedFlyout(ArtworkButtonsBar) is not Avalonia.Controls.Flyout flyout)
             return null;
         // Keep the VM in sync however the pop-up goes (click outside, Esc, a pick), so a
         // later search reopens it.
-        return new SearchPopoverMotion(flyout, () => ArtworkPreviewAnchor, () =>
+        return new SearchPopoverMotion(flyout, () => (Control?)EditorCard ?? ArtworkPreviewAnchor, () =>
         {
             if (DataContext is MetadataViewModel vm) vm.IsArtworkSearchOpen = false;
         });

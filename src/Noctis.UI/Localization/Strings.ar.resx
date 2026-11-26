@@ -4537,6 +4537,12 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Metadata.ArtSearchBoxHint" xml:space="preserve"><value>الألبوم أو الفنان</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
   <data name="Metadata.ArtNoMatches" xml:space="preserve"><value>لا توجد ألبومات مطابقة على Apple Music. جرّب اسمًا آخر.</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
   <data name="Metadata.ArtDownloadFailed" xml:space="preserve"><value>فشل التنزيل.</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibAlbums" xml:space="preserve"><value>الألبومات</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibSinglesEps" xml:space="preserve"><value>الأغاني المنفردة وEP</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibAppearsOn" xml:space="preserve"><value>يظهر في</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibMatches" xml:space="preserve"><value>أفضل النتائج</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibMoreBy" xml:space="preserve"><value>المزيد من {0}</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibReleases" xml:space="preserve"><value>{0} إصدار|إصدار واحد|إصداران|{0} إصدارات|{0} إصدارًا|{0} إصدار</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel). Plural forms, see Mobile.Count.Songs.</comment></data>
   <data name="Metadata.Downloading" xml:space="preserve">
     <value>جارٍ التنزيل…</value>
     <comment>Text in MetadataWindow.axaml</comment>
