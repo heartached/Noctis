@@ -7641,6 +7641,14 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <value>초기화</value>
     <comment>Settings section label</comment>
   </data>
+  <data name="Settings.Section.Versions" xml:space="preserve">
+    <value>버전</value>
+    <comment>Settings section label (Advanced tab, Developer Mode: the version list)</comment>
+  </data>
+  <data name="Settings.Section.Logs" xml:space="preserve">
+    <value>로그</value>
+    <comment>Settings section label (Advanced tab, Developer Mode: the session log)</comment>
+  </data>
   <data name="Settings.Section.YourAccount" xml:space="preserve">
     <value>내 계정</value>
     <comment>Settings section label</comment>
