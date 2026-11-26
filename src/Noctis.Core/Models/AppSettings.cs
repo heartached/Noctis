@@ -1508,6 +1508,13 @@ public class AppSettings : IJsonOnDeserializing
     /// the song's artist and title to YouTube.</summary>
     public bool MusicVideoAutoFind { get; set; }
 
+    /// <summary>11-25: yt-dlp reads the YouTube sign-in (cookies) of <see cref="MusicVideoCookiesBrowser"/>
+    /// for the music video lookups, past YouTube's "confirm you're not a bot". Off by default.</summary>
+    public bool MusicVideoUseBrowserCookies { get; set; }
+
+    /// <summary>yt-dlp's <c>--cookies-from-browser</c> name ("firefox", "chrome", "edge"…).</summary>
+    public string MusicVideoCookiesBrowser { get; set; } = "firefox";
+
     /// <summary>Opt-in fullscreen focus — dims everything but the active line and its
     /// closest neighbors while the lyrics page is fullscreen.</summary>
     public bool LyricsFullScreenFocusEnabled { get; set; }

@@ -441,6 +441,7 @@ public partial class MainWindowViewModel : ViewModelBase
         Settings = new SettingsViewModel(persistence, library, playHistory, mediaServer);
         Settings.SetAudioPlayer(audioPlayer);
         Settings.SetPlayer(Player);
+        Settings.AttachMusicVideoStreams(Player.MusicVideoStreams);
         Player.SetSettingsViewModel(Settings);
         // GitHub #186: the island's quick playlist pop-up with none set leads to their pickers.
         Player.QuickPlaylistSettingsRequested += (_, _) =>

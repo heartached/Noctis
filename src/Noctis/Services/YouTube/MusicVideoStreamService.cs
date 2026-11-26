@@ -11,6 +11,9 @@ public sealed record MusicVideoStream(string VideoId, string Url, DateTime Expir
     public bool NeedsRefresh(DateTime nowUtc) => nowUtc >= ExpiresUtc - RefreshMargin;
 }
 
+/// <summary>The last music video lookup was refused (bot check) or could not read the browser sign-in.</summary>
+public sealed record MusicVideoProblem(YtDlpFailureKind Kind, string Message, DateTime AtUtc);
+
 /// <summary>
 /// Music videos streamed from YouTube behind the lyrics (Discord #feedback 11-25, "Automatic
 /// YouTube Music Video Streaming"). Core, not a plugin: the synced video layer, yt-dlp and its
@@ -24,6 +27,12 @@ public sealed record MusicVideoStream(string VideoId, string Url, DateTime Expir
 /// without a video does not search on every play; a failure (offline, yt-dlp missing) is not
 /// remembered at all.
 /// </para>
+/// <para>
+/// YouTube's "confirm you're not a bot" (11-25): the automatic search, resolve, refresh and
+/// recovery stop for <see cref="BotCheckCooldown"/> instead of asking again per song (saved
+/// choices stay); the dialog still asks when the user does, and the message shows there and
+/// in Settings (<see cref="LastProblem"/>) until a run gets through.
+/// </para>
 /// </summary>
 public sealed class MusicVideoStreamService
 {
@@ -34,16 +43,71 @@ public sealed class MusicVideoStreamService
     /// <summary>A URL without an expiry is reused this long.</summary>
     public static readonly TimeSpan UnknownUrlLifetime = TimeSpan.FromHours(1);
     private const int MaxCachedUrls = 32;
+    /// <summary>After a bot check, nothing automatic asks YouTube again for this long.</summary>
+    public static readonly TimeSpan BotCheckCooldown = TimeSpan.FromMinutes(30);
 
     private readonly IYouTubeVideoSource _source;
     private readonly MusicVideoChoiceStore _store;
     private readonly object _cacheLock = new();
     private readonly Dictionary<string, (string Url, DateTime Expires)> _urls = new(StringComparer.Ordinal);
+    private readonly object _problemLock = new();
+    private DateTime _coolDownUntil = DateTime.MinValue;
+    private MusicVideoProblem? _lastProblem;
 
     internal Func<DateTime> Clock { get; set; } = () => DateTime.UtcNow;
 
     /// <summary>A song's choice changed (the dialog): the player re-resolves when it is the current song.</summary>
     public event EventHandler<Guid>? ChoiceChanged;
+
+    /// <summary><see cref="LastProblem"/> changed (raised on the calling thread, any thread).</summary>
+    public event EventHandler? ProblemChanged;
+
+    /// <summary>The last run's bot check / sign-in failure; null once a run got through.</summary>
+    public MusicVideoProblem? LastProblem { get { lock (_problemLock) return _lastProblem; } }
+
+    /// <summary>A bot check was hit less than <see cref="BotCheckCooldown"/> ago: nothing automatic runs yt-dlp.</summary>
+    public bool IsCoolingDown { get { lock (_problemLock) return Clock() < _coolDownUntil; } }
+
+    /// <summary>
+    /// Records a failed yt-dlp run: a bot check starts the cool-down, a bot check or cookie
+    /// failure becomes <see cref="LastProblem"/>. True when it was one of those.
+    /// </summary>
+    public bool NoteFailure(Exception ex)
+    {
+        if (YtDlpAccessException.Find(ex) is not { } access) return false;
+        lock (_problemLock)
+        {
+            var now = Clock();
+            if (access.Kind == YtDlpFailureKind.BotCheck) _coolDownUntil = now + BotCheckCooldown;
+            _lastProblem = new MusicVideoProblem(access.Kind, access.Message, now);
+        }
+        DebugLogger.Warn(DebugLogger.Category.State, "MusicVideo.AccessProblem",
+            access.Kind == YtDlpFailureKind.BotCheck ? $"{access.Kind}, paused {BotCheckCooldown.TotalMinutes:0} min" : access.Kind.ToString());
+        ProblemChanged?.Invoke(this, EventArgs.Empty);
+        return true;
+    }
+
+    /// <summary>Ends the cool-down and clears the message (a run got through, or the sign-in setting changed).</summary>
+    public void ClearProblem()
+    {
+        bool changed;
+        lock (_problemLock)
+        {
+            changed = _lastProblem != null || _coolDownUntil != DateTime.MinValue;
+            _lastProblem = null;
+            _coolDownUntil = DateTime.MinValue;
+        }
+        if (changed) ProblemChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void NoteSuccess() => ClearProblem();
+
+    private bool SkipForCoolDown(string what)
+    {
+        if (!IsCoolingDown) return false;
+        DebugLogger.Info(DebugLogger.Category.State, "MusicVideo.CoolingDown", what);
+        return true;
+    }
 
     public MusicVideoStreamService(IYouTubeVideoSource source, MusicVideoChoiceStore store)
     {
@@ -86,16 +150,19 @@ public sealed class MusicVideoStreamService
             }
         }
 
+        if (SkipForCoolDown("search")) return null;
         IReadOnlyList<YouTubeVideoInfo> results;
         try
         {
             results = await _source.SearchAsync(MusicVideoMatcher.SearchQuery(track.Artist, track.Title), SearchCount, ct).ConfigureAwait(false);
+            NoteSuccess();
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception ex)
         {
             DebugLogger.Warn(DebugLogger.Category.State, "MusicVideo.SearchFailed", ex.Message);
-            return null; // offline / yt-dlp trouble: not remembered, the next play tries again
+            NoteFailure(ex);
+            return null; // offline / yt-dlp trouble / bot check: not remembered, a later play tries again
         }
 
         ct.ThrowIfCancellationRequested();
@@ -114,24 +181,55 @@ public sealed class MusicVideoStreamService
     public async Task<MusicVideoStream?> RefreshAsync(MusicVideoStream stream, CancellationToken ct)
     {
         lock (_cacheLock) _urls.Remove(stream.VideoId);
+        if (SkipForCoolDown("refresh")) return null;
         try
         {
             var url = await _source.ResolveStreamUrlAsync(stream.VideoId, YtDlpParsing.StreamMaxHeight, ct).ConfigureAwait(false);
+            NoteSuccess();
             return stream with { Url = url, ExpiresUtc = Remember(stream.VideoId, url) };
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception ex)
         {
             DebugLogger.Warn(DebugLogger.Category.State, "MusicVideo.RefreshFailed", ex.Message);
+            NoteFailure(ex);
             return null;
         }
     }
 
-    /// <summary>The search the "Wrong video?" dialog lists, best match first.</summary>
+    /// <summary>The search the "Wrong video?" dialog lists, best match first. The user asked, so
+    /// it runs during a cool-down too; a bot check / sign-in failure is recorded and rethrown.</summary>
     public async Task<IReadOnlyList<YouTubeVideoInfo>> SearchCandidatesAsync(Track track, CancellationToken ct)
     {
-        var results = await _source.SearchAsync(MusicVideoMatcher.SearchQuery(track.Artist, track.Title), SearchCount, ct).ConfigureAwait(false);
+        IReadOnlyList<YouTubeVideoInfo> results;
+        try
+        {
+            results = await _source.SearchAsync(MusicVideoMatcher.SearchQuery(track.Artist, track.Title), SearchCount, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            NoteFailure(ex);
+            throw;
+        }
+        NoteSuccess();
         return MusicVideoMatcher.Rank(results, track.Artist, track.Title, track.Duration.TotalSeconds);
+    }
+
+    /// <summary>A pasted link's video (the dialog), recorded like <see cref="SearchCandidatesAsync"/>.</summary>
+    public async Task<YouTubeVideoInfo?> LookUpLinkAsync(string url, CancellationToken ct)
+    {
+        YouTubeVideoInfo? info;
+        try
+        {
+            info = await _source.GetInfoAsync(url, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            NoteFailure(ex);
+            throw;
+        }
+        NoteSuccess();
+        return info;
     }
 
     /// <summary>The user's video for this song: it wins over any automatic match from now on.</summary>
@@ -176,15 +274,19 @@ public sealed class MusicVideoStreamService
             if (_urls.TryGetValue(videoId, out var hit) && Clock() < hit.Expires - MusicVideoStream.RefreshMargin)
                 return new MusicVideoStream(videoId, hit.Url, hit.Expires, isUser);
         }
+        // The saved choice stays as it is; it is resolved once the cool-down is over.
+        if (SkipForCoolDown("resolve")) return null;
         try
         {
             var url = await _source.ResolveStreamUrlAsync(videoId, YtDlpParsing.StreamMaxHeight, ct).ConfigureAwait(false);
+            NoteSuccess();
             return new MusicVideoStream(videoId, url, Remember(videoId, url), isUser);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception ex)
         {
             DebugLogger.Warn(DebugLogger.Category.State, "MusicVideo.ResolveFailed", ex.Message);
+            NoteFailure(ex);
             // An automatic match whose video is gone is dropped, so the next play searches again.
             if (forget && IsGone(ex)) _store.Remove(track.Id);
             return null;

@@ -9545,6 +9545,13 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Settings.MusicVideoAutoFind" xml:space="preserve"><value>自动查找音乐视频</value><comment>Settings ▸ Lyrics ▸ Music videos toggle (Discord 11-25)</comment></data>
   <data name="Settings.MusicVideoAutoFindHint" xml:space="preserve"><value>没有自带音乐视频的歌曲会从 YouTube 获取一个，在歌词后方静音串流播放。会把歌曲的艺人和标题发送给 YouTube。</value><comment>Settings ▸ Lyrics ▸ Music videos toggle hint</comment></data>
   <data name="Settings.MusicVideoToolNeeded" xml:space="preserve"><value>在 YouTube 上查找视频需要 yt-dlp。</value><comment>Shown when yt-dlp is missing for music video search/streaming</comment></data>
+  <data name="YtDlp.BotCheck" xml:space="preserve"><value>YouTube 要求确认你不是机器人。请开启“使用我浏览器的 YouTube 登录”，或稍后再试。</value><comment>Music video lookup refused by YouTube's bot check, no browser sign-in in use</comment></data>
+  <data name="YtDlp.BotCheckSignedIn" xml:space="preserve"><value>YouTube 仍要求确认你不是机器人。请确认你已在 {0} 中登录 YouTube，或稍后再试。</value><comment>Bot check even with the browser sign-in; {0} = browser name (Firefox, Chrome…)</comment></data>
+  <data name="YtDlp.CookiesUnreadable" xml:space="preserve"><value>无法从 {0} 读取你的 YouTube 登录信息。请完全关闭 {0} 后重试，或选择其他浏览器（Firefox 效果最好）。</value><comment>yt-dlp could not read the browser's cookies (locked/encrypted); {0} = browser name</comment></data>
+  <data name="YtDlp.CookiesNotFound" xml:space="preserve"><value>在这台电脑上找不到 {0} 或其 YouTube 登录。请选择你用来看 YouTube 的浏览器。</value><comment>The chosen browser or its profile is not on this computer; {0} = browser name</comment></data>
+  <data name="Settings.MusicVideoBrowserSignIn" xml:space="preserve"><value>使用我浏览器的 YouTube 登录</value><comment>Settings ▸ Lyrics ▸ Music videos toggle</comment></data>
+  <data name="Settings.MusicVideoBrowserSignInHint" xml:space="preserve"><value>用于 YouTube 要求确认你不是机器人的情况。yt-dlp 会在你的电脑上本地读取此浏览器的 YouTube Cookie，且只用于它自己的 YouTube 请求。</value><comment>Settings ▸ Lyrics ▸ Music videos toggle hint</comment></data>
+  <data name="Settings.MusicVideoBrowser" xml:space="preserve"><value>浏览器</value><comment>Settings ▸ Lyrics ▸ Music videos: label of the browser picker</comment></data>
   <data name="MusicVideo.Title" xml:space="preserve"><value>来自 YouTube 的音乐视频</value><comment>Music Video from YouTube dialog title</comment></data>
   <data name="MusicVideo.PasteLink" xml:space="preserve"><value>粘贴 YouTube 链接</value><comment>Music video dialog: label of the link box</comment></data>
   <data name="MusicVideo.LinkWatermark" xml:space="preserve"><value>youtube.com/watch?v=… 或 youtu.be/…</value><comment>Music video dialog: link box placeholder</comment></data>

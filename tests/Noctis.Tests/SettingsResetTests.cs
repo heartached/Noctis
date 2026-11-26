@@ -163,6 +163,7 @@ public class SettingsResetTests : IDisposable
         [nameof(AppSettings.AnimatedArtworkQuality)] = _ => AnimatedArtworkQualities.P2160,
         [nameof(AppSettings.AlbumPageTintStrength)] = _ => 50,
         [nameof(AppSettings.UpmixMode)] = _ => "Surround",
+        [nameof(AppSettings.MusicVideoCookiesBrowser)] = _ => "edge",
         [nameof(AppSettings.AudioBalance)] = _ => 40,
         [nameof(AppSettings.SleepTimerFadeSeconds)] = _ => 60,
         [nameof(AppSettings.LyricsStudioLanguage)] = _ => "en",

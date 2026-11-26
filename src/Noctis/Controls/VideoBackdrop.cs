@@ -391,6 +391,8 @@ public sealed class VideoBackdrop : Control
                 // VLC's event thread: no player calls in here, only flags and a post.
                 Player.EncounteredError += OnPlayerError;
                 Player.EndReached += OnPlayerEndReached;
+                // Cache progress while it starts or re-buffers: slow, not stalled (StreamSyncGate).
+                Player.Buffering += OnPlayerBuffering;
             }
         }
 
@@ -515,6 +517,11 @@ public sealed class VideoBackdrop : Control
 
         private void OnPlayerError(object? sender, EventArgs e) => Fail("error");
 
+        private void OnPlayerBuffering(object? sender, MediaPlayerBufferingEventArgs e)
+        {
+            if (!_dead) _gate?.NoteBuffering(e.Cache);
+        }
+
         private void OnPlayerEndReached(object? sender, EventArgs e)
         {
             if (_gate != null && StreamSyncGate.IsPrematureEnd(_gate.LastTargetMs, Interlocked.Read(ref _lengthMs)))
@@ -525,7 +532,8 @@ public sealed class VideoBackdrop : Control
         private void Fail(string reason)
         {
             if (_dead || _gate == null || Interlocked.Exchange(ref _failed, 1) != 0) return;
-            DebugLogger.Warn(DebugLogger.Category.Playback, "Backdrop.StreamFailed", reason);
+            DebugLogger.Warn(DebugLogger.Category.Playback, "Backdrop.StreamFailed",
+                _gate.IsAwaitingFrame ? reason + " (no first frame)" : reason);
             Dispatcher.UIThread.Post(() =>
             {
                 if (_dead || _owner._generation != _ownerGeneration) return;
@@ -584,6 +592,7 @@ public sealed class VideoBackdrop : Control
                 {
                     try { Player.EncounteredError -= OnPlayerError; } catch { }
                     try { Player.EndReached -= OnPlayerEndReached; } catch { }
+                    try { Player.Buffering -= OnPlayerBuffering; } catch { }
                 }
                 try { Player.Stop(); } catch { }
 #pragma warning disable CS8625

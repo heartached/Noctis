@@ -5059,6 +5059,40 @@
                     </Button>
                 </Grid>
             </Border>
+            <!-- 11-25: past YouTube's "confirm you're not a bot", yt-dlp may read the YouTube
+                 sign-in (cookies) of a browser on this computer. Off by default. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
+                        <TextBlock Text="{loc:T Settings.MusicVideoBrowserSignIn}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.MusicVideoBrowserSignInHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          x:Name="MusicVideoBrowserSignInToggle"
+                                          AutomationProperties.Name="{loc:T Settings.MusicVideoBrowserSignIn}"
+                                          IsChecked="{Binding MusicVideoUseBrowserCookies}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <Border Classes="setting-row" IsVisible="{Binding MusicVideoUseBrowserCookies}">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Grid.Column="0" Text="{loc:T Settings.MusicVideoBrowser}" FontSize="13" FontWeight="SemiBold"
+                               VerticalAlignment="Center" Margin="0,0,12,0"/>
+                    <ComboBox Grid.Column="1"
+                              x:Name="MusicVideoCookieBrowserCombo"
+                              AutomationProperties.Name="{loc:T Settings.MusicVideoBrowser}"
+                              Classes="pill-combo stable-popup"
+                              Width="164"
+                              ItemsSource="{Binding MusicVideoCookieBrowserNames}"
+                              SelectedItem="{Binding MusicVideoCookieBrowserName}"
+                              VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <Border Classes="setting-row" IsVisible="{Binding HasMusicVideoProblem}">
+                <TextBlock x:Name="MusicVideoProblemNote" Text="{Binding MusicVideoProblemText}"
+                           FontSize="12" Opacity="0.75" TextWrapping="Wrap"/>
+            </Border>
             </StackPanel>
             </Border>
 
