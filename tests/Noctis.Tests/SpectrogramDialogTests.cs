@@ -69,6 +69,8 @@ public class SpectrogramDialogTests : IDisposable
         public readonly TaskCompletionSource Release = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public CancellationToken Token;
         public volatile bool SawCancel;
+        /// <summary>Optional spectrum to hand back (columns → data); flat -60 dB otherwise.</summary>
+        public Func<int, SpectrogramData>? Data;
 
         public async Task<SpectrogramData> Run(string ffmpeg, Track track, int columns, IProgress<double> progress, CancellationToken ct)
         {
@@ -77,6 +79,7 @@ public class SpectrogramDialogTests : IDisposable
             Started.TrySetResult();
             try { await Release.Task.WaitAsync(ct); }
             catch (OperationCanceledException) { SawCancel = true; throw; }
+            if (Data != null) return Data(columns);
             var db = new float[columns * SpectrogramRenderer.Bins];
             Array.Fill(db, -60f);
             return new SpectrogramData
@@ -378,6 +381,136 @@ public class SpectrogramDialogTests : IDisposable
                     CloseIfOpen(win);
                     owner.Close();
                 }
+            });
+        }
+    }
+
+    // ── Explicit badge + "is this really lossless?" verdict (owner 11-26) ──
+
+    /// <summary>Music-like spectrum of an MP3 128 converted to FLAC: level falling with
+    /// frequency, a beat in time, and nothing above a 16.8 kHz shelf.</summary>
+    internal static SpectrogramData TranscodeSpectrum(int columns, double cutoffHz = 16800)
+    {
+        var rng = new Random(3);
+        int bins = SpectrogramRenderer.Bins;
+        double binHz = 44100 / 2.0 / bins;
+        var db = new float[columns * bins];
+        for (int c = 0; c < columns; c++)
+        {
+            double beat = (c % 25) < 4 ? 8 : 0;
+            double section = c > columns * 0.6 && c < columns * 0.7 ? -14 : 0;
+            for (int k = 0; k < bins; k++)
+            {
+                double hz = k * binHz;
+                double v = hz >= cutoffHz ? -120
+                    : -28 - 22 * Math.Log10(1 + hz / 400) + beat + section + (rng.NextDouble() * 12 - 8);
+                db[c * bins + k] = (float)Math.Clamp(v, -120, 0);
+            }
+        }
+        return new SpectrogramData { Columns = columns, Bins = bins, Db = db, SampleRate = 44100, Duration = TimeSpan.FromSeconds(235) };
+    }
+
+    private Track MakeExplicitFlac() => new()
+    {
+        Id = Guid.NewGuid(), Title = "SLIDE", Artist = "Example Artist", Album = "Example Album", FilePath = _file,
+        Codec = "Flac Audio", SampleRate = 44100, BitsPerSample = 24, Bitrate = 1602,
+        Duration = TimeSpan.FromSeconds(235), IsExplicit = true,
+    };
+
+    [AvaloniaFact]
+    public void ExplicitBadge_FollowsTheTitle_AndTheVerdictLandsAfterThePlot()
+    {
+        EnsureAppStyles();
+        var fake = new FakeAnalysis { Data = cols => TranscodeSpectrum(cols) };
+        var probeGate = new TaskCompletionSource<bool?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var vm = new SpectrogramViewModel(MakeExplicitFlac(), new StubConverter(), fake.Run, (_, _, ct) => probeGate.Task.WaitAsync(ct));
+        var win = new SpectrogramWindow(vm) { Width = 1300, Height = 900, RequestedThemeVariant = ThemeVariant.Dark };
+        win.Show();
+        try
+        {
+            // E badge: visible, right after the title, the shared explicit-badge style.
+            var badge = win.FindControl<Border>("ExplicitBadge")!;
+            var title = win.FindControl<TextBlock>("TitleText")!;
+            Assert.True(PumpUntil(() => badge.IsEffectivelyVisible && badge.Bounds.Width > 0));
+            Assert.Contains("explicit-badge", badge.Classes);
+            var titleRight = title.TranslatePoint(new Point(title.Bounds.Width, 0), win)!.Value.X;
+            var badgeLeft = badge.TranslatePoint(new Point(0, 0), win)!.Value.X;
+            Assert.InRange(badgeLeft - titleRight, 7.5, 8.5);
+
+            // Nothing about the verdict while the decode runs.
+            var row = win.FindControl<StackPanel>("VerdictRow")!;
+            Assert.True(PumpUntil(() => fake.Started.Task.IsCompleted));
+            Assert.False(row.IsEffectivelyVisible);
+
+            // Plot first; the verdict says "Checking..." while the 24-bit probe is still out.
+            fake.Release.TrySetResult();
+            Assert.True(PumpUntil(() => vm.IsReady && vm.IsCheckingVerdict), "verdict never started");
+            Assert.True(row.IsEffectivelyVisible);
+            Assert.Equal(Loc.T("Spectrogram.Verdict.Checking"), win.FindControl<TextBlock>("VerdictText")!.Text);
+            Assert.False(win.FindControl<Canvas>("CutoffMarker")!.IsEffectivelyVisible);
+
+            probeGate.SetResult(true);
+            Assert.True(PumpUntil(() => vm.Verdict != null && !vm.IsCheckingVerdict), "verdict never landed");
+            PumpUntil(() => false, 50);
+            Assert.Equal(SourceQualityVerdict.ProbablyLossySource, vm.Verdict!.Verdict);
+            Assert.Equal(Loc.T("Spectrogram.Verdict.ProbablyLossy"), win.FindControl<TextBlock>("VerdictText")!.Text);
+            var detail = win.FindControl<TextBlock>("VerdictDetail")!;
+            Assert.True(detail.IsEffectivelyVisible);
+            Assert.Contains(Loc.T("Spectrogram.Verdict.Padded24"), detail.Text);
+            Assert.Contains("warn", win.FindControl<Border>("VerdictPill")!.Classes);
+            Assert.Equal(Loc.T("Spectrogram.Verdict.Tip"), ToolTip.GetTip(row));
+
+            // The dashed marker sits at the cutoff's height in the composed image.
+            var marker = win.FindControl<Canvas>("CutoffMarker")!;
+            Assert.True(marker.IsEffectivelyVisible);
+            var line = win.FindControl<Avalonia.Controls.Shapes.Line>("CutoffLine")!;
+            var expectedY = 10 + SpectrogramViewModel.PlotHeight * (1 - vm.Verdict.CutoffHz!.Value / 22050);
+            Assert.InRange(line.StartPoint.Y, expectedY - 1, expectedY + 1);
+            Assert.NotNull(line.StrokeDashArray);
+        }
+        finally { CloseIfOpen(win); }
+    }
+
+    [AvaloniaFact]
+    public void NotExplicit_NoBadge()
+    {
+        EnsureAppStyles();
+        var (win, _, _, _) = Open();
+        try
+        {
+            Assert.False(win.FindControl<Border>("ExplicitBadge")!.IsEffectivelyVisible);
+        }
+        finally { CloseIfOpen(win); }
+    }
+
+    /// <summary>Real Skia only (NOCTIS_TEST_SKIA=1): the window with a synthetic MP3→FLAC
+    /// spectrum, verdict row and cutoff marker, saved to D:/NoctisWT/test-1126/shots-c/.</summary>
+    [AvaloniaFact]
+    public void Probe_SavesTheVerdictShot()
+    {
+        if (!HeadlessTestApp.RealRendering)
+            Assert.Skip("needs real Skia rendering (NOCTIS_TEST_SKIA=1)");
+        EnsureAppStyles();
+        var dir = Environment.GetEnvironmentVariable("NOCTIS_SPECTRO_SHOTS_DIR") ?? "D:/NoctisWT/test-1126/shots-c";
+        Directory.CreateDirectory(dir);
+        foreach (var (theme, name) in new[] { (ThemeVariant.Dark, "dark"), (ThemeVariant.Light, "light") })
+        {
+            AccentTestHarness.WithAccent("#E74856", theme, () =>
+            {
+                var fake = new FakeAnalysis { Data = cols => TranscodeSpectrum(cols) };
+                fake.Release.TrySetResult();
+                var vm = new SpectrogramViewModel(MakeExplicitFlac(), new StubConverter(), fake.Run, (_, _, _) => Task.FromResult<bool?>(true));
+                var win = new SpectrogramWindow(vm) { Width = 1300, Height = 900, RequestedThemeVariant = theme };
+                win.Show();
+                try
+                {
+                    var image = win.FindControl<Image>("PlotImage")!;
+                    Assert.True(PumpUntil(() => vm.Verdict != null && image.Opacity > 0.999, 5000));
+                    PumpUntil(() => false, 150);
+                    win.CaptureRenderedFrame()!.Save(Path.Combine(dir, $"spectrogram-verdict-{name}.png"),
+                        Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
+                }
+                finally { CloseIfOpen(win); }
             });
         }
     }

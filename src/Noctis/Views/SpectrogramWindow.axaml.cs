@@ -86,6 +86,23 @@ public partial class SpectrogramWindow : Window
         if (e.PropertyName is nameof(SpectrogramViewModel.IsReady) or nameof(SpectrogramViewModel.IsBusy)
             or nameof(SpectrogramViewModel.HasError))
             ApplyPhase();
+        else if (e.PropertyName is nameof(SpectrogramViewModel.CutoffMarkerY) or nameof(SpectrogramViewModel.HasCutoffMarker))
+            PlaceCutoffMarker();
+    }
+
+    /// <summary>Lays the dashed cutoff line across the plot area of the composed image and
+    /// pins its label above the line's right end.</summary>
+    private void PlaceCutoffMarker()
+    {
+        if (_vm is null || !_vm.HasCutoffMarker) return;
+        var (left, right) = SpectrogramViewModel.PlotSpan;
+        var y = Math.Round(_vm.CutoffMarkerY) + 0.5; // crisp 1 px line
+        CutoffLine.StartPoint = new Point(left, y);
+        CutoffLine.EndPoint = new Point(right, y);
+        CutoffLabelBox.Measure(Size.Infinity);
+        var label = CutoffLabelBox.DesiredSize;
+        Canvas.SetLeft(CutoffLabelBox, right - label.Width - 6);
+        Canvas.SetTop(CutoffLabelBox, y - label.Height - 3);
     }
 
     /// <summary>Loading / error: the readout shows, the plot is hidden. Ready: the plot fades
