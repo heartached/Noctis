@@ -596,7 +596,7 @@ public class ComputerLinkServiceTests : IAsyncLifetime
         var vm = new Noctis.ViewModels.SettingsViewModel(_b.Persistence, new FakeLibraryService(), new NoOpPlayHistory()) { ComputerLink = Link(_b) };
         Assert.True(vm.IsComputerLinkFormVisible);
         // The steps name the other computer's switches as its Settings shows them.
-        Assert.Equal("On the other computer, turn on “Noctis on your phone” and “Sync with your phone”, then open Connect a phone › Enter manually. Type its address and your account here.",
+        Assert.Equal("On the other computer, turn on “Noctis on your phone” and “Sync with your phone”, then enter the address shown under Connect a phone › Enter manually and your account here.",
             vm.ComputerLinkHelp);
 
         vm.ComputerLinkAddress = _url;
