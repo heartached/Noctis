@@ -264,9 +264,6 @@ public class MobileDesktopIconParityTests
         // The account card's own glyphs ("Account glyphs Icons.axaml has no shape for").
         foreach (var (k, v) in Geometries(Path.Combine("src", "Noctis", "Views", "SettingsView.axaml")))
             if (k.StartsWith("Account", StringComparison.Ordinal)) all.TryAdd(k, v);
-        // The lossless waveform lives on the mini player (hoisted there, not in Icons.axaml).
-        foreach (var (k, v) in Geometries(Path.Combine("src", "Noctis", "Views", "MiniPlayerWindow.axaml")))
-            if (k == "LosslessWaveIcon") all.TryAdd(k, v);
         return all;
     }
 
