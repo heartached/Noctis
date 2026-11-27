@@ -273,6 +273,7 @@ public sealed class LiquidReorder
     {
         _frameQueued = false;
         if (!IsBusy && _rowOffsets.Count == 0) return;
+        now = Noctis.Controls.AnimationFrameClock.Now(now);
 
         var dt = _lastFrame is { } last ? Math.Clamp((now - last).TotalSeconds, 0, 0.05) : 1 / 60.0;
         _lastFrame = now;
