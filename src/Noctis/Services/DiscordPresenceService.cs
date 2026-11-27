@@ -105,9 +105,12 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
         try { cts?.Cancel(); cts?.Dispose(); } catch { }
     }
 
+    public event Action? Connected;
+
     public async Task<bool> ConnectAsync(CancellationToken ct = default)
     {
         await _gate.WaitAsync(ct);
+        var connectedNow = false;
         try
         {
             if (IsConnected) return true;
@@ -150,6 +153,7 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
             _reconnectAttempts = 0;
             Debug.WriteLine("[Discord] Connected.");
             DebugLog.Write("Discord", "Rich Presence connected.");
+            connectedNow = true;
             return true;
         }
         catch (Exception ex)
@@ -160,6 +164,12 @@ public sealed class DiscordPresenceService : IDiscordPresenceService
         finally
         {
             _gate.Release();
+            // After the gate: the handler publishes the playing song, which takes the gate itself.
+            if (connectedNow)
+            {
+                try { Connected?.Invoke(); }
+                catch (Exception ex) { Debug.WriteLine($"[Discord] Connected handler: {ex.Message}"); }
+            }
         }
     }
 
