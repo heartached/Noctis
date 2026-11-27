@@ -100,19 +100,19 @@ public class MiniPlayerPlacementTests
         => MiniPlayerPlacement.Clamp(saved, MiniPlayerPlacement.ToPixels(w, h, scaling), area);
 
     [Theory]
-    // Pill (352×140) with the stored classic 420×188: old code shifted left/up by the
-    // difference in pixels — 68/48 at 100%, 85/60 at 125%, 102/72 at 150%.
+    // Pill (360×140) with the stored classic 420×188: old code shifted left/up by the
+    // difference in pixels — 60/48 at 100%, 75/60 at 125%, 90/72 at 150%.
     [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.0, "TL", 0, 0)]
-    [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.0, "TR", -68, 0)]
-    [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.0, "BR", -68, -48)]
+    [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.0, "TR", -60, 0)]
+    [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.0, "BR", -60, -48)]
     [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.0, "BL", 0, -48)]
     [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.25, "TL", 0, 0)]
-    [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.25, "TR", -85, 0)]
-    [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.25, "BR", -85, -60)]
+    [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.25, "TR", -75, 0)]
+    [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.25, "BR", -75, -60)]
     [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.25, "BL", 0, -60)]
     [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.5, "TL", 0, 0)]
-    [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.5, "TR", -102, 0)]
-    [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.5, "BR", -102, -72)]
+    [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.5, "TR", -90, 0)]
+    [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.5, "BR", -90, -72)]
     [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.5, "BL", 0, -72)]
     // Sleeve (340×372) is narrower but taller than 420×188: only the right edge moved.
     [InlineData(Noctis.ViewModels.MiniPlayerForm.Sleeve, 1.0, "TR", -80, 0)]
@@ -166,7 +166,7 @@ public class MiniPlayerPlacementTests
         var (w, h) = MiniPlayerPlacement.OpeningSize(Noctis.ViewModels.MiniPlayerForm.Pill, 420, 188);
         // Half off the bottom-right (e.g. the taskbar moved or the resolution dropped).
         var p = Reopen(new PixelPoint(1800, 1000), w, h, 1.0, FullHd);
-        Assert.Equal(new PixelPoint(1920 - 352, 1080 - 140), p);
+        Assert.Equal(new PixelPoint(1920 - 360, 1080 - 140), p);
     }
 
     [Fact]

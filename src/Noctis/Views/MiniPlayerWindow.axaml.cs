@@ -82,6 +82,15 @@ public partial class MiniPlayerWindow : Window
 
     private MiniPlayerViewModel? Vm => DataContext as MiniPlayerViewModel;
 
+    /// <summary>Every form's seek slider (one per form and design, all the same shared class).</summary>
+    internal Slider[] SeekSliders => new[] { BarSeekSlider, CardSeekSlider, LargeSeekSlider, LyricsSeekSlider, PillSeekSlider, SleeveSeekSlider };
+
+    /// <summary>Every volume slider: the Full Artwork card's permanent bar and each form's swap-in row.</summary>
+    internal Slider[] VolumeSliders => new[] { LargeVolumeSlider, BarVolumeSlider, CardVolumeSlider, LyricsVolumeSlider, PillVolumeSlider, SleeveVolumeSlider };
+
+    /// <summary>Every form's transport row (shuffle | prev play next | repeat).</summary>
+    internal Grid[] TransportRows => new[] { BarTransport, CardTransport, LargeTransport, LyricsTransport, PillTransport, SleeveTransport };
+
     public MiniPlayerWindow()
     {
         InitializeComponent();
@@ -123,7 +132,7 @@ public partial class MiniPlayerWindow : Window
         // Seek commits follow the same BeginSeek/EndSeek protocol as the playback bar
         // so drags update the UI live and send a single debounced seek on release.
         // Every form has its own seek slider; wire all of them the same way.
-        foreach (var slider in new[] { SeekSlider, BarSeekSlider, LargeSeekSlider, LyricsSeekSlider, PillSeekSlider, SleeveSeekSlider })
+        foreach (var slider in SeekSliders)
         {
             slider.AddHandler(PointerPressedEvent, OnSeekPointerPressed, RoutingStrategies.Tunnel);
             slider.AddHandler(PointerReleasedEvent, OnSeekPointerReleased, RoutingStrategies.Tunnel);
@@ -132,10 +141,13 @@ public partial class MiniPlayerWindow : Window
 
         // Volume sliders commit once on release so VLC isn't hammered with rapid
         // changes mid-drag (anti-crackle), mirroring the playback bar.
-        foreach (var slider in new[] { LargeVolumeSlider, DrawerVolumeSlider })
+        foreach (var slider in VolumeSliders)
         {
             slider.AddHandler(PointerReleasedEvent, (_, _) => Vm?.Player.CommitVolume(), RoutingStrategies.Tunnel);
             slider.PointerCaptureLost += (_, _) => Vm?.Player.CommitVolume();
+            // A pointer resting on the swapped-in volume row keeps it up (VolumeAutoHide).
+            if (slider.Parent is Control row)
+                row.PointerMoved += (_, _) => Vm?.KeepVolumeShown();
         }
 
         // The "…" menu has light dismiss disabled (it would unmap without the close
@@ -176,12 +188,6 @@ public partial class MiniPlayerWindow : Window
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
         AddHandler(KeyUpEvent, OnPreviewKeyUp, RoutingStrategies.Tunnel);
 
-        // Time readouts show only while the pointer is over the card (style class
-        // "pointer-in", see Window.Styles). The WINDOW's enter/leave, not any child's,
-        // so moving between controls inside the card never blinks them.
-        PointerEntered += (_, _) => Classes.Set("pointer-in", true);
-        PointerExited += (_, _) => Classes.Set("pointer-in", false);
-
         // RootBorder's ClipToBounds is off (so the close badge can overhang the corner),
         // which makes these explicit geometries the only thing holding the artwork /
         // acrylic layers to the rounded outline. Kept in sync with the resizable window.
@@ -205,9 +211,11 @@ public partial class MiniPlayerWindow : Window
         // pass; LayoutUpdated above is the catch-all a frame later.
         FormGrid.SizeChanged += (_, _) => SyncDesignGround();
         PillFormRoot.SizeChanged += (_, _) => SyncDesignGround();
-        PillTransport.SizeChanged += (_, e) => SyncPillToggles(e.NewSize.Width);
+        foreach (var row in TransportRows)
+            row.SizeChanged += (_, e) => SyncTransportToggles((Grid)e.Source!, e.NewSize.Width);
         SleeveFormRoot.SizeChanged += (_, _) => SyncDesignGround();
         ActualThemeVariantChanged += (_, _) => SyncDrawerPalette();
+        SyncDrawerPalette();
         LargeFrostBand.OpacityMask = _largeFrostMask;
         LargeFrostScrim.Background = _largeFrostScrim;
         LyricsFrostBand.OpacityMask = _lyricsFrostMask;
@@ -420,11 +428,17 @@ public partial class MiniPlayerWindow : Window
         ApplyTransparencyHint();
         ApplyPin();
         Classes.Set("plain-track-links", !_hookedVm.Settings.AccentTrackLinks);
+        SyncWaveformClass();
 
         // A DataContext arriving after Opened would otherwise leave every form hidden.
         SyncFormVisual();
         UpdateFlowAnimationState();
     }
+
+    /// <summary>Waveform seek bar (GitHub #93) on every form at once: one window class the
+    /// shared seek styles key on, instead of a Classes binding per slider.</summary>
+    private void SyncWaveformClass() =>
+        Classes.Set("waveform-seek", Vm?.Player.WaveformSeekBarEnabled == true);
 
     // ── Pin (Windows) ──
     // Pinned: no minimize box, so Show desktop / Minimize all pass the window over (it keeps
@@ -485,8 +499,18 @@ public partial class MiniPlayerWindow : Window
     {
         switch (e.PropertyName)
         {
-            case nameof(LyricsViewModel.ScrollLineIndex) when Vm?.IsLyricsForm == true && !_windowAnchor.IsMoving:
+            // Plain (unsynced) lyrics have no active line: the list stays still, as on the
+            // page. Following ScrollLineIndex there scrolled the PLAIN list to the synced
+            // index, which the plain list does not share (placeholders shift it).
+            case nameof(LyricsViewModel.ScrollLineIndex) when Vm is { IsLyricsForm: true, Lyrics.IsSyncTabSelected: true } && !_windowAnchor.IsMoving:
                 CenterActiveLyric(animated: true);
+                break;
+            // Switching Synced/Plain: land on the line playing in either list (the page's mapping).
+            case nameof(LyricsViewModel.IsSyncTabSelected) when Vm?.IsLyricsForm == true:
+                _lyricsChaseRunning = false;
+                Avalonia.Threading.Dispatcher.UIThread.Post(
+                    () => CenterActiveLyric(animated: false),
+                    Avalonia.Threading.DispatcherPriority.Loaded);
                 break;
             case nameof(LyricsViewModel.IsColorModeArtwork):
                 UpdateFlowAnimationState();
@@ -536,6 +560,8 @@ public partial class MiniPlayerWindow : Window
     {
         if (e.PropertyName == nameof(PlayerViewModel.State))
             UpdatePillSpin();
+        if (e.PropertyName == nameof(PlayerViewModel.WaveformSeekBarEnabled))
+            SyncWaveformClass();
         // The layers' visibility is bound in XAML; this only parks/resumes the loop.
         if (e.PropertyName is nameof(PlayerViewModel.LyricsFlowingLightEnabled)
                 or nameof(PlayerViewModel.LyricsFlowingStyle)
@@ -1035,6 +1061,7 @@ public partial class MiniPlayerWindow : Window
         ("MiniDrawerBadgeFill", "SystemControlForegroundBaseLowBrush"),
         ("MiniDrawerBadgeText", "SystemControlForegroundBaseHighBrush"),
         ("MiniDrawerTrack", "SystemControlForegroundBaseMediumLowBrush"),
+        ("MiniGlyph", "SystemControlForegroundBaseMediumHighBrush"),
     };
 
     private void SyncDrawerPalette()
@@ -1042,10 +1069,21 @@ public partial class MiniPlayerWindow : Window
         var design = Vm is { IsDesignForm: true };
         foreach (var (key, theme) in DesignDrawerPalette)
         {
-            if (design && this.TryFindResource(theme, ActualThemeVariant, out var brush) && brush is IBrush b)
-                DrawerSheet.Resources[key] = b;
+            if (this.TryFindResource(theme, ActualThemeVariant, out var brush) && brush is IBrush b)
+            {
+                // The design roots always sit on the theme-coloured card: their controls
+                // read the theme ink under the same keys the classic forms read white.
+                PillFormRoot.Resources[key] = b;
+                SleeveFormRoot.Resources[key] = b;
+                if (design) DrawerSheet.Resources[key] = b;
+                else DrawerSheet.Resources.Remove(key);
+            }
             else
+            {
+                PillFormRoot.Resources.Remove(key);
+                SleeveFormRoot.Resources.Remove(key);
                 DrawerSheet.Resources.Remove(key);
+            }
         }
     }
 
@@ -1470,23 +1508,31 @@ public partial class MiniPlayerWindow : Window
 
     private void OnRootPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e) => _armedDrag = null;
 
-    /// <summary>Least room between a Pill toggle and the transport beside it.</summary>
-    private const double PillToggleGap = 4;
+    /// <summary>Least room between a toggle and the transport beside it.</summary>
+    private const double TransportToggleGap = 4;
 
     /// <summary>
-    /// The Pill's Shuffle / Repeat need ~190 px beside prev / play / next — the canonical card
-    /// has it, but the window resizes down to 160 wide. Narrower than that the toggles step
-    /// aside and the row is the three buttons it was before them, rather than five that
-    /// overlap. Their slots are Auto columns of a stretched grid, so hiding them does not
-    /// change the width this reads.
+    /// Shuffle / Repeat need ~194 px beside prev / play / next. Every canonical size has it,
+    /// but the window resizes down to 160 wide (and the lyrics split's art column to 190).
+    /// Narrower than that the toggles step aside and the row is the three transport buttons,
+    /// rather than five that overlap. Same rule on every form's row. Their slots are Auto
+    /// columns of a stretched grid, so hiding them does not change the width this reads.
     /// </summary>
-    private void SyncPillToggles(double width)
+    internal static void SyncTransportToggles(Grid row, double width)
     {
-        var need = PillShuffleButton.Width + PillRepeatButton.Width
-                   + PillTransportCenter.DesiredSize.Width + 2 * PillToggleGap;
+        Button? shuffle = null, repeat = null;
+        StackPanel? center = null;
+        foreach (var child in row.Children)
+        {
+            if (child is Button b && b.Classes.Contains("mini-shuffle")) shuffle = b;
+            else if (child is Button r && r.Classes.Contains("mini-repeat")) repeat = r;
+            else if (child is StackPanel sp && sp.Classes.Contains("mini-transport-center")) center = sp;
+        }
+        if (shuffle == null || repeat == null || center == null) return;
+        var need = shuffle.Width + repeat.Width + center.DesiredSize.Width + 2 * TransportToggleGap;
         var show = width >= need;
-        PillShuffleButton.IsVisible = show;
-        PillRepeatButton.IsVisible = show;
+        shuffle.IsVisible = show;
+        repeat.IsVisible = show;
     }
 
     // ── Queue drawer: drag to reorder, Delete to remove ──────────
@@ -1799,8 +1845,10 @@ public partial class MiniPlayerWindow : Window
         // window's tunnel handler (which swallows the press, so no Click arrives).
         _menuCloseGeneration++;
 
-        // The large-icon form's button sits low on the card, so its menu opens upward.
-        var openUp = Vm?.IsLargeIconForm == true;
+        // A button in the lower half of the card (Full Artwork, the lyrics split, the Sleeve's
+        // title row) opens its menu upward, over the card, instead of down past the window.
+        var openUp = anchor.TranslatePoint(new Point(0, anchor.Bounds.Height / 2), this) is { } mid
+                     && mid.Y > ClientSize.Height / 2;
         MorePopup.Placement = openUp ? PlacementMode.TopEdgeAlignedRight : PlacementMode.BottomEdgeAlignedRight;
         MorePopup.VerticalOffset = openUp ? -6 : 6;
         MorePopup.PlacementTarget = anchor;
@@ -1892,7 +1940,6 @@ public partial class MiniPlayerWindow : Window
     {
         MiniDrawer.Queue => 200,
         MiniDrawer.Search => 240,
-        MiniDrawer.Volume => 64,
         _ => 0,
     };
 
@@ -2143,8 +2190,19 @@ public partial class MiniPlayerWindow : Window
         var vm = Vm;
         if (vm == null) return;
 
-        var index = vm.Lyrics.ScrollLineIndex;
-        if (index < 0) return;
+        // Plain lyrics: the synced line mapped into the plain list (LyricsView's mapping).
+        var index = vm.Lyrics.IsSyncTabSelected
+            ? vm.Lyrics.ScrollLineIndex
+            : LyricsView.MapSyncedToUnsyncedIndex(vm.Lyrics);
+        if (index < 0)
+        {
+            if (!vm.Lyrics.IsSyncTabSelected)
+            {
+                _lyricsChaseRunning = false;
+                LyricsScroll.Offset = default;
+            }
+            return;
+        }
 
         var container = LyricsItems.ContainerFromIndex(index);
         if (container == null) return;

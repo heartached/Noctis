@@ -4294,9 +4294,15 @@ public partial class SettingsViewModel : ViewModelBase
             var saveStart = Stopwatch.GetTimestamp();
             var onDisk = await MergeExternalSettingChangesAsync();
             SyncToSettings();
+            // The file work runs on the thread pool (Task.Run). Awaited from here, the
+            // persistence calls continued on the UI thread: the parse, DPAPI, backup copy,
+            // ACL and serialize all ran there — 108 ms for a cold save, 12 ms warm, measured
+            // (MiniPlayerUnifiedControlsTests), and the owner's log showed a 274 ms stall
+            // right after picking a mini player design (that pick saves at once).
             if (onDisk is null)
             {
-                await _persistence.SaveSettingsAsync(_settings);
+                var snapshot = _settings;
+                await Task.Run(() => _persistence.SaveSettingsAsync(snapshot));
             }
             else
             {

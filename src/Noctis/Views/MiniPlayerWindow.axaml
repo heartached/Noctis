@@ -7,6 +7,7 @@
         controls:LyricsWordEffect.Surface="MiniPlayer"
         xmlns:conv="using:Noctis.Converters"
         xmlns:helpers="using:Noctis.Helpers"
+        xmlns:sys="using:System"
         x:Class="Noctis.Views.MiniPlayerWindow"
         x:DataType="vm:MiniPlayerViewModel"
         Title="{loc:T MiniPlayer.NoctisMiniPlayer}"
@@ -26,11 +27,6 @@
          rounded window region cut from control bounds — all in the same DIPs. A scaled
          content layer would put those two unit systems apart. -->
     <Window.Resources>
-        <!-- Lossless waveform mark. Hoisted to a resource now that two forms (Card and
-             Large icon) draw the quality badge — kept local to this window rather than
-             pushed into Icons.axaml, which would mean rewriting the four other views
-             that inline the same path. -->
-        <StreamGeometry x:Key="LosslessWaveIcon">M8.184,0.35C9.944,0.35 10.703,3.296 11.338,5.238C11.673,3.842 11.497,3.542 11.857,3.542C11.99,3.542 12.126,3.633 12.126,3.798C12.126,3.809 12.123,3.839 12.117,3.883L12.091,4.058C12.02,4.522 11.845,5.494 11.654,6.144C13.198,10.191 14.345,4.861 14.474,3.772C14.493,3.615 14.612,3.542 14.731,3.542C14.891,3.542 15.022,3.662 14.997,3.843C14.72,5.605 14.295,8.35 12.547,8.35C11.582,8.35 11.04,7.595 10.611,6.73C9.54,4.626 9.047,1.093 7.997,1.093C7.66,1.093 7.411,1.444 7.394,1.444C7.362,1.444 7.337,1.301 7.023,0.909C7.322,0.567 7.734,0.35 8.184,0.35ZM2.458,0.354C5.211,0.354 5.456,7.618 7.014,7.618C7.197,7.618 7.394,7.507 7.61,7.256C7.729,7.458 7.851,7.638 7.978,7.796C7.667,8.151 7.28,8.35 6.795,8.35C5.054,8.349 4.306,5.434 3.663,3.466C3.511,4.097 3.432,4.669 3.402,4.925C3.382,5.088 3.263,5.163 3.143,5.163C3.009,5.163 2.874,5.071 2.874,4.908L2.874,4.908L2.877,4.87C2.966,4.223 3.146,3.243 3.347,2.56C3.079,1.858 2.745,1.091 2.252,1.091C1.257,1.091 0.687,3.591 0.527,4.925C0.508,5.088 0.388,5.163 0.268,5.163C0.135,5.163 0,5.071 0,4.908C0,4.896 0.001,4.883 0.002,4.87C0.283,2.836 0.808,0.354 2.458,0.354ZM5.315,0.35C5.809,0.35 6.339,0.608 6.797,1.211C6.822,1.241 7.078,1.639 7.159,1.777C8.277,3.802 8.818,7.627 9.881,7.627C10.065,7.627 10.264,7.513 10.484,7.256C10.604,7.458 10.726,7.638 10.852,7.796C10.542,8.15 10.155,8.35 9.67,8.35C6.933,8.349 6.636,1.09 5.128,1.09C4.788,1.09 4.536,1.444 4.519,1.444C4.487,1.444 4.462,1.301 4.148,0.909C4.455,0.558 4.87,0.35 5.315,0.35Z</StreamGeometry>
         <!-- The frosted band, shared by the Large-icon and Lyrics forms so the two stay in
              step. MiniFrostMask reveals the blurred artwork copy; MiniFrostScrim is the
              contrast ramp over it. Both are measured, not eyeballed — see the notes at the
@@ -53,7 +49,7 @@
         <conv:EmphasisGlowConverter x:Key="EmphasisGlow"/>
         <conv:EmphasisGlowBlurConverter x:Key="EmphasisGlowBlur"/>
         <conv:WordOverflowPaddingConverter x:Key="WordOverflowPad"/>
-        <conv:OpacityFloorConverter x:Key="OpacityFloor"/>
+        <conv:InterludeDotOpacityConverter x:Key="InterludeDot"/>
         <conv:DoubleScaleConverter x:Key="FontScale"/>
 
         <!-- Duet layout (ELRC v1:/v2:/v3: voice markers) — mini copy of the lyrics
@@ -68,8 +64,9 @@
         <conv:DuetMinWidthConverter x:Key="DuetMinWidth"/>
 
         <!-- Shared karaoke word cell (glow / dimmed base / gradient sweep) — mini copy
-             of the lyrics panel template (the mini card is always dark glass, so the
-             foregrounds are fixed white instead of the lyrics theme brushes). -->
+             of the lyrics page template, same glow headroom and the same adaptive ink
+             (LyricsPrimaryFg): the lyrics column paints the page's background, which a
+             light solid / gradient colour makes pale, so fixed white text vanished on it. -->
         <DataTemplate x:Key="MiniWordCellTemplate" x:DataType="m:WordTiming">
             <Panel Classes="word-cell"
                    Classes.current="{Binding IsCurrent}"
@@ -85,11 +82,11 @@
                     <controls:KaraokeWordText Text="{Binding Text}"
                                               Classes="word-glow"
                                               IsVisible="{Binding IsEmphasis}"
-                                              Canvas.Left="-40"
-                                              Canvas.Top="-40"
-                                              Padding="40"
+                                              Canvas.Left="-60"
+                                              Canvas.Top="-60"
+                                              Padding="60"
                                               FontWeight="Bold"
-                                              Foreground="White"
+                                              Foreground="{Binding $parent[Window].((vm:MiniPlayerViewModel)DataContext).Lyrics.LyricsPrimaryFg}"
                                               BaseOpacity="0"
                                               Effect="{Binding $self.FontSize, Converter={StaticResource EmphasisGlowBlur}}"
                                               Progress="{Binding Progress}"
@@ -115,7 +112,7 @@
                                           Classes="word-sweep"
                                           Padding="{Binding Converter={StaticResource WordOverflowPad}}"
                                           FontWeight="Bold"
-                                          Foreground="White"
+                                          Foreground="{Binding $parent[Window].((vm:MiniPlayerViewModel)DataContext).Lyrics.LyricsPrimaryFg}"
                                           Progress="{Binding Progress}"
                                           LeadIn="{Binding SweepLeadIn}"
                                           TrailOut="{Binding SweepTrailOut}"
@@ -130,11 +127,12 @@
             </Panel>
         </DataTemplate>
 
-        <!-- Drawer palette. These are the classic values (white ink on the dark glass);
-             under a Pill / Sleeve design the drawer sits on the theme-coloured card, so
-             code-behind overrides the same keys on DrawerSheet.Resources with the
-             theme's foreground brushes (SyncDrawerPalette). Everything inside the sheet
-             - and the shared styles it uses - reads these by DynamicResource. -->
+        <!-- Ink palette (named for the drawer, where it started; the player controls use it
+             too). These are the classic values (white ink on the dark glass); the Pill /
+             Sleeve roots and, under a design, the drawer sheet sit on the theme-coloured
+             card, so code-behind overrides the same keys there with the theme's foreground
+             brushes (SyncDrawerPalette). Every shared control style reads these by
+             DynamicResource, which is what lets one control serve both grounds. -->
         <SolidColorBrush x:Key="MiniDrawerText" Color="#FFFFFFFF"/>
         <SolidColorBrush x:Key="MiniDrawerTextHeader" Color="#B3FFFFFF"/>
         <SolidColorBrush x:Key="MiniDrawerTextSoft" Color="#99FFFFFF"/>
@@ -147,7 +145,10 @@
         <SolidColorBrush x:Key="MiniDrawerDiscPressed" Color="#52FFFFFF"/>
         <SolidColorBrush x:Key="MiniDrawerBadgeFill" Color="#59FFFFFF"/>
         <SolidColorBrush x:Key="MiniDrawerBadgeText" Color="#FF000000"/>
-        <SolidColorBrush x:Key="MiniDrawerTrack" Color="#66FFFFFF"/>
+        <SolidColorBrush x:Key="MiniDrawerTrack" Color="#50FFFFFF"/>
+        <!-- Resting glyphs (heart outline, "…", shuffle / repeat off, speakers). -->
+        <SolidColorBrush x:Key="MiniGlyph" Color="#D9FFFFFF"/>
+        <conv:VolumeToIconConverter x:Key="VolumeToIcon"/>
     </Window.Resources>
 
     <Window.Styles>
@@ -207,42 +208,226 @@
             <Setter Property="Background" Value="Transparent"/>
         </Style>
 
-        <!-- Compact seek/volume slider (accent fill/thumb to match the playback bar).
-             ClipToBounds stops the track parts (negative margins under the thumb) from
-             extending the clickable area past the slider. -->
-        <!-- Artist line: accent, or soft white with Settings → "Accent colour on artist and
-             album names" off (GitHub #125; this window's plain-track-links class). -->
-        <Style Selector="controls|MarqueeTextBlock.mini-artist">
+        <!-- ══ Shared player controls ═════════════════════════════════════════════
+             Every form (Bar, Card, Full Artwork, Lyrics) and both designs (Pill, Sleeve)
+             build their player controls from the classes below: size, glyph, command,
+             tooltip, accessible name and states live HERE, once, and a form's markup only
+             names a control and places it. That is what keeps the three styles in sync.
+             Ink comes from the palette keys (MiniDrawer*, MiniGlyph): white on the classic
+             glass; the design roots carry the theme's foreground brushes under the same
+             keys (SyncDrawerPalette), so the same control reads on a light card too. -->
+
+        <!-- Title / artist. Title first, artist second in the accent (or soft ink with
+             Settings → "Accent colour on artist and album names" off, GitHub #125), on
+             every form. The explicit badge rides the title as marquee InlineContent, never
+             a sibling in a horizontal StackPanel: the marquee subtracts the badge's width
+             from its viewport, so a long title trims/scrolls instead of pushing the badge
+             out over the buttons. The width bound is the info StackPanel's. -->
+        <Style Selector="controls|MarqueeTextBlock.mini-title" x:DataType="vm:MiniPlayerViewModel">
+            <Setter Property="Text" Value="{Binding Player.CurrentTrack.TitleDisplay, FallbackValue=''}"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource MiniDrawerText}"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="IsMiniPlayer" Value="True"/>
+            <Setter Property="MaxDisplayWidth" Value="{Binding $parent[StackPanel].Bounds.Width}"/>
+            <!-- No track: the mini-no-track line takes its place (same height, so no jump). -->
+            <Setter Property="IsVisible" Value="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+            <Setter Property="InlineContent">
+                <Template>
+                    <Border Classes="explicit-badge compact" x:DataType="vm:MiniPlayerViewModel"
+                            IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
+                            ToolTip.Tip="{loc:T MiniPlayer.ExplicitTip}">
+                        <TextBlock Classes="explicit-badge-text compact" Text="E" FontSize="8" Opacity="0.9"/>
+                    </Border>
+                </Template>
+            </Setter>
+        </Style>
+        <Style Selector="controls|MarqueeTextBlock.mini-artist" x:DataType="vm:MiniPlayerViewModel">
+            <Setter Property="Text" Value="{Binding Player.CurrentTrack.ArtistDisplay, FallbackValue=''}"/>
+            <Setter Property="FontSize" Value="12"/>
             <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="IsMiniPlayer" Value="True"/>
+            <Setter Property="IsForAlbum" Value="True"/>
+            <Setter Property="MaxDisplayWidth" Value="{Binding $parent[StackPanel].Bounds.Width}"/>
         </Style>
         <Style Selector="Window.plain-track-links controls|MarqueeTextBlock.mini-artist">
             <Setter Property="Foreground" Value="{DynamicResource MiniDrawerTextSoft}"/>
         </Style>
-        <Style Selector="Slider.mini-seek">
-            <!-- Every design's seek bar reads what it is; unnamed, its peer had no name
-                 at all beside the "0:00" time label. -->
-            <Setter Property="AutomationProperties.Name" Value="{loc:T PlaybackBar.Seek}"/>
+        <!-- No track: the title line says so, in the user's language (the old FallbackValue
+             was a hard-coded English 'No track playing'). -->
+        <Style Selector="TextBlock.mini-no-track" x:DataType="vm:MiniPlayerViewModel">
+            <Setter Property="Text" Value="{loc:T Queue.NoTrackPlaying}"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource MiniDrawerTextSoft}"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+            <Setter Property="IsVisible" Value="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNull}}"/>
+        </Style>
+
+        <!-- Round 30px buttons (heart, More, shuffle, repeat) on the glass-circle disc;
+             16px glyphs; accent when on. -->
+        <Style Selector="Button.mini-heart" x:DataType="vm:MiniPlayerViewModel">
+            <Setter Property="Width" Value="30"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Command" Value="{Binding Player.ToggleCurrentTrackFavoriteCommand}"/>
+            <Setter Property="ToolTip.Tip" Value="{loc:T MiniPlayer.FavoritesTip}"/>
+            <Setter Property="Content">
+                <Template>
+                    <!-- Shared HeartIcon: pops in BOTH directions, like every other heart. -->
+                    <Panel Classes="mini-heart-glyph" x:DataType="vm:MiniPlayerViewModel">
+                        <controls:HeartIcon Size="16" OffBrush="{DynamicResource MiniGlyph}"
+                                            IsFavorite="{Binding Player.CurrentTrack.IsFavorite, FallbackValue=False}"/>
+                    </Panel>
+                </Template>
+            </Setter>
+        </Style>
+        <Style Selector="Button.mini-more">
+            <Setter Property="Width" Value="30"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="ToolTip.Tip" Value="{loc:T MiniPlayer.MoreTip}"/>
+            <Setter Property="ToolTip.Placement" Value="Top"/>
+            <Setter Property="Content">
+                <Template>
+                    <Viewbox Width="16" Height="16">
+                        <Canvas Width="24" Height="24">
+                            <Path Fill="{DynamicResource MiniGlyph}" Data="{DynamicResource MoreDotsIcon}"/>
+                        </Canvas>
+                    </Viewbox>
+                </Template>
+            </Setter>
+        </Style>
+        <Style Selector="Button.mini-shuffle" x:DataType="vm:MiniPlayerViewModel">
+            <Setter Property="Width" Value="30"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Grid.Column" Value="0"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Command" Value="{Binding Player.ToggleShuffleCommand}"/>
+            <Setter Property="ToolTip.Tip" Value="{loc:T MiniPlayer.ShuffleTip}"/>
+            <Setter Property="Content">
+                <Template>
+                    <Panel x:DataType="vm:MiniPlayerViewModel">
+                        <Viewbox Width="16" Height="16" IsVisible="{Binding !Player.IsShuffleEnabled}">
+                            <Canvas Width="24" Height="24">
+                                <Path Fill="{DynamicResource MiniGlyph}" Data="{DynamicResource ShuffleIcon}"/>
+                            </Canvas>
+                        </Viewbox>
+                        <Viewbox Width="16" Height="16" IsVisible="{Binding Player.IsShuffleEnabled}">
+                            <Canvas Width="24" Height="24">
+                                <Path Fill="{DynamicResource AccentColorBrush}" Data="{DynamicResource ShuffleIcon}"/>
+                            </Canvas>
+                        </Viewbox>
+                    </Panel>
+                </Template>
+            </Setter>
+        </Style>
+        <Style Selector="Button.mini-repeat" x:DataType="vm:MiniPlayerViewModel">
+            <Setter Property="Width" Value="30"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Grid.Column" Value="2"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Command" Value="{Binding Player.CycleRepeatCommand}"/>
+            <Setter Property="ToolTip.Tip" Value="{Binding Player.RepeatModeTip}"/>
+            <Setter Property="Content">
+                <Template>
+                    <Panel x:DataType="vm:MiniPlayerViewModel">
+                        <Viewbox Width="16" Height="16"
+                                 IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
+                            <Canvas Width="24" Height="24">
+                                <Path Fill="{DynamicResource MiniGlyph}" Data="{DynamicResource RepeatAllIcon}"/>
+                            </Canvas>
+                        </Viewbox>
+                        <Viewbox Width="16" Height="16"
+                                 IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.All}}">
+                            <Canvas Width="24" Height="24">
+                                <Path Fill="{DynamicResource AccentColorBrush}" Data="{DynamicResource RepeatAllIcon}"/>
+                            </Canvas>
+                        </Viewbox>
+                        <Viewbox Width="16" Height="16"
+                                 IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.One}}">
+                            <Canvas Width="24" Height="24">
+                                <Path Fill="{DynamicResource AccentColorBrush}" Data="{DynamicResource RepeatOneIcon}"/>
+                            </Canvas>
+                        </Viewbox>
+                    </Panel>
+                </Template>
+            </Setter>
+        </Style>
+
+        <!-- Previous / Play-Pause / Next: borderless glyphs, 34 / 38 / 34, 10 apart. -->
+        <Style Selector="StackPanel.mini-transport-center">
+            <Setter Property="Grid.Column" Value="1"/>
+            <Setter Property="Orientation" Value="Horizontal"/>
+            <Setter Property="Spacing" Value="10"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.mini-prev" x:DataType="vm:MiniPlayerViewModel">
+            <Setter Property="Width" Value="34"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Command" Value="{Binding Player.PreviousCommand}"/>
+            <Setter Property="ToolTip.Tip" Value="{loc:T MiniPlayer.PreviousTip}"/>
+            <Setter Property="Content">
+                <Template>
+                    <controls:TransportGlyph Kind="Previous" Width="19" Height="19" HighlightSize="34"
+                                             Foreground="{DynamicResource MiniDrawerText}"/>
+                </Template>
+            </Setter>
+        </Style>
+        <Style Selector="Button.mini-play" x:DataType="vm:MiniPlayerViewModel">
+            <Setter Property="Width" Value="38"/>
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="Command" Value="{Binding Player.PlayPauseCommand}"/>
+            <Setter Property="ToolTip.Tip" Value="{Binding Player.PlayPauseTooltip}"/>
+            <Setter Property="Content">
+                <Template>
+                    <controls:TransportGlyph Kind="PlayPause" Width="22" Height="22" HighlightSize="38" x:DataType="vm:MiniPlayerViewModel"
+                                             Foreground="{DynamicResource MiniDrawerText}"
+                                             IsPlaying="{Binding Player.State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}"/>
+                </Template>
+            </Setter>
+        </Style>
+        <Style Selector="Button.mini-next" x:DataType="vm:MiniPlayerViewModel">
+            <Setter Property="Width" Value="34"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Command" Value="{Binding Player.NextCommand}"/>
+            <Setter Property="ToolTip.Tip" Value="{loc:T MiniPlayer.ForwardTip}"/>
+            <Setter Property="Content">
+                <Template>
+                    <controls:TransportGlyph Kind="Next" Width="19" Height="19" HighlightSize="34"
+                                             Foreground="{DynamicResource MiniDrawerText}"/>
+                </Template>
+            </Setter>
+        </Style>
+
+        <!-- One slider look for seek AND volume (accent line, 12px round thumb): the
+             volume bar is the seek bar's twin. ClipToBounds stops the track parts (negative
+             margins under the thumb) from extending the clickable area past the slider. -->
+        <Style Selector="Slider.mini-slider">
             <Setter Property="Height" Value="16"/>
             <Setter Property="ClipToBounds" Value="True"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Grid.Column" Value="1"/>
+            <Setter Property="Margin" Value="6,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}"/>
         </Style>
         <!-- Fluent's HorizontalTemplate is a 32px MinHeight grid with 15px tick rows top
              and bottom, so the track always sits at y=15 regardless of its height and
-             its centre lands (h/2 − 1) px below the grid's — 1px low for the 4px seek
-             line, 3px low for the 8px volume pill, which read as the speaker icons
-             floating above the bar. The negative top margin pulls the track back onto
-             the centre (measured in MiniPlayerProbeTests). -->
-        <!-- The Track is as tall as the slider (16): the whole slider is the click/drag
-             target, not just the 4px line (the visible line is the Border inside the
-             repeat buttons' transparent panels). Fluent's HorizontalTemplate parks the
-             track's centre (h/2 − 1) px below the slider's centre for any track height
-             h (measured: +1 at 4, +3 at 8, +10 at 22 — MiniPlayerProbeTests), so each
-             height carries the matching negative top margin. -->
-        <Style Selector="Slider.mini-seek /template/ Track">
+             its centre lands (h/2 − 1) px below the grid's (measured in
+             MiniPlayerProbeTests). The Track is as tall as the slider (16): the whole
+             slider is the click/drag target, not just the 4px line; the negative top
+             margin pulls it back onto the centre. -->
+        <Style Selector="Slider.mini-slider /template/ Track">
             <Setter Property="Height" Value="16"/>
             <Setter Property="Margin" Value="0,-7,0,7"/>
         </Style>
-        <Style Selector="Slider.mini-seek /template/ RepeatButton">
+        <Style Selector="Slider.mini-slider /template/ RepeatButton">
             <Setter Property="Template">
                 <ControlTemplate>
                     <Panel Background="Transparent">
@@ -251,30 +436,23 @@
                 </ControlTemplate>
             </Setter>
         </Style>
-        <Style Selector="Slider.mini-seek /template/ RepeatButton#PART_DecreaseButton">
+        <Style Selector="Slider.mini-slider /template/ RepeatButton#PART_DecreaseButton">
             <Setter Property="Margin" Value="0,0,-6,0"/>
         </Style>
-        <Style Selector="Slider.mini-seek /template/ RepeatButton#PART_IncreaseButton">
+        <Style Selector="Slider.mini-slider /template/ RepeatButton#PART_IncreaseButton">
             <Setter Property="Margin" Value="-6,0,0,0"/>
         </Style>
-        <Style Selector="Slider.mini-seek /template/ RepeatButton /template/ Border">
+        <Style Selector="Slider.mini-slider /template/ RepeatButton /template/ Border">
             <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
             <Setter Property="CornerRadius" Value="999"/>
             <Setter Property="Height" Value="4"/>
         </Style>
-        <Style Selector="Slider.mini-seek /template/ RepeatButton#PART_IncreaseButton /template/ Border">
-            <Setter Property="Background" Value="#50FFFFFF"/>
+        <!-- Unplayed part in the palette's track ink: white on the glass, the theme's
+             BaseMediumLow on a design card (a fixed white wash vanished on a light card). -->
+        <Style Selector="Slider.mini-slider /template/ RepeatButton#PART_IncreaseButton /template/ Border">
+            <Setter Property="Background" Value="{DynamicResource MiniDrawerTrack}"/>
         </Style>
-        <!-- Waveform seek bar on (Settings → Player, GitHub #93): the WaveformSeekBar under
-             each seek slider draws the line/waveform, so the slider keeps only its thumb and
-             its hit area — clicks and drags still commit through BeginSeek/EndSeek. The Pill
-             and Sleeve designs sit on the theme's own background (light in the Light theme),
-             so their waveforms take the theme-aware BaseMediumLow for the unplayed bars
-             instead of the classic card's white-on-dark #50FFFFFF. -->
-        <Style Selector="Slider.mini-seek.waveform /template/ RepeatButton /template/ Border">
-            <Setter Property="Opacity" Value="0"/>
-        </Style>
-        <Style Selector="Slider.mini-seek /template/ Thumb">
+        <Style Selector="Slider.mini-slider /template/ Thumb">
             <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Width" Value="12"/>
@@ -288,44 +466,176 @@
                 </ControlTemplate>
             </Setter>
         </Style>
-        <!-- Volume sliders: the fatter pill from the playback bar's volume flyout
-             (the seek bars keep the thin 4px line). Declared after mini-seek so the
-             equal-specificity setters below win. -->
-        <Style Selector="Slider.mini-volume">
-            <Setter Property="Height" Value="22"/>
+        <!-- Waveform seek bar on (Settings → Player, GitHub #93): the WaveformSeekBar under
+             each seek slider draws the line/waveform, so the slider keeps only its thumb and
+             its hit area — clicks and drags still commit through BeginSeek/EndSeek. The
+             window carries "waveform-seek" while the setting is on (SyncWaveformClass). -->
+        <Style Selector="Window.waveform-seek Slider.mini-seek /template/ RepeatButton /template/ Border">
+            <Setter Property="Opacity" Value="0"/>
         </Style>
-        <Style Selector="Slider.mini-volume /template/ Track">
-            <Setter Property="Height" Value="22"/>
-            <Setter Property="Margin" Value="0,-10,0,10"/>
+        <Style Selector="Slider.mini-seek" x:DataType="vm:MiniPlayerViewModel">
+            <!-- Every seek bar reads what it is; unnamed, its peer had no name at all. -->
+            <Setter Property="AutomationProperties.Name" Value="{loc:T PlaybackBar.Seek}"/>
+            <Setter Property="Minimum" Value="0"/>
+            <Setter Property="Maximum" Value="1"/>
+            <Setter Property="Value" Value="{Binding Player.PositionFraction, Mode=TwoWay}"/>
         </Style>
-        <Style Selector="Slider.mini-volume /template/ RepeatButton#PART_DecreaseButton">
-            <Setter Property="Margin" Value="0,0,-8,0"/>
-        </Style>
-        <Style Selector="Slider.mini-volume /template/ RepeatButton#PART_IncreaseButton">
-            <Setter Property="Margin" Value="-8,0,0,0"/>
-        </Style>
-        <Style Selector="Slider.mini-volume /template/ RepeatButton /template/ Border">
-            <Setter Property="Height" Value="8"/>
-        </Style>
-        <Style Selector="Slider.mini-volume /template/ RepeatButton#PART_IncreaseButton /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource MiniDrawerTrack}"/>
-        </Style>
-        <Style Selector="Slider.mini-volume /template/ Thumb">
-            <Setter Property="Width" Value="16"/>
+        <Style Selector="controls|WaveformSeekBar.mini-wave" x:DataType="vm:MiniPlayerViewModel">
+            <Setter Property="Grid.Column" Value="1"/>
+            <Setter Property="Margin" Value="6,0"/>
             <Setter Property="Height" Value="16"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="IsVisible" Value="False"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+            <Setter Property="Waveform" Value="{Binding Player.CurrentWaveform}"/>
+            <Setter Property="Value" Value="{Binding Player.PositionFraction}"/>
+            <Setter Property="PlayedBrush" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="UnplayedBrush" Value="{DynamicResource MiniDrawerTrack}"/>
+            <Setter Property="TrackInset" Value="6"/>
+            <Setter Property="LineInset" Value="0"/>
+            <Setter Property="LineThickness" Value="4"/>
+        </Style>
+        <Style Selector="Window.waveform-seek controls|WaveformSeekBar.mini-wave">
+            <Setter Property="IsVisible" Value="True"/>
+        </Style>
+        <Style Selector="Slider.mini-volume" x:DataType="vm:MiniPlayerViewModel">
+            <Setter Property="AutomationProperties.Name" Value="{loc:T MiniPlayer.Volume}"/>
+            <Setter Property="Minimum" Value="0"/>
+            <Setter Property="Maximum" Value="100"/>
+            <Setter Property="Value" Value="{Binding Player.Volume, Mode=TwoWay}"/>
         </Style>
 
-        <!-- "…" on the design cards: a persistent theme-coloured disc (glass-circle's white
-             wash is invisible on a light card). -->
-        <Style Selector="Button.mini-transport.design-circle /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+        <!-- Time readouts either side of the seek bar, on every form: elapsed left,
+             time left (with the playback bar's minus sign) right. Tabular digits, so the
+             labels keep their width while the clock runs and the row never re-measures per
+             second; the Auto columns grow for an hour-long track instead of clipping. A
+             stream with no known length shows no countdown. -->
+        <Style Selector="TextBlock.mini-time">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontFeatures" Value="+tnum"/>
+            <Setter Property="Foreground" Value="{DynamicResource MiniDrawerTextSoft}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="MinWidth" Value="30"/>
         </Style>
-        <Style Selector="Button.mini-transport.design-circle:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"/>
+        <Style Selector="TextBlock.mini-elapsed" x:DataType="vm:MiniPlayerViewModel">
+            <Setter Property="Grid.Column" Value="0"/>
+            <Setter Property="Text" Value="{Binding Player.PositionText}"/>
+            <Setter Property="TextAlignment" Value="Left"/>
         </Style>
-        <Style Selector="Button.mini-transport.design-circle:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+        <Style Selector="TextBlock.mini-remaining" x:DataType="vm:MiniPlayerViewModel">
+            <Setter Property="Grid.Column" Value="2"/>
+            <Setter Property="Text" Value="{Binding Player.RemainingTimeText, StringFormat='-{0}'}"/>
+            <Setter Property="TextAlignment" Value="Right"/>
+            <Setter Property="IsVisible" Value="{Binding Player.Duration, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static sys:TimeSpan.Zero}}"/>
         </Style>
+
+        <!-- Seek row and volume row share one slot ("…" ▸ Volume swaps them), so the volume
+             control is part of the card in every form and design — the seek bar's twin,
+             same insets — instead of a strip docked under the window. The row hands back
+             to the seek bar a few seconds after the last volume change (VM). -->
+        <Style Selector="Grid.mini-seek-row" x:DataType="vm:MiniPlayerViewModel">
+            <Setter Property="IsVisible" Value="{Binding !IsVolumeShown}"/>
+        </Style>
+        <Style Selector="Grid.mini-volume-row" x:DataType="vm:MiniPlayerViewModel">
+            <Setter Property="IsVisible" Value="{Binding IsVolumeShown}"/>
+        </Style>
+        <!-- Mute toggle at the row's low end, its glyph following the level like the
+             playback bar's volume button (VolumeToIcon); the high-end speaker is a label. -->
+        <Style Selector="Button.mini-mute" x:DataType="vm:MiniPlayerViewModel">
+            <Setter Property="Grid.Column" Value="0"/>
+            <Setter Property="Width" Value="30"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Margin" Value="0,-7"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Command" Value="{Binding Player.ToggleMuteCommand}"/>
+            <Setter Property="ToolTip.Tip" Value="{loc:T MiniPlayer.MuteTip}"/>
+            <Setter Property="Content">
+                <Template>
+                    <Panel x:DataType="vm:MiniPlayerViewModel">
+                        <Viewbox Width="16" Height="16" Opacity="0.4" IsVisible="{Binding Player.IsMuted}">
+                            <Canvas Width="24" Height="24">
+                                <Path Fill="{DynamicResource MiniGlyph}" Data="{DynamicResource SpeakerMuteIcon}"/>
+                            </Canvas>
+                        </Viewbox>
+                        <Viewbox Width="16" Height="16" IsVisible="{Binding !Player.IsMuted}">
+                            <Canvas Width="24" Height="24">
+                                <Path Fill="{DynamicResource MiniGlyph}" Data="{Binding Player.Volume, Converter={StaticResource VolumeToIcon}}"/>
+                            </Canvas>
+                        </Viewbox>
+                    </Panel>
+                </Template>
+            </Setter>
+        </Style>
+        <Style Selector="Viewbox.mini-volume-max">
+            <Setter Property="Grid.Column" Value="2"/>
+            <Setter Property="Width" Value="16"/>
+            <Setter Property="Height" Value="16"/>
+            <Setter Property="Margin" Value="7,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Child">
+                <Template>
+                    <Canvas Width="24" Height="24">
+                        <Path Fill="{DynamicResource MiniGlyph}" Data="{DynamicResource SpeakerHighIcon}"/>
+                    </Canvas>
+                </Template>
+            </Setter>
+        </Style>
+
+        <!-- Codec quality tag (Lossless / Hi-Res / codec), centred like Apple Music; hidden
+             while a music video's own audio plays (it describes the song file). -->
+        <Style Selector="ContentControl.mini-quality">
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="Content">
+                <Template>
+                    <StackPanel Orientation="Horizontal" Spacing="4" Background="Transparent" Margin="0,4,0,0"
+                                x:DataType="vm:MiniPlayerViewModel">
+                        <StackPanel.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
+                                <Binding Path="Player.CurrentTrack.AudioQualityBadge" Converter="{x:Static StringConverters.IsNotNullOrEmpty}"/>
+                                <Binding Path="!Player.IsPlayingMusicVideoAudio"/>
+                            </MultiBinding>
+                        </StackPanel.IsVisible>
+                        <ToolTip.Tip>
+                            <StackPanel Width="220" Spacing="4">
+                                <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityBadge}"
+                                           FontSize="13" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityDetailedInfo}"
+                                           FontSize="12" Opacity="0.9"
+                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityDescription, FallbackValue=''}"
+                                           FontSize="11" TextWrapping="Wrap" Opacity="0.85" Margin="0,4,0,0"
+                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                            </StackPanel>
+                        </ToolTip.Tip>
+                        <Viewbox Width="16" Height="11" VerticalAlignment="Center" Margin="0,0,0,1">
+                            <Path Data="{DynamicResource LosslessWaveIcon}" Fill="{DynamicResource MiniDrawerTextSoft}"/>
+                        </Viewbox>
+                        <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityBadge, FallbackValue=''}"
+                                   FontSize="10" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource MiniDrawerTextSoft}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Template>
+            </Setter>
+        </Style>
+
+        <!-- The transport row: shuffle | prev play next | repeat. MaxWidth keeps the five
+             together on a wide card instead of flinging the toggles to its far ends; on a
+             row too narrow for five the toggles step aside (SyncTransportToggles). -->
+        <Style Selector="Grid.mini-transport-row">
+            <Setter Property="MaxWidth" Value="280"/>
+        </Style>
+
+        <!-- Missing artwork: the same note mark on every cover slot. -->
+        <Style Selector="TextBlock.mini-art-placeholder" x:DataType="vm:MiniPlayerViewModel">
+            <Setter Property="Text" Value="♪"/>
+            <Setter Property="Opacity" Value="0.2"/>
+            <Setter Property="Foreground" Value="{DynamicResource MiniDrawerText}"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="IsVisible" Value="{Binding Player.CurrentArtPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+        </Style>
+
         <!-- "…" menu ▸ Design segment -->
         <Style Selector="Button.mini-segment">
             <Setter Property="Background" Value="Transparent"/>
@@ -353,16 +663,6 @@
             <Setter Property="Background" Value="Transparent"/>
         </Style>
 
-        <!-- Explicit badge on the theme-coloured design cards (mini-explicit's white wash is
-             invisible on a light card). -->
-        <Style Selector="Border.design-explicit">
-            <Setter Property="Background" Value="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
-            <Setter Property="CornerRadius" Value="3"/>
-            <Setter Property="Padding" Value="4,0"/>
-            <Setter Property="Height" Value="14"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-        </Style>
-
         <!-- Search box inside the drawer pill: strip the Fluent TextBox chrome -->
         <Style Selector="TextBox.mini-search">
             <Setter Property="Background" Value="Transparent"/>
@@ -385,18 +685,6 @@
         <Style Selector="TextBox.mini-search:focus /template/ Border#PART_BorderElement">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
-        </Style>
-
-        <!-- Explicit badge. Always hosted as the title marquee's InlineContent (never a
-             sibling in a horizontal StackPanel): the marquee subtracts the badge's width
-             from its viewport, so a long title trims/scrolls instead of pushing the badge
-             out from under the infinite-width StackPanel measure and over the heart. -->
-        <Style Selector="Border.mini-explicit">
-            <Setter Property="Background" Value="{DynamicResource MiniDrawerBadgeFill}"/>
-            <Setter Property="CornerRadius" Value="3"/>
-            <Setter Property="Padding" Value="4,0"/>
-            <Setter Property="Height" Value="14"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
 
         <!-- Drawer / search result rows -->
@@ -437,26 +725,6 @@
         </Style>
         <Style Selector="Button.mini-transport.glass-circle:pressed /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource MiniDrawerDiscPressed}"/>
-        </Style>
-
-        <!-- Time readouts fade in only while the pointer is over the card; the resting
-             glass stays clean. The "pointer-in" window class is set by code-behind on
-             the WINDOW's enter/leave, so moving between controls never blinks them.
-             Opacity (not IsVisible) keeps the row's layout stable. -->
-        <Style Selector="TextBlock.mini-time">
-            <Setter Property="Opacity" Value="0"/>
-            <Setter Property="Transitions">
-                <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.18">
-                        <DoubleTransition.Easing>
-                            <CubicEaseOut/>
-                        </DoubleTransition.Easing>
-                    </DoubleTransition>
-                </Transitions>
-            </Setter>
-        </Style>
-        <Style Selector=":is(Window).pointer-in TextBlock.mini-time">
-            <Setter Property="Opacity" Value="1"/>
         </Style>
 
         <!-- "…" popup menu rows: the app's v2 menu rows (Styles.axaml "Menus"): 32px, pill
@@ -598,12 +866,19 @@
             </Setter>
         </Style>
 
-        <!-- Intro dots: pulse as a group while the intro gap is active. -->
+        <!-- Intro / interlude dots: the active row breathes slowly in scale, as on the
+             lyrics page (the per-dot fill comes from InterludeProgress). -->
         <Style Selector="StackPanel.mini-intro-dots.active">
             <Style.Animations>
-                <Animation Duration="0:0:1.8" IterationCount="INFINITE" Easing="SineEaseInOut" PlaybackDirection="Alternate">
-                    <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.35"/></KeyFrame>
-                    <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1.0"/></KeyFrame>
+                <Animation Duration="0:0:2.1" IterationCount="INFINITE" PlaybackDirection="Alternate" Easing="SineEaseInOut">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="ScaleTransform.ScaleX" Value="1.0"/>
+                        <Setter Property="ScaleTransform.ScaleY" Value="1.0"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="ScaleTransform.ScaleX" Value="0.88"/>
+                        <Setter Property="ScaleTransform.ScaleY" Value="0.88"/>
+                    </KeyFrame>
                 </Animation>
             </Style.Animations>
         </Style>
@@ -785,9 +1060,7 @@
                     <controls:AnimatedCoverImage x:Name="IconAnimatedArt"
                                                  Source="{Binding Player.CurrentAnimatedCoverPath}"
                                                  IsActive="{Binding Settings.EnableAnimatedCovers}"/>
-                    <TextBlock Text="♪" FontSize="56" Opacity="0.15" Foreground="White"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                               IsVisible="{Binding Player.CurrentArtPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                    <TextBlock Classes="mini-art-placeholder" FontSize="56"/>
                 </Panel>
                 <Border Classes="icon-overlay" Background="#66000000">
                     <Panel>
@@ -800,14 +1073,14 @@
                                     ToolTip.Tip="{loc:T MiniPlayer.PinOnTop}"
                                     ToolTip.Placement="Right"
                                     Command="{Binding TogglePinCommand}">
-                                <PathIcon Data="{StaticResource PinIcon}" Width="13" Height="13" Foreground="White"/>
+                                <controls:LineIcon Data="{StaticResource MenuLinePin}" Width="14" Height="14" Foreground="White"/>
                             </Button>
                             <Button Classes="mini-transport" Width="26" Height="26"
                                     IsVisible="{Binding IsPinned}"
                                     ToolTip.Tip="{loc:T MiniPlayer.Unpin}"
                                     ToolTip.Placement="Right"
                                     Command="{Binding TogglePinCommand}">
-                                <PathIcon Data="{StaticResource PinFilledIcon}" Width="13" Height="13" Foreground="{DynamicResource AccentColorBrush}"/>
+                                <controls:LineIcon Data="{StaticResource MenuLinePin}" Width="14" Height="14" Foreground="{DynamicResource AccentColorBrush}"/>
                             </Button>
                         </Panel>
                         <Button Classes="mini-transport" Width="26" Height="26"
@@ -831,6 +1104,8 @@
             </Grid>
 
             <!-- ── Form: Bar (wide + short) ───────────────────────────────── -->
+            <!-- Every form below builds its controls from the shared classes in
+                 Window.Styles ("Shared player controls"): the markup only places them. -->
             <Grid x:Name="BarFormRoot" Classes="form-root"
                   Margin="14,12,14,10" RowDefinitions="*,Auto,Auto">
                 <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
@@ -844,141 +1119,49 @@
                             <controls:CachedImage SourcePath="{Binding Player.CurrentArtPath}" ClearOnSourceChange="False"
                                                   DecodeWidth="256" Width="60" Height="60"
                                                   Stretch="UniformToFill"/>
-                            <TextBlock Text="♪" FontSize="24" Opacity="0.2" Foreground="White"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       IsVisible="{Binding Player.CurrentArtPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                            <TextBlock Classes="mini-art-placeholder" FontSize="24"/>
                         </Panel>
                     </Border>
                     <StackPanel Grid.Column="1" x:Name="BarInfoHost" VerticalAlignment="Center" Margin="12,0,8,0" Spacing="1">
-                        <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.TitleDisplay, FallbackValue='No track playing'}"
-                                                   FontSize="14" FontWeight="SemiBold"
-                                                   Foreground="White"
-                                                   MaxDisplayWidth="{Binding #BarInfoHost.Bounds.Width}"
-                                                   HorizontalAlignment="Left"
-                                                   IsMiniPlayer="True">
-                            <controls:MarqueeTextBlock.InlineContent>
-                                <Border Classes="mini-explicit"
-                                        IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
-                                        ToolTip.Tip="{loc:T MiniPlayer.ExplicitTip}">
-                                    <TextBlock Text="E" FontSize="9" FontWeight="Bold"
-                                               VerticalAlignment="Center" TextAlignment="Center"
-                                               Foreground="Black"/>
-                                </Border>
-                            </controls:MarqueeTextBlock.InlineContent>
-                        </controls:MarqueeTextBlock>
-                        <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.ArtistDisplay, FallbackValue=''}"
-                                                   Classes="mini-artist"
-                                                   FontSize="12"
-                                                   MaxDisplayWidth="{Binding #BarInfoHost.Bounds.Width}"
-                                                   HorizontalAlignment="Left"
-                                                   IsMiniPlayer="True"
-                                                   IsForAlbum="True"/>
+                        <controls:MarqueeTextBlock Classes="mini-title"/>
+                        <TextBlock Classes="mini-no-track"/>
+                        <controls:MarqueeTextBlock Classes="mini-artist"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                        <!-- Negative right margin offsets the heart without dragging "…" along. -->
-                        <Button Classes="mini-transport glass-circle" Width="28" Height="28"
-                                Margin="4,0,-4,0"
-                                Command="{Binding Player.ToggleCurrentTrackFavoriteCommand}"
-                                ToolTip.Tip="{loc:T MiniPlayer.FavoritesTip}">
-                            <Panel Classes="mini-heart-glyph">
-                                <!-- Shared HeartIcon: pops in BOTH directions, like every other heart. -->
-                                <controls:HeartIcon Size="14" OffBrush="#D9FFFFFF"
-                                                    IsFavorite="{Binding Player.CurrentTrack.IsFavorite, FallbackValue=False}"/>
-                            </Panel>
-                        </Button>
-                        <Button Classes="mini-transport glass-circle" Width="28" Height="28"
-                                ToolTip.Tip="{loc:T MiniPlayer.MoreTip}" Click="OnMoreMenuClick">
-                            <Viewbox Width="15" Height="15">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="#D9FFFFFF" Data="{StaticResource MoreDotsIcon}"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Button>
+                        <Button x:Name="BarHeartButton" Classes="mini-transport glass-circle mini-heart"/>
+                        <Button x:Name="BarMoreButton" Classes="mini-transport glass-circle mini-more" Click="OnMoreMenuClick"/>
                     </StackPanel>
                 </Grid>
 
-                <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" Margin="0,2,0,0">
-                    <TextBlock Grid.Column="0" Classes="mini-time" Text="{Binding Player.PositionText}"
-                               FontSize="10" Foreground="#A0FFFFFF"
-                               VerticalAlignment="Center" MinWidth="32"/>
-                    <controls:WaveformSeekBar Grid.Column="1" Margin="6,0" Height="16" VerticalAlignment="Center"
-                                              IsVisible="{Binding Player.WaveformSeekBarEnabled}"
-                                              Waveform="{Binding Player.CurrentWaveform}"
-                                              Value="{Binding #BarSeekSlider.Value}"
-                                              PlayedBrush="{DynamicResource AccentColorBrush}" UnplayedBrush="#50FFFFFF"
-                                              TrackInset="6" LineInset="0" LineThickness="4" IsHitTestVisible="False"/>
-                    <Slider Grid.Column="1" x:Name="BarSeekSlider" Classes="mini-seek" Classes.waveform="{Binding Player.WaveformSeekBarEnabled}"
-                            Minimum="0" Maximum="1" Focusable="False"
-                            Value="{Binding Player.PositionFraction, Mode=TwoWay}"
-                            Margin="6,0" VerticalAlignment="Center"/>
-                    <TextBlock Grid.Column="2" Classes="mini-time" Text="{Binding Player.RemainingTimeText}"
-                               FontSize="10" Foreground="#A0FFFFFF"
-                               VerticalAlignment="Center" MinWidth="32" TextAlignment="Right"/>
-                </Grid>
+                <Panel Grid.Row="1" Margin="0,2,0,0">
+                    <Grid Classes="mini-seek-row" ColumnDefinitions="Auto,*,Auto">
+                        <TextBlock Classes="mini-time mini-elapsed"/>
+                        <controls:WaveformSeekBar Classes="mini-wave"/>
+                        <Slider x:Name="BarSeekSlider" Classes="mini-slider mini-seek"/>
+                        <TextBlock Classes="mini-time mini-remaining"/>
+                    </Grid>
+                    <Grid Classes="mini-volume-row" ColumnDefinitions="Auto,*,Auto">
+                        <Button Classes="mini-transport mini-mute"/>
+                        <Slider x:Name="BarVolumeSlider" Classes="mini-slider mini-volume"/>
+                        <Viewbox Classes="mini-volume-max"/>
+                    </Grid>
+                </Panel>
 
-                <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="18" HorizontalAlignment="Center">
-                    <Button Classes="mini-transport glass-circle" Width="34" Height="34"
-                            Command="{Binding Player.ToggleShuffleCommand}" ToolTip.Tip="{loc:T MiniPlayer.ShuffleTip}">
-                        <Panel>
-                            <Viewbox Width="18" Height="18" IsVisible="{Binding !Player.IsShuffleEnabled}">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="#B8FFFFFF" Data="{StaticResource ShuffleIcon}"/>
-                                </Canvas>
-                            </Viewbox>
-                            <Viewbox Width="18" Height="18" IsVisible="{Binding Player.IsShuffleEnabled}">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="{DynamicResource AccentColorBrush}" Data="{StaticResource ShuffleIcon}"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Panel>
-                    </Button>
-                    <Button Classes="mini-transport tx" Width="34" Height="34"
-                            Command="{Binding Player.PreviousCommand}" ToolTip.Tip="{loc:T MiniPlayer.PreviousTip}">
-                        <controls:TransportGlyph Kind="Previous" Width="19" Height="19" HighlightSize="34"
-                                                 Foreground="White"/>
-                    </Button>
-                    <Button Classes="mini-transport tx" Width="38" Height="38"
-                            Command="{Binding Player.PlayPauseCommand}"
-                            ToolTip.Tip="{Binding Player.PlayPauseTooltip}">
-                        <controls:TransportGlyph Kind="PlayPause" Width="22" Height="22" HighlightSize="38"
-                                                 Foreground="White"
-                                                 IsPlaying="{Binding Player.State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}"/>
-                    </Button>
-                    <Button Classes="mini-transport tx" Width="34" Height="34"
-                            Command="{Binding Player.NextCommand}" ToolTip.Tip="{loc:T MiniPlayer.ForwardTip}">
-                        <controls:TransportGlyph Kind="Next" Width="19" Height="19" HighlightSize="34"
-                                                 Foreground="White"/>
-                    </Button>
-                    <Button Classes="mini-transport glass-circle" Width="34" Height="34"
-                            Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{Binding Player.RepeatModeTip}">
-                        <Panel>
-                            <Viewbox Width="18" Height="18"
-                                     IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="#B8FFFFFF" Data="{StaticResource RepeatAllIcon}"/>
-                                </Canvas>
-                            </Viewbox>
-                            <Viewbox Width="18" Height="18"
-                                     IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.All}}">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="{DynamicResource AccentColorBrush}" Data="{StaticResource RepeatAllIcon}"/>
-                                </Canvas>
-                            </Viewbox>
-                            <Viewbox Width="18" Height="18"
-                                     IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.One}}">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="{DynamicResource AccentColorBrush}" Data="{StaticResource RepeatOneIcon}"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Panel>
-                    </Button>
-                </StackPanel>
+                <Grid Grid.Row="2" x:Name="BarTransport" Classes="mini-transport-row" ColumnDefinitions="Auto,*,Auto">
+                    <Button x:Name="BarShuffleButton" Classes="mini-transport glass-circle mini-shuffle"/>
+                    <StackPanel Classes="mini-transport-center">
+                        <Button x:Name="BarPrevButton" Classes="mini-transport tx mini-prev"/>
+                        <Button x:Name="BarPlayButton" Classes="mini-transport tx mini-play"/>
+                        <Button x:Name="BarNextButton" Classes="mini-transport tx mini-next"/>
+                    </StackPanel>
+                    <Button x:Name="BarRepeatButton" Classes="mini-transport glass-circle mini-repeat"/>
+                </Grid>
             </Grid>
 
             <!-- ── Form: Card (default vertical) ──────────────────────────── -->
             <Grid x:Name="CardFormRoot" Classes="form-root"
                   Margin="16,14,16,12" RowDefinitions="Auto,Auto,Auto,Auto,*">
-                <!-- Art thumb + info + "…" -->
+                <!-- Art thumb + info + heart / "…" -->
                 <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,20,0,0">
                     <Border Grid.Column="0" Width="72" Height="72" CornerRadius="16" VerticalAlignment="Center">
                         <Panel>
@@ -988,175 +1171,44 @@
                             <controls:CachedImage SourcePath="{Binding Player.CurrentArtPath}" ClearOnSourceChange="False"
                                                   DecodeWidth="256" Width="72" Height="72"
                                                   Stretch="UniformToFill"/>
-                            <TextBlock Text="♪" FontSize="30" Opacity="0.2" Foreground="White"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       IsVisible="{Binding Player.CurrentArtPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                            <TextBlock Classes="mini-art-placeholder" FontSize="30"/>
                         </Panel>
                     </Border>
                     <StackPanel Grid.Column="1" x:Name="CardInfoHost" VerticalAlignment="Center" Margin="12,0,8,0" Spacing="1">
-                        <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.TitleDisplay, FallbackValue='No track playing'}"
-                                                   FontSize="15" FontWeight="Bold"
-                                                   Foreground="White"
-                                                   MaxDisplayWidth="{Binding #CardInfoHost.Bounds.Width}"
-                                                   HorizontalAlignment="Left"
-                                                   IsMiniPlayer="True">
-                            <controls:MarqueeTextBlock.InlineContent>
-                                <Border Classes="mini-explicit"
-                                        IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
-                                        ToolTip.Tip="{loc:T MiniPlayer.ExplicitTip}">
-                                    <TextBlock Text="E" FontSize="9" FontWeight="Bold"
-                                               VerticalAlignment="Center" TextAlignment="Center"
-                                               Foreground="Black"/>
-                                </Border>
-                            </controls:MarqueeTextBlock.InlineContent>
-                        </controls:MarqueeTextBlock>
-                        <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.ArtistDisplay, FallbackValue=''}"
-                                                   Classes="mini-artist"
-                                                   FontSize="13"
-                                                   MaxDisplayWidth="{Binding #CardInfoHost.Bounds.Width}"
-                                                   HorizontalAlignment="Left"
-                                                   IsMiniPlayer="True"
-                                                   IsForAlbum="True"/>
+                        <controls:MarqueeTextBlock Classes="mini-title"/>
+                        <TextBlock Classes="mini-no-track"/>
+                        <controls:MarqueeTextBlock Classes="mini-artist"/>
                     </StackPanel>
-                    <!-- Liqoria/Apple Music pairing: heart + "…" side by side in glass discs -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                        <Button Classes="mini-transport glass-circle" Width="28" Height="28"
-                                Command="{Binding Player.ToggleCurrentTrackFavoriteCommand}"
-                                ToolTip.Tip="{loc:T MiniPlayer.FavoritesTip}">
-                            <Panel Classes="mini-heart-glyph">
-                                <!-- Shared HeartIcon: pops in BOTH directions, like every other heart. -->
-                                <controls:HeartIcon Size="14" OffBrush="#D9FFFFFF"
-                                                    IsFavorite="{Binding Player.CurrentTrack.IsFavorite, FallbackValue=False}"/>
-                            </Panel>
-                        </Button>
-                        <Button Classes="mini-transport glass-circle" Width="28" Height="28"
-                                ToolTip.Tip="{loc:T MiniPlayer.MoreTip}" Click="OnMoreMenuClick">
-                            <Viewbox Width="15" Height="15">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="#D9FFFFFF" Data="{StaticResource MoreDotsIcon}"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Button>
+                        <Button x:Name="CardHeartButton" Classes="mini-transport glass-circle mini-heart"/>
+                        <Button x:Name="CardMoreButton" Classes="mini-transport glass-circle mini-more" Click="OnMoreMenuClick"/>
                     </StackPanel>
                 </Grid>
 
-                <!-- Seek + times -->
-                <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" Margin="0,10,0,0">
-                    <TextBlock Grid.Column="0" Classes="mini-time" Text="{Binding Player.PositionText}"
-                               FontSize="10" Foreground="#A0FFFFFF"
-                               VerticalAlignment="Center" MinWidth="32"/>
-                    <controls:WaveformSeekBar Grid.Column="1" Margin="6,0" Height="16" VerticalAlignment="Center"
-                                              IsVisible="{Binding Player.WaveformSeekBarEnabled}"
-                                              Waveform="{Binding Player.CurrentWaveform}"
-                                              Value="{Binding #SeekSlider.Value}"
-                                              PlayedBrush="{DynamicResource AccentColorBrush}" UnplayedBrush="#50FFFFFF"
-                                              TrackInset="6" LineInset="0" LineThickness="4" IsHitTestVisible="False"/>
-                    <Slider Grid.Column="1" x:Name="SeekSlider" Classes="mini-seek" Classes.waveform="{Binding Player.WaveformSeekBarEnabled}"
-                            Minimum="0" Maximum="1" Focusable="False"
-                            Value="{Binding Player.PositionFraction, Mode=TwoWay}"
-                            Margin="6,0" VerticalAlignment="Center"/>
-                    <TextBlock Grid.Column="2" Classes="mini-time" Text="{Binding Player.RemainingTimeText}"
-                               FontSize="10" Foreground="#A0FFFFFF"
-                               VerticalAlignment="Center" MinWidth="32" TextAlignment="Right"/>
-                </Grid>
+                <Panel Grid.Row="1" Margin="0,12,0,0">
+                    <Grid Classes="mini-seek-row" ColumnDefinitions="Auto,*,Auto">
+                        <TextBlock Classes="mini-time mini-elapsed"/>
+                        <controls:WaveformSeekBar Classes="mini-wave"/>
+                        <Slider x:Name="CardSeekSlider" Classes="mini-slider mini-seek"/>
+                        <TextBlock Classes="mini-time mini-remaining"/>
+                    </Grid>
+                    <Grid Classes="mini-volume-row" ColumnDefinitions="Auto,*,Auto">
+                        <Button Classes="mini-transport mini-mute"/>
+                        <Slider x:Name="CardVolumeSlider" Classes="mini-slider mini-volume"/>
+                        <Viewbox Classes="mini-volume-max"/>
+                    </Grid>
+                </Panel>
 
-                <!-- Codec quality tag (Lossless / Hi-Res / codec) centered like Apple Music;
-                     hidden while a music video's own audio plays (it describes the song file). -->
-                <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="4"
-                            HorizontalAlignment="Center"
-                            Background="Transparent"
-                            Margin="0,4,0,0">
-                    <StackPanel.IsVisible>
-                        <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
-                            <Binding Path="Player.CurrentTrack.AudioQualityBadge" Converter="{x:Static StringConverters.IsNotNullOrEmpty}"/>
-                            <Binding Path="!Player.IsPlayingMusicVideoAudio"/>
-                        </MultiBinding>
-                    </StackPanel.IsVisible>
-                    <ToolTip.Tip>
-                        <StackPanel Width="220" Spacing="4">
-                            <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityBadge}"
-                                       FontSize="13" FontWeight="SemiBold"
-                                       Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-                            <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityDetailedInfo}"
-                                       FontSize="12" Opacity="0.9"
-                                       Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                            <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityDescription, FallbackValue=''}"
-                                       FontSize="11" TextWrapping="Wrap" Opacity="0.85" Margin="0,4,0,0"
-                                       Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                        </StackPanel>
-                    </ToolTip.Tip>
-                    <Viewbox Width="16" Height="11" VerticalAlignment="Center" Margin="0,0,0,1" Opacity="0.7">
-                        <Path Data="{StaticResource LosslessWaveIcon}" Fill="White"/>
-                    </Viewbox>
-                    <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityBadge, FallbackValue=''}"
-                               FontSize="10" FontWeight="SemiBold"
-                               Foreground="#B3FFFFFF" VerticalAlignment="Center"/>
-                </StackPanel>
+                <ContentControl Grid.Row="2" Classes="mini-quality"/>
 
-                <!-- Transport: shuffle | prev play next | heart (Liqoria order) -->
-                <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto" Margin="0,8,0,0">
-                    <Button Grid.Column="0" Classes="mini-transport glass-circle" Width="36" Height="36"
-                            HorizontalAlignment="Left" VerticalAlignment="Center"
-                            Command="{Binding Player.ToggleShuffleCommand}" ToolTip.Tip="{loc:T MiniPlayer.ShuffleTip}">
-                        <Panel>
-                            <Viewbox Width="19" Height="19" IsVisible="{Binding !Player.IsShuffleEnabled}">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="#B8FFFFFF" Data="{StaticResource ShuffleIcon}"/>
-                                </Canvas>
-                            </Viewbox>
-                            <Viewbox Width="19" Height="19" IsVisible="{Binding Player.IsShuffleEnabled}">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="{DynamicResource AccentColorBrush}" Data="{StaticResource ShuffleIcon}"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Panel>
-                    </Button>
-
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
-                        <Button Classes="mini-transport tx" Width="40" Height="40"
-                                Command="{Binding Player.PreviousCommand}" ToolTip.Tip="{loc:T MiniPlayer.PreviousTip}">
-                            <controls:TransportGlyph Kind="Previous" Width="21" Height="21" HighlightSize="40"
-                                                     Foreground="White"/>
-                        </Button>
-                        <Button Classes="mini-transport tx" Width="46" Height="46"
-                                Command="{Binding Player.PlayPauseCommand}"
-                                ToolTip.Tip="{Binding Player.PlayPauseTooltip}">
-                            <controls:TransportGlyph Kind="PlayPause" Width="25" Height="25" HighlightSize="46"
-                                                     Foreground="White"
-                                                     IsPlaying="{Binding Player.State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}"/>
-                        </Button>
-                        <Button Classes="mini-transport tx" Width="40" Height="40"
-                                Command="{Binding Player.NextCommand}" ToolTip.Tip="{loc:T MiniPlayer.ForwardTip}">
-                            <controls:TransportGlyph Kind="Next" Width="21" Height="21" HighlightSize="40"
-                                                     Foreground="White"/>
-                        </Button>
+                <Grid Grid.Row="3" x:Name="CardTransport" Classes="mini-transport-row" ColumnDefinitions="Auto,*,Auto" Margin="0,8,0,0">
+                    <Button x:Name="CardShuffleButton" Classes="mini-transport glass-circle mini-shuffle"/>
+                    <StackPanel Classes="mini-transport-center">
+                        <Button x:Name="CardPrevButton" Classes="mini-transport tx mini-prev"/>
+                        <Button x:Name="CardPlayButton" Classes="mini-transport tx mini-play"/>
+                        <Button x:Name="CardNextButton" Classes="mini-transport tx mini-next"/>
                     </StackPanel>
-
-                    <Button Grid.Column="2" Classes="mini-transport glass-circle" Width="36" Height="36"
-                            HorizontalAlignment="Right" VerticalAlignment="Center"
-                            Command="{Binding Player.CycleRepeatCommand}"
-                            ToolTip.Tip="{Binding Player.RepeatModeTip}">
-                        <Panel>
-                            <Viewbox Width="19" Height="19"
-                                     IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="#B8FFFFFF" Data="{StaticResource RepeatAllIcon}"/>
-                                </Canvas>
-                            </Viewbox>
-                            <Viewbox Width="19" Height="19"
-                                     IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.All}}">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="{DynamicResource AccentColorBrush}" Data="{StaticResource RepeatAllIcon}"/>
-                                </Canvas>
-                            </Viewbox>
-                            <Viewbox Width="19" Height="19"
-                                     IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.One}}">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="{DynamicResource AccentColorBrush}" Data="{StaticResource RepeatOneIcon}"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Panel>
-                    </Button>
+                    <Button x:Name="CardRepeatButton" Classes="mini-transport glass-circle mini-repeat"/>
                 </Grid>
             </Grid>
 
@@ -1185,9 +1237,7 @@
                     <controls:AnimatedCoverImage x:Name="LargeAnimatedArt"
                                                  Source="{Binding Player.CurrentAnimatedCoverPath}"
                                                  IsActive="{Binding Settings.EnableAnimatedCovers}"/>
-                    <TextBlock Text="♪" FontSize="72" Opacity="0.15" Foreground="White"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                               IsVisible="{Binding Player.CurrentArtPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                    <TextBlock Classes="mini-art-placeholder" FontSize="72"/>
                 </Panel>
 
                 <!-- L2: the frosted band — a SECOND copy of the same artwork, blurred,
@@ -1236,191 +1286,47 @@
                      the controls start (~0.66 at the canonical 340x520). -->
                 <Border x:Name="LargeFrostScrim" IsHitTestVisible="False" Background="{StaticResource MiniFrostScrim}"/>
 
-                <!-- L4: the controls, anchored to the bottom of the frosted band. -->
+                <!-- L4: the controls, anchored to the bottom of the frosted band. The volume
+                     bar here is permanent (the "…" menu has no Volume item on this form), so
+                     both rows pin their visibility locally over the swap styles. -->
                 <Grid x:Name="LargeControls" VerticalAlignment="Bottom" Margin="16,0,16,12"
                       RowDefinitions="Auto,Auto,Auto,Auto,Auto">
 
                 <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="2,0,0,0">
                     <StackPanel Grid.Column="0" x:Name="LargeInfoHost" VerticalAlignment="Center" Margin="0,0,8,0" Spacing="1">
-                        <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.TitleDisplay, FallbackValue='No track playing'}"
-                                                   FontSize="15" FontWeight="Bold" Foreground="White"
-                                                   MaxDisplayWidth="{Binding #LargeInfoHost.Bounds.Width}"
-                                                   HorizontalAlignment="Left" IsMiniPlayer="True">
-                            <controls:MarqueeTextBlock.InlineContent>
-                                <Border Classes="mini-explicit"
-                                        IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
-                                        ToolTip.Tip="{loc:T MiniPlayer.ExplicitTip}">
-                                    <TextBlock Text="E" FontSize="9" FontWeight="Bold"
-                                               VerticalAlignment="Center" TextAlignment="Center" Foreground="Black"/>
-                                </Border>
-                            </controls:MarqueeTextBlock.InlineContent>
-                        </controls:MarqueeTextBlock>
-                        <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.ArtistDisplay, FallbackValue=''}"
-                                                   FontSize="13" Foreground="{DynamicResource AccentColorBrush}"
-                                                   MaxDisplayWidth="{Binding #LargeInfoHost.Bounds.Width}"
-                                                   HorizontalAlignment="Left" IsMiniPlayer="True" IsForAlbum="True"/>
+                        <controls:MarqueeTextBlock Classes="mini-title"/>
+                        <TextBlock Classes="mini-no-track"/>
+                        <controls:MarqueeTextBlock Classes="mini-artist"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                        <Button Classes="mini-transport glass-circle" Width="28" Height="28"
-                                Command="{Binding Player.ToggleCurrentTrackFavoriteCommand}"
-                                ToolTip.Tip="{loc:T MiniPlayer.FavoritesTip}">
-                            <Panel Classes="mini-heart-glyph">
-                                <!-- Shared HeartIcon: pops in BOTH directions, like every other heart. -->
-                                <controls:HeartIcon Size="14" OffBrush="#D9FFFFFF"
-                                                    IsFavorite="{Binding Player.CurrentTrack.IsFavorite, FallbackValue=False}"/>
-                            </Panel>
-                        </Button>
-                        <Button Classes="mini-transport glass-circle" Width="28" Height="28"
-                                ToolTip.Tip="{loc:T MiniPlayer.MoreTip}" Click="OnMoreMenuClick">
-                            <Viewbox Width="15" Height="15">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="#D9FFFFFF" Data="{StaticResource MoreDotsIcon}"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Button>
+                        <Button x:Name="LargeHeartButton" Classes="mini-transport glass-circle mini-heart"/>
+                        <Button x:Name="LargeMoreButton" Classes="mini-transport glass-circle mini-more" Click="OnMoreMenuClick"/>
                     </StackPanel>
                 </Grid>
 
-                <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" Margin="0,6,0,0">
-                    <TextBlock Grid.Column="0" Classes="mini-time" Text="{Binding Player.PositionText}"
-                               FontSize="10" Foreground="#A0FFFFFF"
-                               VerticalAlignment="Center" MinWidth="32"/>
-                    <controls:WaveformSeekBar Grid.Column="1" Margin="6,0" Height="16" VerticalAlignment="Center"
-                                              IsVisible="{Binding Player.WaveformSeekBarEnabled}"
-                                              Waveform="{Binding Player.CurrentWaveform}"
-                                              Value="{Binding #LargeSeekSlider.Value}"
-                                              PlayedBrush="{DynamicResource AccentColorBrush}" UnplayedBrush="#50FFFFFF"
-                                              TrackInset="6" LineInset="0" LineThickness="4" IsHitTestVisible="False"/>
-                    <Slider Grid.Column="1" x:Name="LargeSeekSlider" Classes="mini-seek" Classes.waveform="{Binding Player.WaveformSeekBarEnabled}"
-                            Minimum="0" Maximum="1" Focusable="False"
-                            Value="{Binding Player.PositionFraction, Mode=TwoWay}"
-                            Margin="6,0" VerticalAlignment="Center"/>
-                    <TextBlock Grid.Column="2" Classes="mini-time" Text="{Binding Player.RemainingTimeText}"
-                               FontSize="10" Foreground="#A0FFFFFF"
-                               VerticalAlignment="Center" MinWidth="32" TextAlignment="Right"/>
+                <Grid Grid.Row="1" Classes="mini-seek-row" IsVisible="True" ColumnDefinitions="Auto,*,Auto" Margin="0,8,0,0">
+                    <TextBlock Classes="mini-time mini-elapsed"/>
+                    <controls:WaveformSeekBar Classes="mini-wave"/>
+                    <Slider x:Name="LargeSeekSlider" Classes="mini-slider mini-seek"/>
+                    <TextBlock Classes="mini-time mini-remaining"/>
                 </Grid>
 
-                <!-- Codec quality tag (Lossless / Hi-Res / codec) centered like Apple Music;
-                     hidden while a music video's own audio plays (it describes the song file). -->
-                <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="4"
-                            HorizontalAlignment="Center"
-                            Background="Transparent"
-                            Margin="0,4,0,0">
-                    <StackPanel.IsVisible>
-                        <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
-                            <Binding Path="Player.CurrentTrack.AudioQualityBadge" Converter="{x:Static StringConverters.IsNotNullOrEmpty}"/>
-                            <Binding Path="!Player.IsPlayingMusicVideoAudio"/>
-                        </MultiBinding>
-                    </StackPanel.IsVisible>
-                    <ToolTip.Tip>
-                        <StackPanel Width="220" Spacing="4">
-                            <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityBadge}"
-                                       FontSize="13" FontWeight="SemiBold"
-                                       Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-                            <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityDetailedInfo}"
-                                       FontSize="12" Opacity="0.9"
-                                       Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                            <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityDescription, FallbackValue=''}"
-                                       FontSize="11" TextWrapping="Wrap" Opacity="0.85" Margin="0,4,0,0"
-                                       Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                        </StackPanel>
-                    </ToolTip.Tip>
-                    <Viewbox Width="16" Height="11" VerticalAlignment="Center" Margin="0,0,0,1" Opacity="0.7">
-                        <Path Data="{StaticResource LosslessWaveIcon}" Fill="White"/>
-                    </Viewbox>
-                    <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityBadge, FallbackValue=''}"
-                               FontSize="10" FontWeight="SemiBold"
-                               Foreground="#B3FFFFFF" VerticalAlignment="Center"/>
-                </StackPanel>
+                <ContentControl Grid.Row="2" Classes="mini-quality"/>
 
-                <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto" Margin="0,4,0,0">
-                    <Button Grid.Column="0" Classes="mini-transport glass-circle" Width="36" Height="36"
-                            HorizontalAlignment="Left" VerticalAlignment="Center"
-                            Command="{Binding Player.ToggleShuffleCommand}" ToolTip.Tip="{loc:T MiniPlayer.ShuffleTip}">
-                        <Panel>
-                            <Viewbox Width="19" Height="19" IsVisible="{Binding !Player.IsShuffleEnabled}">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="#B8FFFFFF" Data="{StaticResource ShuffleIcon}"/>
-                                </Canvas>
-                            </Viewbox>
-                            <Viewbox Width="19" Height="19" IsVisible="{Binding Player.IsShuffleEnabled}">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="{DynamicResource AccentColorBrush}" Data="{StaticResource ShuffleIcon}"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Panel>
-                    </Button>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="14" HorizontalAlignment="Center">
-                    <Button Classes="mini-transport tx" Width="40" Height="40"
-                            Command="{Binding Player.PreviousCommand}" ToolTip.Tip="{loc:T MiniPlayer.PreviousTip}">
-                        <controls:TransportGlyph Kind="Previous" Width="21" Height="21" HighlightSize="40"
-                                                 Foreground="White"/>
-                    </Button>
-                    <Button Classes="mini-transport tx" Width="46" Height="46"
-                            Command="{Binding Player.PlayPauseCommand}"
-                            ToolTip.Tip="{Binding Player.PlayPauseTooltip}">
-                        <controls:TransportGlyph Kind="PlayPause" Width="25" Height="25" HighlightSize="46"
-                                                 Foreground="White"
-                                                 IsPlaying="{Binding Player.State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}"/>
-                    </Button>
-                    <Button Classes="mini-transport tx" Width="40" Height="40"
-                            Command="{Binding Player.NextCommand}" ToolTip.Tip="{loc:T MiniPlayer.ForwardTip}">
-                        <controls:TransportGlyph Kind="Next" Width="21" Height="21" HighlightSize="40"
-                                                 Foreground="White"/>
-                    </Button>
+                <Grid Grid.Row="3" x:Name="LargeTransport" Classes="mini-transport-row" ColumnDefinitions="Auto,*,Auto" Margin="0,6,0,0">
+                    <Button x:Name="LargeShuffleButton" Classes="mini-transport glass-circle mini-shuffle"/>
+                    <StackPanel Classes="mini-transport-center">
+                        <Button x:Name="LargePrevButton" Classes="mini-transport tx mini-prev"/>
+                        <Button x:Name="LargePlayButton" Classes="mini-transport tx mini-play"/>
+                        <Button x:Name="LargeNextButton" Classes="mini-transport tx mini-next"/>
                     </StackPanel>
-                    <Button Grid.Column="2" Classes="mini-transport glass-circle" Width="36" Height="36"
-                            HorizontalAlignment="Right" VerticalAlignment="Center"
-                            Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{Binding Player.RepeatModeTip}">
-                        <Panel>
-                            <Viewbox Width="19" Height="19"
-                                     IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="#B8FFFFFF" Data="{StaticResource RepeatAllIcon}"/>
-                                </Canvas>
-                            </Viewbox>
-                            <Viewbox Width="19" Height="19"
-                                     IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.All}}">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="{DynamicResource AccentColorBrush}" Data="{StaticResource RepeatAllIcon}"/>
-                                </Canvas>
-                            </Viewbox>
-                            <Viewbox Width="19" Height="19"
-                                     IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.One}}">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="{DynamicResource AccentColorBrush}" Data="{StaticResource RepeatOneIcon}"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Panel>
-                    </Button>
+                    <Button x:Name="LargeRepeatButton" Classes="mini-transport glass-circle mini-repeat"/>
                 </Grid>
 
-                <!-- Bottom volume bar (Liqoria large-icon look) -->
-                <Grid Grid.Row="4" ColumnDefinitions="Auto,*,Auto" Margin="2,6,2,0">
-                    <Button Grid.Column="0" Classes="mini-transport" Width="26" Height="26"
-                            Command="{Binding Player.ToggleMuteCommand}" ToolTip.Tip="{loc:T MiniPlayer.MuteTip}">
-                        <Panel>
-                            <Viewbox Width="13" Height="13" Opacity="0.75" IsVisible="{Binding !Player.IsMuted}">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="White" Data="{StaticResource SpeakerZeroIcon}"/>
-                                </Canvas>
-                            </Viewbox>
-                            <Viewbox Width="13" Height="13" Opacity="0.55" IsVisible="{Binding Player.IsMuted}">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="White" Data="{StaticResource SpeakerMuteIcon}"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Panel>
-                    </Button>
-                    <Slider Grid.Column="1" x:Name="LargeVolumeSlider" Classes="mini-seek mini-volume"
-                            Minimum="0" Maximum="100" Focusable="False"
-                            Value="{Binding Player.Volume, Mode=TwoWay}"
-                            Margin="4,0" VerticalAlignment="Center"/>
-                    <Viewbox Grid.Column="2" Width="15" Height="15" Opacity="0.75" VerticalAlignment="Center">
-                        <Canvas Width="24" Height="24">
-                            <Path Fill="White" Data="{StaticResource SpeakerHighIcon}"/>
-                        </Canvas>
-                    </Viewbox>
+                <Grid Grid.Row="4" Classes="mini-volume-row" IsVisible="True" ColumnDefinitions="Auto,*,Auto" Margin="0,10,0,0">
+                    <Button Classes="mini-transport mini-mute"/>
+                    <Slider x:Name="LargeVolumeSlider" Classes="mini-slider mini-volume"/>
+                    <Viewbox Classes="mini-volume-max"/>
                 </Grid>
 
                 </Grid>
@@ -1468,9 +1374,7 @@
                         <controls:AnimatedCoverImage x:Name="LyricsAnimatedArt"
                                                      Source="{Binding Player.CurrentAnimatedCoverPath}"
                                                      IsActive="{Binding Settings.EnableAnimatedCovers}"/>
-                        <TextBlock Text="♪" FontSize="42" Opacity="0.15" Foreground="White"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"
-                                   IsVisible="{Binding Player.CurrentArtPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                        <TextBlock Classes="mini-art-placeholder" FontSize="42"/>
                     </Panel>
 
                     <!-- L2: the frosted band — a blurred copy of the same crop, revealed by
@@ -1498,147 +1402,41 @@
 
                     <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="2,4,0,0">
                         <StackPanel Grid.Column="0" x:Name="LyricsInfoHost" Spacing="1" VerticalAlignment="Center" Margin="0,0,6,0">
-                            <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.TitleDisplay, FallbackValue='No track playing'}"
-                                                       FontSize="14" FontWeight="Bold" Foreground="White"
-                                                       MaxDisplayWidth="{Binding #LyricsInfoHost.Bounds.Width}"
-                                                       HorizontalAlignment="Left" IsMiniPlayer="True">
-                                <controls:MarqueeTextBlock.InlineContent>
-                                    <Border Classes="mini-explicit"
-                                            IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
-                                            ToolTip.Tip="{loc:T MiniPlayer.ExplicitTip}">
-                                        <TextBlock Text="E" FontSize="9" FontWeight="Bold"
-                                                   VerticalAlignment="Center" TextAlignment="Center"
-                                                   Foreground="Black"/>
-                                    </Border>
-                                </controls:MarqueeTextBlock.InlineContent>
-                            </controls:MarqueeTextBlock>
-                            <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.ArtistDisplay, FallbackValue=''}"
-                                                       FontSize="12" Foreground="{DynamicResource AccentColorBrush}"
-                                                       MaxDisplayWidth="{Binding #LyricsInfoHost.Bounds.Width}"
-                                                       HorizontalAlignment="Left" IsMiniPlayer="True" IsForAlbum="True"/>
+                            <controls:MarqueeTextBlock Classes="mini-title"/>
+                            <TextBlock Classes="mini-no-track"/>
+                            <controls:MarqueeTextBlock Classes="mini-artist"/>
                         </StackPanel>
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                            <Button Classes="mini-transport glass-circle" Width="28" Height="28"
-                                    Command="{Binding Player.ToggleCurrentTrackFavoriteCommand}"
-                                    ToolTip.Tip="{loc:T MiniPlayer.FavoritesTip}">
-                                <Panel Classes="mini-heart-glyph">
-                                <!-- Shared HeartIcon: pops in BOTH directions, like every other heart. -->
-                                <controls:HeartIcon Size="14" OffBrush="#D9FFFFFF"
-                                                    IsFavorite="{Binding Player.CurrentTrack.IsFavorite, FallbackValue=False}"/>
-                            </Panel>
-                            </Button>
-                            <Button Classes="mini-transport glass-circle" Width="28" Height="28"
-                                    ToolTip.Tip="{loc:T MiniPlayer.MoreTip}" Click="OnMoreMenuClick">
-                                <Viewbox Width="15" Height="15">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Fill="#D9FFFFFF" Data="{StaticResource MoreDotsIcon}"/>
-                                    </Canvas>
-                                </Viewbox>
-                            </Button>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <Button x:Name="LyricsHeartButton" Classes="mini-transport glass-circle mini-heart"/>
+                            <Button x:Name="LyricsMoreButton" Classes="mini-transport glass-circle mini-more" Click="OnMoreMenuClick"/>
                         </StackPanel>
                     </Grid>
 
-                    <controls:WaveformSeekBar Grid.Row="1" Margin="0,4,0,0" Height="16" VerticalAlignment="Center"
-                                              IsVisible="{Binding Player.WaveformSeekBarEnabled}"
-                                              Waveform="{Binding Player.CurrentWaveform}"
-                                              Value="{Binding #LyricsSeekSlider.Value}"
-                                              PlayedBrush="{DynamicResource AccentColorBrush}" UnplayedBrush="#50FFFFFF"
-                                              TrackInset="6" LineInset="0" LineThickness="4" IsHitTestVisible="False"/>
-                    <Slider Grid.Row="1" x:Name="LyricsSeekSlider" Classes="mini-seek" Classes.waveform="{Binding Player.WaveformSeekBarEnabled}"
-                            Minimum="0" Maximum="1" Focusable="False"
-                            Value="{Binding Player.PositionFraction, Mode=TwoWay}"
-                            Margin="0,4,0,0" VerticalAlignment="Center"/>
+                    <Panel Grid.Row="1" Margin="0,8,0,0">
+                        <Grid Classes="mini-seek-row" ColumnDefinitions="Auto,*,Auto">
+                            <TextBlock Classes="mini-time mini-elapsed"/>
+                            <controls:WaveformSeekBar Classes="mini-wave"/>
+                            <Slider x:Name="LyricsSeekSlider" Classes="mini-slider mini-seek"/>
+                            <TextBlock Classes="mini-time mini-remaining"/>
+                        </Grid>
+                        <Grid Classes="mini-volume-row" ColumnDefinitions="Auto,*,Auto">
+                            <Button Classes="mini-transport mini-mute"/>
+                            <Slider x:Name="LyricsVolumeSlider" Classes="mini-slider mini-volume"/>
+                            <Viewbox Classes="mini-volume-max"/>
+                        </Grid>
+                    </Panel>
 
-                    <!-- Codec quality tag (Lossless / Hi-Res / codec) centered like Apple Music;
-                         hidden while a music video's own audio plays (it describes the song file). -->
-                    <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="4"
-                                HorizontalAlignment="Center"
-                                Background="Transparent"
-                                Margin="0,3,0,0">
-                        <StackPanel.IsVisible>
-                            <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
-                                <Binding Path="Player.CurrentTrack.AudioQualityBadge" Converter="{x:Static StringConverters.IsNotNullOrEmpty}"/>
-                                <Binding Path="!Player.IsPlayingMusicVideoAudio"/>
-                            </MultiBinding>
-                        </StackPanel.IsVisible>
-                        <ToolTip.Tip>
-                            <StackPanel Width="220" Spacing="4">
-                                <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityBadge}"
-                                           FontSize="13" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-                                <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityDetailedInfo}"
-                                           FontSize="12" Opacity="0.9"
-                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                                <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityDescription, FallbackValue=''}"
-                                           FontSize="11" TextWrapping="Wrap" Opacity="0.85" Margin="0,4,0,0"
-                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                            </StackPanel>
-                        </ToolTip.Tip>
-                        <Viewbox Width="16" Height="11" VerticalAlignment="Center" Margin="0,0,0,1" Opacity="0.7">
-                            <Path Data="{StaticResource LosslessWaveIcon}" Fill="White"/>
-                        </Viewbox>
-                        <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityBadge, FallbackValue=''}"
-                                   FontSize="10" FontWeight="SemiBold"
-                                   Foreground="#B3FFFFFF" VerticalAlignment="Center"/>
-                    </StackPanel>
+                    <ContentControl Grid.Row="2" Classes="mini-quality"/>
 
-                    <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" Margin="0,2,0,0">
-                        <Button Classes="mini-transport glass-circle" Width="30" Height="30"
-                                Command="{Binding Player.ToggleShuffleCommand}" ToolTip.Tip="{loc:T MiniPlayer.ShuffleTip}">
-                            <Panel>
-                                <Viewbox Width="16" Height="16" IsVisible="{Binding !Player.IsShuffleEnabled}">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Fill="#B8FFFFFF" Data="{StaticResource ShuffleIcon}"/>
-                                    </Canvas>
-                                </Viewbox>
-                                <Viewbox Width="16" Height="16" IsVisible="{Binding Player.IsShuffleEnabled}">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Fill="{DynamicResource AccentColorBrush}" Data="{StaticResource ShuffleIcon}"/>
-                                    </Canvas>
-                                </Viewbox>
-                            </Panel>
-                        </Button>
-                        <Button Classes="mini-transport tx" Width="32" Height="32"
-                                Command="{Binding Player.PreviousCommand}" ToolTip.Tip="{loc:T MiniPlayer.PreviousTip}">
-                            <controls:TransportGlyph Kind="Previous" Width="17" Height="17" HighlightSize="32"
-                                                     Foreground="White"/>
-                        </Button>
-                        <Button Classes="mini-transport tx" Width="38" Height="38"
-                                Command="{Binding Player.PlayPauseCommand}"
-                                ToolTip.Tip="{Binding Player.PlayPauseTooltip}">
-                            <controls:TransportGlyph Kind="PlayPause" Width="21" Height="21" HighlightSize="38"
-                                                     Foreground="White"
-                                                     IsPlaying="{Binding Player.State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}"/>
-                        </Button>
-                        <Button Classes="mini-transport tx" Width="32" Height="32"
-                                Command="{Binding Player.NextCommand}" ToolTip.Tip="{loc:T MiniPlayer.ForwardTip}">
-                            <controls:TransportGlyph Kind="Next" Width="17" Height="17" HighlightSize="32"
-                                                     Foreground="White"/>
-                        </Button>
-                        <Button Classes="mini-transport glass-circle" Width="30" Height="30"
-                                Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{Binding Player.RepeatModeTip}">
-                            <Panel>
-                                <Viewbox Width="16" Height="16"
-                                         IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Fill="#B8FFFFFF" Data="{StaticResource RepeatAllIcon}"/>
-                                    </Canvas>
-                                </Viewbox>
-                                <Viewbox Width="16" Height="16"
-                                         IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.All}}">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Fill="{DynamicResource AccentColorBrush}" Data="{StaticResource RepeatAllIcon}"/>
-                                    </Canvas>
-                                </Viewbox>
-                                <Viewbox Width="16" Height="16"
-                                         IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.One}}">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Fill="{DynamicResource AccentColorBrush}" Data="{StaticResource RepeatOneIcon}"/>
-                                    </Canvas>
-                                </Viewbox>
-                            </Panel>
-                        </Button>
-                    </StackPanel>
+                    <Grid Grid.Row="3" x:Name="LyricsTransport" Classes="mini-transport-row" ColumnDefinitions="Auto,*,Auto" Margin="0,6,0,0">
+                        <Button x:Name="LyricsShuffleButton" Classes="mini-transport glass-circle mini-shuffle"/>
+                        <StackPanel Classes="mini-transport-center">
+                            <Button x:Name="LyricsPrevButton" Classes="mini-transport tx mini-prev"/>
+                            <Button x:Name="LyricsPlayButton" Classes="mini-transport tx mini-play"/>
+                            <Button x:Name="LyricsNextButton" Classes="mini-transport tx mini-next"/>
+                        </StackPanel>
+                        <Button x:Name="LyricsRepeatButton" Classes="mini-transport glass-circle mini-repeat"/>
+                    </Grid>
 
                     </Grid>
                 </Panel>
@@ -1717,6 +1515,7 @@
                         </LinearGradientBrush>
                     </Panel.OpacityMask>
                     <ScrollViewer x:Name="LyricsScroll"
+                                  BringIntoViewOnFocusChange="False"
                                   HorizontalScrollBarVisibility="Disabled"
                                   VerticalScrollBarVisibility="Hidden">
                         <!-- Margin = run-out padding, kept in sync with the viewport by
@@ -1746,12 +1545,15 @@
                                 </ItemsControl.MinWidth>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="m:LyricLine">
+                                        <!-- Not a Tab stop and named for screen readers, as on the page. -->
                                         <Button Background="Transparent"
                                                 Classes="mini-lyric-line"
+                                                IsTabStop="False"
+                                                AutomationProperties.Name="{Binding Converter={x:Static helpers:AccessibleNames.ItemName}}"
                                                 Classes.active="{Binding IsActive}"
                                                 BorderThickness="0"
                                                 Padding="0"
-                                                Margin="0,9"
+                                                Margin="0,10"
                                                 MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
                                                 RenderTransformOrigin="{Binding Voice, Converter={StaticResource VoiceOrigin}}"
                                                 HorizontalContentAlignment="Left"
@@ -1773,11 +1575,11 @@
                                                 <TextBlock Text="{Binding Text}"
                                                            Classes="mini-lyric-plain"
                                                            FontWeight="Bold"
-                                                           Foreground="White"
+                                                           Foreground="{Binding $parent[Window].((vm:MiniPlayerViewModel)DataContext).Lyrics.LyricsPrimaryFg}"
                                                            HorizontalAlignment="Left"
                                                            FlowDirection="{Binding IsRightToLeft, Converter={StaticResource LyricLineFlow}}"
                                                            MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
-                                                           Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
+                                                           Opacity="{Binding LineOpacity}"
                                                            IsVisible="{Binding ShowLineText}"
                                                            TextWrapping="Wrap">
                                                     <TextBlock.TextAlignment>
@@ -1794,7 +1596,7 @@
                                                               Classes="word-layer"
                                                               Classes.active="{Binding IsSweepFocused}"
                                                               IsVisible="{Binding ShowLiveWords}"
-                                                              Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
+                                                              Opacity="{Binding LineOpacity}"
                                                               HorizontalAlignment="Left"
                                                               ClipToBounds="False"
                                                               MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
@@ -1813,8 +1615,8 @@
                                                 <controls:KaraokeRestingWords Words="{Binding Words}"
                                                                       RightToLeft="{Binding IsRightToLeft}"
                                                                               IsVisible="{Binding ShowRestingWords}"
-                                                                              Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
-                                                                              Foreground="White"
+                                                                              Opacity="{Binding LineOpacity}"
+                                                                              Foreground="{Binding $parent[Window].((vm:MiniPlayerViewModel)DataContext).Lyrics.LyricsPrimaryFg}"
                                                                               ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}"
                                                                               HorizontalAlignment="Left"
                                                                               MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
@@ -1825,19 +1627,29 @@
                                                     </controls:KaraokeRestingWords.Transitions>
                                                 </controls:KaraokeRestingWords>
 
-                                                <!-- Intro dots: first dot sits over the first letter -->
+                                                <!-- Intro / interlude dots, the page's: they fill one after another
+                                                     with the gap's progress (InterludeProgress) and the active row
+                                                     breathes in scale; sized to the mini's type (the page's 12 / 8 /
+                                                     10 at its 46px, here 7 / 5 / 6). -->
                                                 <StackPanel Orientation="Horizontal"
-                                                            Spacing="4"
+                                                            Spacing="5"
                                                             Classes="mini-intro-dots"
                                                             Classes.active="{Binding IsActive}"
                                                             HorizontalAlignment="Left"
                                                             VerticalAlignment="Center"
-                                                            Margin="4,4,0,4"
-                                                            Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
+                                                            Margin="6,5,0,5"
+                                                            RenderTransformOrigin="0%,50%"
+                                                            Opacity="{Binding LineOpacity}"
                                                             IsVisible="{Binding IsIntroPlaceholder}">
-                                                    <Ellipse Width="5" Height="5" Fill="#8CFFFFFF"/>
-                                                    <Ellipse Width="5" Height="5" Fill="#8CFFFFFF"/>
-                                                    <Ellipse Width="5" Height="5" Fill="#8CFFFFFF"/>
+                                                    <StackPanel.RenderTransform>
+                                                        <ScaleTransform/>
+                                                    </StackPanel.RenderTransform>
+                                                    <Ellipse Width="7" Height="7" Fill="{Binding $parent[Window].((vm:MiniPlayerViewModel)DataContext).Lyrics.LyricsControlFill}"
+                                                             Opacity="{Binding InterludeProgress, Converter={StaticResource InterludeDot}, ConverterParameter=0}"/>
+                                                    <Ellipse Width="7" Height="7" Fill="{Binding $parent[Window].((vm:MiniPlayerViewModel)DataContext).Lyrics.LyricsControlFill}"
+                                                             Opacity="{Binding InterludeProgress, Converter={StaticResource InterludeDot}, ConverterParameter=1}"/>
+                                                    <Ellipse Width="7" Height="7" Fill="{Binding $parent[Window].((vm:MiniPlayerViewModel)DataContext).Lyrics.LyricsControlFill}"
+                                                             Opacity="{Binding InterludeProgress, Converter={StaticResource InterludeDot}, ConverterParameter=2}"/>
                                                 </StackPanel>
                                             </Panel>
 
@@ -1845,10 +1657,10 @@
                                             <ItemsControl ItemsSource="{Binding BackgroundWords}"
                                                           Classes="word-layer bg-vocals"
                                                           Classes.active="{Binding IsSweepFocused}"
-                                                          Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
+                                                          Opacity="{Binding LineOpacity}"
                                                           HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
                                                           ClipToBounds="False"
-                                                          Margin="0,3,0,0"
+                                                          Margin="0,6,0,0"
                                                           FontSize="{Binding $parent[ItemsControl].FontSize, Converter={StaticResource FontScale}, ConverterParameter=0.6}"
                                                           MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
                                                           ItemTemplate="{StaticResource MiniWordCellTemplate}">
@@ -1875,10 +1687,10 @@
                                             <ItemsControl ItemsSource="{Binding TransliterationWords}"
                                                           Classes="word-layer romanization"
                                                           Classes.active="{Binding IsSweepFocused}"
-                                                          Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
+                                                          Opacity="{Binding LineOpacity}"
                                                           HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
                                                           ClipToBounds="False"
-                                                          Margin="0,3,0,0"
+                                                          Margin="0,6,0,0"
                                                           FontSize="{Binding $parent[ItemsControl].FontSize, Converter={StaticResource FontScale}, ConverterParameter=0.6}"
                                                           MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
                                                           ItemTemplate="{StaticResource MiniWordCellTemplate}">
@@ -1902,11 +1714,11 @@
                                             <TextBlock Text="{Binding Transliteration}"
                                                        Classes="romanization-text"
                                                        FontWeight="Bold"
-                                                       Foreground="White"
-                                                       Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
+                                                       Foreground="{Binding $parent[Window].((vm:MiniPlayerViewModel)DataContext).Lyrics.LyricsPrimaryFg}"
+                                                       Opacity="{Binding LineOpacity}"
                                                        HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
                                                        TextAlignment="{Binding Voice, Converter={StaticResource VoiceTextAlign}}"
-                                                       Margin="0,3,0,0"
+                                                       Margin="0,6,0,0"
                                                        FontSize="{Binding $parent[ItemsControl].FontSize, Converter={StaticResource FontScale}, ConverterParameter=0.6}"
                                                        MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
                                                        TextWrapping="Wrap">
@@ -1925,11 +1737,11 @@
                                             <TextBlock Text="{Binding Translation}"
                                                        Classes="translation-text"
                                                        FontWeight="Bold"
-                                                       Foreground="White"
-                                                       Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
+                                                       Foreground="{Binding $parent[Window].((vm:MiniPlayerViewModel)DataContext).Lyrics.LyricsPrimaryFg}"
+                                                       Opacity="{Binding LineOpacity}"
                                                        HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
                                                        TextAlignment="{Binding Voice, Converter={StaticResource VoiceTextAlign}}"
-                                                       Margin="0,3,0,0"
+                                                       Margin="0,6,0,0"
                                                        FontSize="{Binding $parent[ItemsControl].FontSize, Converter={StaticResource FontScale}, ConverterParameter=0.6}"
                                                        MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
                                                        TextWrapping="Wrap">
@@ -1954,11 +1766,11 @@
                             <TextBlock Margin="8,18,0,0"
                                        FontSize="12"
                                        TextWrapping="Wrap"
-                                       IsVisible="{Binding Lyrics.WrittenByText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"><Run Text="{loc:T MiniPlayer.WrittenBy}" FontWeight="SemiBold" Foreground="#B3FFFFFF"/><Run Text="{Binding Lyrics.WrittenByText}" Foreground="#80FFFFFF"/></TextBlock>
+                                       IsVisible="{Binding Lyrics.WrittenByText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"><Run Text="{loc:T MiniPlayer.WrittenBy}" FontWeight="SemiBold" Foreground="{Binding Lyrics.LyricsSecondaryFg}"/><Run Text="{Binding Lyrics.WrittenByText}" Foreground="{Binding Lyrics.LyricsSubtleFg}"/></TextBlock>
                         </StackPanel>
                     </ScrollViewer>
                     <TextBlock Text="{loc:T MiniPlayer.NoLyricsAvailable}"
-                               FontSize="13" Foreground="#80FFFFFF"
+                               FontSize="13" Foreground="{Binding Lyrics.LyricsSubtleFg}"
                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                IsVisible="{Binding HasNoLyrics}"/>
                 </Panel>
@@ -1968,10 +1780,11 @@
 
             <!-- ── Design: Pill (Settings ▸ Mini Player Design, community mockup) ──
                  A round cover (spinning like a disc, CoverSpinner) centred on the left edge
-                 of a card in the app's theme colours: title/artist,
-                 "…", a seek bar with hover-only times and prev / play / next. The window's dark glass is hidden
-                 for this form (SyncChrome) because the silhouette isn't a rectangle. -->
-            <Grid x:Name="PillFormRoot" Classes="form-root" Margin="6,6,10,6"
+                 of a card in the app's theme colours, carrying the same controls as every
+                 classic form (shared classes; theme ink via the design palette). The
+                 window's dark glass is hidden for this form (SyncChrome) because the
+                 silhouette isn't a rectangle. -->
+            <Grid x:Name="PillFormRoot" Classes="form-root design-root" Margin="6,6,10,6"
                   PointerWheelChanged="OnDesignVolumeWheel">
                 <!-- Design ground: the ONE theme-coloured slab the card and its drawer
                      share (AppMainBackgroundColor at the Mini Player Opacity setting, like
@@ -2003,124 +1816,41 @@
                          so the drawer can share them. -->
                     <Border x:Name="PillCard" Margin="60,0,0,0" MinHeight="116" CornerRadius="24"
                             Background="Transparent">
-                        <Grid Margin="72,12,14,12" RowDefinitions="Auto,Auto,*">
+                        <Grid Margin="72,10,14,10" RowDefinitions="Auto,Auto,*">
                             <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
-                                <StackPanel Grid.Column="0" x:Name="PillInfoHost" VerticalAlignment="Top" Spacing="0">
-                                    <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.TitleDisplay, FallbackValue='No track playing'}"
-                                                               FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                                               MaxDisplayWidth="{Binding #PillInfoHost.Bounds.Width}"
-                                                               HorizontalAlignment="Left" IsMiniPlayer="True">
-                                        <controls:MarqueeTextBlock.InlineContent>
-                                            <Border Classes="design-explicit"
-                                                    IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
-                                                    ToolTip.Tip="{loc:T MiniPlayer.ExplicitTip}">
-                                                <TextBlock Text="E" FontSize="9" FontWeight="Bold"
-                                                           VerticalAlignment="Center" TextAlignment="Center"
-                                                           Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-                                            </Border>
-                                        </controls:MarqueeTextBlock.InlineContent>
-                                    </controls:MarqueeTextBlock>
-                                    <controls:MarqueeTextBlock Text="{Binding Player.CurrentTrack.ArtistDisplay, FallbackValue=''}"
-                                                               FontSize="11" Foreground="{DynamicResource AccentColorBrush}"
-                                                               MaxDisplayWidth="{Binding #PillInfoHost.Bounds.Width}"
-                                                               HorizontalAlignment="Left" IsMiniPlayer="True" IsForAlbum="True"/>
+                                <StackPanel Grid.Column="0" x:Name="PillInfoHost" VerticalAlignment="Center" Spacing="1">
+                                    <controls:MarqueeTextBlock Classes="mini-title"/>
+                                    <TextBlock Classes="mini-no-track"/>
+                                    <controls:MarqueeTextBlock Classes="mini-artist"/>
                                 </StackPanel>
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" VerticalAlignment="Top" Margin="6,-2,0,0">
-                                    <Button Classes="mini-transport design-circle" Width="24" Height="24"
-                                            ToolTip.Tip="{loc:T MiniPlayer.MoreTip}" Click="OnMoreMenuClick">
-                                        <Viewbox Width="14" Height="14">
-                                            <Canvas Width="24" Height="24">
-                                                <Path Fill="{DynamicResource SystemControlForegroundBaseMediumBrush}" Data="{StaticResource MoreDotsIcon}"/>
-                                            </Canvas>
-                                        </Viewbox>
-                                    </Button>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="8,0,0,0">
+                                    <Button x:Name="PillHeartButton" Classes="mini-transport glass-circle mini-heart"/>
+                                    <Button x:Name="PillMoreButton" Classes="mini-transport glass-circle mini-more" Click="OnMoreMenuClick"/>
                                 </StackPanel>
                             </Grid>
-                            <!-- Seek row: the classic card's slider (accent line, round thumb; commits
-                                 through BeginSeek/EndSeek) with hover-only times either side. -->
-                            <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" Margin="0,2,0,0">
-                                <TextBlock Grid.Column="0" Classes="mini-time" Text="{Binding Player.PositionText}" FontSize="10"
-                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center" MinWidth="26"/>
-                                <controls:WaveformSeekBar Grid.Column="1" Margin="4,0" Height="16" VerticalAlignment="Center"
-                                                          IsVisible="{Binding Player.WaveformSeekBarEnabled}"
-                                                          Waveform="{Binding Player.CurrentWaveform}"
-                                                          Value="{Binding #PillSeekSlider.Value}"
-                                                          PlayedBrush="{DynamicResource AccentColorBrush}" UnplayedBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
-                                                          TrackInset="6" LineInset="0" LineThickness="4" IsHitTestVisible="False"/>
-                                <Slider Grid.Column="1" x:Name="PillSeekSlider" Classes="mini-seek" Classes.waveform="{Binding Player.WaveformSeekBarEnabled}"
-                                        Minimum="0" Maximum="1" Focusable="False"
-                                        Value="{Binding Player.PositionFraction, Mode=TwoWay}"
-                                        Margin="4,0" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="2" Classes="mini-time" Text="{Binding Player.DurationText}" FontSize="10"
-                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center" MinWidth="26" TextAlignment="Right"/>
-                            </Grid>
-                            <!-- Transport: shuffle | prev play next | repeat, the classic card's order
-                                 and toggles (same commands, glyphs and accent "on" state); off glyphs
-                                 take the "…" glyph's soft theme ink. MaxWidth keeps the five together
-                                 on a stretched card instead of pushing the toggles to its far ends;
-                                 on a card too narrow for five the toggles step aside (SyncPillToggles). -->
-                            <Grid Grid.Row="2" x:Name="PillTransport" ColumnDefinitions="Auto,*,Auto" MaxWidth="240"
-                                  VerticalAlignment="Center" Margin="0,4,0,0">
-                            <Button Grid.Column="0" x:Name="PillShuffleButton" Classes="mini-transport glass-circle" Width="26" Height="26"
-                                    HorizontalAlignment="Left" VerticalAlignment="Center"
-                                    Command="{Binding Player.ToggleShuffleCommand}" ToolTip.Tip="{loc:T MiniPlayer.ShuffleTip}">
-                                <Panel>
-                                    <Viewbox Width="15" Height="15" IsVisible="{Binding !Player.IsShuffleEnabled}">
-                                        <Canvas Width="24" Height="24">
-                                            <Path Fill="{DynamicResource SystemControlForegroundBaseMediumBrush}" Data="{StaticResource ShuffleIcon}"/>
-                                        </Canvas>
-                                    </Viewbox>
-                                    <Viewbox Width="15" Height="15" IsVisible="{Binding Player.IsShuffleEnabled}">
-                                        <Canvas Width="24" Height="24">
-                                            <Path Fill="{DynamicResource AccentColorBrush}" Data="{StaticResource ShuffleIcon}"/>
-                                        </Canvas>
-                                    </Viewbox>
-                                </Panel>
-                            </Button>
-                            <StackPanel Grid.Column="1" x:Name="PillTransportCenter" Orientation="Horizontal" Spacing="18"
-                                        HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <Button Classes="mini-transport tx" Width="30" Height="30"
-                                        Command="{Binding Player.PreviousCommand}" ToolTip.Tip="{loc:T MiniPlayer.PreviousTip}">
-                                    <controls:TransportGlyph Kind="Previous" Width="17" Height="17" HighlightSize="30"
-                                                             Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-                                </Button>
-                                <Button Classes="mini-transport tx" Width="32" Height="32"
-                                        Command="{Binding Player.PlayPauseCommand}"
-                                        ToolTip.Tip="{Binding Player.PlayPauseTooltip}">
-                                    <controls:TransportGlyph Kind="PlayPause" Width="20" Height="20" HighlightSize="32"
-                                                             Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                                             IsPlaying="{Binding Player.State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}"/>
-                                </Button>
-                                <Button Classes="mini-transport tx" Width="30" Height="30"
-                                        Command="{Binding Player.NextCommand}" ToolTip.Tip="{loc:T MiniPlayer.ForwardTip}">
-                                    <controls:TransportGlyph Kind="Next" Width="17" Height="17" HighlightSize="30"
-                                                             Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-                                </Button>
-                            </StackPanel>
-                            <Button Grid.Column="2" x:Name="PillRepeatButton" Classes="mini-transport glass-circle" Width="26" Height="26"
-                                    HorizontalAlignment="Right" VerticalAlignment="Center"
-                                    Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{Binding Player.RepeatModeTip}">
-                                <Panel>
-                                    <Viewbox Width="15" Height="15"
-                                             IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
-                                        <Canvas Width="24" Height="24">
-                                            <Path Fill="{DynamicResource SystemControlForegroundBaseMediumBrush}" Data="{StaticResource RepeatAllIcon}"/>
-                                        </Canvas>
-                                    </Viewbox>
-                                    <Viewbox Width="15" Height="15"
-                                             IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.All}}">
-                                        <Canvas Width="24" Height="24">
-                                            <Path Fill="{DynamicResource AccentColorBrush}" Data="{StaticResource RepeatAllIcon}"/>
-                                        </Canvas>
-                                    </Viewbox>
-                                    <Viewbox Width="15" Height="15"
-                                             IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.One}}">
-                                        <Canvas Width="24" Height="24">
-                                            <Path Fill="{DynamicResource AccentColorBrush}" Data="{StaticResource RepeatOneIcon}"/>
-                                        </Canvas>
-                                    </Viewbox>
-                                </Panel>
-                            </Button>
+                            <Panel Grid.Row="1" Margin="0,4,0,0">
+                                <Grid Classes="mini-seek-row" ColumnDefinitions="Auto,*,Auto">
+                                    <TextBlock Classes="mini-time mini-elapsed"/>
+                                    <controls:WaveformSeekBar Classes="mini-wave"/>
+                                    <Slider x:Name="PillSeekSlider" Classes="mini-slider mini-seek"/>
+                                    <TextBlock Classes="mini-time mini-remaining"/>
+                                </Grid>
+                                <Grid Classes="mini-volume-row" ColumnDefinitions="Auto,*,Auto">
+                                    <Button Classes="mini-transport mini-mute"/>
+                                    <Slider x:Name="PillVolumeSlider" Classes="mini-slider mini-volume"/>
+                                    <Viewbox Classes="mini-volume-max"/>
+                                </Grid>
+                            </Panel>
+                            <!-- On a card too narrow for five the toggles step aside (SyncTransportToggles). -->
+                            <Grid Grid.Row="2" x:Name="PillTransport" Classes="mini-transport-row" ColumnDefinitions="Auto,*,Auto"
+                                  VerticalAlignment="Center" Margin="0,2,0,0">
+                                <Button x:Name="PillShuffleButton" Classes="mini-transport glass-circle mini-shuffle"/>
+                                <StackPanel x:Name="PillTransportCenter" Classes="mini-transport-center">
+                                    <Button x:Name="PillPrevButton" Classes="mini-transport tx mini-prev"/>
+                                    <Button x:Name="PillPlayButton" Classes="mini-transport tx mini-play"/>
+                                    <Button x:Name="PillNextButton" Classes="mini-transport tx mini-next"/>
+                                </StackPanel>
+                                <Button x:Name="PillRepeatButton" Classes="mini-transport glass-circle mini-repeat"/>
                             </Grid>
                         </Grid>
                     </Border>
@@ -2137,9 +1867,7 @@
                             <controls:CachedImage SourcePath="{Binding Player.CurrentArtPath}" ClearOnSourceChange="False"
                                                   DecodeWidth="256" Width="120" Height="120"
                                                   Stretch="UniformToFill"/>
-                            <TextBlock Text="♪" FontSize="34" Opacity="0.25" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       IsVisible="{Binding Player.CurrentArtPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                            <TextBlock Classes="mini-art-placeholder" FontSize="34"/>
                         </Panel>
                     </Border>
                 </Panel>
@@ -2148,8 +1876,10 @@
             <!-- ── Design: Sleeve (Settings ▸ Mini Player Design, community mockup) ──
                  A disc (the Now Playing CD costume, spinning while music plays) peeks out
                  of the top of a rounded card in the theme's colours; the app's EQ bars,
-                 artist, title, a full-width seek bar with times, then prev / play / next. -->
-            <Grid x:Name="SleeveFormRoot" Classes="form-root" Margin="10"
+                 then the same controls as every other form: heart | title / artist | "…",
+                 the seek row with times, the transport row. Nothing sits on the disc, so
+                 the "…" button reads over any artwork. -->
+            <Grid x:Name="SleeveFormRoot" Classes="form-root design-root" Margin="10"
                   PointerWheelChanged="OnDesignVolumeWheel">
                 <!-- Same ground arrangement as the Pill's (see there). -->
                 <Canvas x:Name="SleeveGroundHost" IsHitTestVisible="False" ClipToBounds="False">
@@ -2163,6 +1893,9 @@
                      the disc off at the card's outline. -->
                 <Border x:Name="SleeveCard" CornerRadius="34" Background="Transparent" ClipToBounds="True">
                     <Grid RowDefinitions="*,Auto">
+                        <!-- Spins only while this design is the one showing: bound to Player.IsPlaying
+                             alone, the hidden disc kept the frame clock running behind every other
+                             form (MiniPlayerUnifiedControlsTests). -->
                         <controls:MediaArtwork x:Name="SleeveDisc" Grid.Row="0" Grid.RowSpan="2"
                                                Width="380" Height="380"
                                                HorizontalAlignment="Center" VerticalAlignment="Top"
@@ -2174,122 +1907,56 @@
                                                AnimatedSource="{Binding Player.CurrentAnimatedCoverPath}"
                                                AnimatedActive="{Binding Settings.EnableAnimatedCovers}"
                                                ScratchEnabled="{Binding Settings.DiscScratching}"
-                                               ScratchTarget="{Binding Player}"
-                                               IsSpinning="{Binding Player.IsPlaying}"/>
-                        <Button Grid.Row="0" Classes="mini-transport design-circle" Width="28" Height="28"
-                                HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,12,14,0"
-                                ToolTip.Tip="{loc:T MiniPlayer.MoreTip}" Click="OnMoreMenuClick">
-                            <Viewbox Width="15" Height="15">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="{DynamicResource SystemControlForegroundBaseMediumBrush}" Data="{StaticResource MoreDotsIcon}"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Button>
-                        <StackPanel Grid.Row="1" HorizontalAlignment="Center" Spacing="2" Margin="22,0,22,18">
+                                               ScratchTarget="{Binding Player}">
+                            <controls:MediaArtwork.IsSpinning>
+                                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                    <Binding Path="IsSleeveForm"/>
+                                    <Binding Path="Player.IsPlaying"/>
+                                </MultiBinding>
+                            </controls:MediaArtwork.IsSpinning>
+                        </controls:MediaArtwork>
+                        <StackPanel Grid.Row="1" Spacing="2" Margin="18,0,18,16">
                             <!-- The app's animated now-playing bars (EqVisualizer) in the accent
                                  colour, where the mockup drew a static grip. -->
                             <controls:EqVisualizer x:Name="SleeveEq" HorizontalAlignment="Center" Margin="0,0,0,6"
-                                                   Foreground="{DynamicResource AccentColorBrush}"
-                                                   IsPlaying="{Binding Player.IsPlaying}"/>
-                            <TextBlock Text="{Binding Player.CurrentTrack.ArtistDisplay, FallbackValue=''}"
-                                       FontSize="13" Foreground="{DynamicResource AccentColorBrush}" HorizontalAlignment="Center"
-                                       TextTrimming="CharacterEllipsis" TextAlignment="Center"/>
-                            <!-- Title + explicit badge: a Grid (not a StackPanel) so the title still
-                                 trims instead of measuring at infinite width (issue #30). -->
-                            <Grid ColumnDefinitions="Auto,Auto" HorizontalAlignment="Center">
-                                <TextBlock Grid.Column="0" x:Name="SleeveTitle"
-                                           Text="{Binding Player.CurrentTrack.TitleDisplay, FallbackValue='No track playing'}"
-                                           FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                           MaxWidth="240" TextTrimming="CharacterEllipsis" TextAlignment="Center"/>
-                                <Border Grid.Column="1" Classes="design-explicit" Margin="6,0,0,0"
-                                        IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}"
-                                        ToolTip.Tip="{loc:T MiniPlayer.ExplicitTip}">
-                                    <TextBlock Text="E" FontSize="9" FontWeight="Bold"
-                                               VerticalAlignment="Center" TextAlignment="Center"
-                                               Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-                                </Border>
+                                                   Foreground="{DynamicResource AccentColorBrush}">
+                                <controls:EqVisualizer.IsPlaying>
+                                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                        <Binding Path="IsSleeveForm"/>
+                                        <Binding Path="Player.IsPlaying"/>
+                                    </MultiBinding>
+                                </controls:EqVisualizer.IsPlaying>
+                            </controls:EqVisualizer>
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <Button Grid.Column="0" x:Name="SleeveHeartButton" Classes="mini-transport glass-circle mini-heart"/>
+                                <StackPanel Grid.Column="1" x:Name="SleeveInfoHost" VerticalAlignment="Center" Margin="8,0" Spacing="1">
+                                    <controls:MarqueeTextBlock x:Name="SleeveTitle" Classes="mini-title" HorizontalAlignment="Center"/>
+                                    <TextBlock Classes="mini-no-track" HorizontalAlignment="Center"/>
+                                    <controls:MarqueeTextBlock Classes="mini-artist" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                                <Button Grid.Column="2" x:Name="SleeveMoreButton" Classes="mini-transport glass-circle mini-more" Click="OnMoreMenuClick"/>
                             </Grid>
-                            <!-- Seek row: the classic card's slider (accent line, round thumb; commits
-                                 through BeginSeek/EndSeek), position left, duration right — the
-                                 mockup's 40px sliver was too small to hit. -->
-                            <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,8,0,0" MinWidth="240">
-                                <TextBlock Grid.Column="0" Classes="mini-time" Text="{Binding Player.PositionText}" FontSize="11" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center" MinWidth="30"/>
-                                <controls:WaveformSeekBar Grid.Column="1" Margin="6,0" Height="16" VerticalAlignment="Center"
-                                                          IsVisible="{Binding Player.WaveformSeekBarEnabled}"
-                                                          Waveform="{Binding Player.CurrentWaveform}"
-                                                          Value="{Binding #SleeveSeekSlider.Value}"
-                                                          PlayedBrush="{DynamicResource AccentColorBrush}" UnplayedBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
-                                                          TrackInset="6" LineInset="0" LineThickness="4" IsHitTestVisible="False"/>
-                                <Slider Grid.Column="1" x:Name="SleeveSeekSlider" Classes="mini-seek" Classes.waveform="{Binding Player.WaveformSeekBarEnabled}"
-                                        Minimum="0" Maximum="1" Focusable="False"
-                                        Value="{Binding Player.PositionFraction, Mode=TwoWay}"
-                                        Margin="6,0" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="2" Classes="mini-time" Text="{Binding Player.DurationText}" FontSize="11"
-                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" VerticalAlignment="Center" MinWidth="30" TextAlignment="Right"/>
-                            </Grid>
-                            <!-- Transport: shuffle | prev play next | repeat, as on the Pill (see there);
-                                 the row spans the seek row, so the toggles line up under its times. -->
-                            <Grid x:Name="SleeveTransport" ColumnDefinitions="Auto,*,Auto" Margin="0,8,0,0">
-                            <Button Grid.Column="0" x:Name="SleeveShuffleButton" Classes="mini-transport glass-circle" Width="30" Height="30"
-                                    HorizontalAlignment="Left" VerticalAlignment="Center"
-                                    Command="{Binding Player.ToggleShuffleCommand}" ToolTip.Tip="{loc:T MiniPlayer.ShuffleTip}">
-                                <Panel>
-                                    <Viewbox Width="17" Height="17" IsVisible="{Binding !Player.IsShuffleEnabled}">
-                                        <Canvas Width="24" Height="24">
-                                            <Path Fill="{DynamicResource SystemControlForegroundBaseMediumBrush}" Data="{StaticResource ShuffleIcon}"/>
-                                        </Canvas>
-                                    </Viewbox>
-                                    <Viewbox Width="17" Height="17" IsVisible="{Binding Player.IsShuffleEnabled}">
-                                        <Canvas Width="24" Height="24">
-                                            <Path Fill="{DynamicResource AccentColorBrush}" Data="{StaticResource ShuffleIcon}"/>
-                                        </Canvas>
-                                    </Viewbox>
-                                </Panel>
-                            </Button>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="22" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <Button Classes="mini-transport tx" Width="32" Height="32"
-                                        Command="{Binding Player.PreviousCommand}" ToolTip.Tip="{loc:T MiniPlayer.PreviousTip}">
-                                    <controls:TransportGlyph Kind="Previous" Width="18" Height="18" HighlightSize="32"
-                                                             Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-                                </Button>
-                                <Button Classes="mini-transport tx" Width="36" Height="36"
-                                        Command="{Binding Player.PlayPauseCommand}"
-                                        ToolTip.Tip="{Binding Player.PlayPauseTooltip}">
-                                    <controls:TransportGlyph Kind="PlayPause" Width="22" Height="22" HighlightSize="36"
-                                                             Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                                                             IsPlaying="{Binding Player.State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}"/>
-                                </Button>
-                                <Button Classes="mini-transport tx" Width="32" Height="32"
-                                        Command="{Binding Player.NextCommand}" ToolTip.Tip="{loc:T MiniPlayer.ForwardTip}">
-                                    <controls:TransportGlyph Kind="Next" Width="18" Height="18" HighlightSize="32"
-                                                             Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-                                </Button>
-                            </StackPanel>
-                            <Button Grid.Column="2" x:Name="SleeveRepeatButton" Classes="mini-transport glass-circle" Width="30" Height="30"
-                                    HorizontalAlignment="Right" VerticalAlignment="Center"
-                                    Command="{Binding Player.CycleRepeatCommand}" ToolTip.Tip="{Binding Player.RepeatModeTip}">
-                                <Panel>
-                                    <Viewbox Width="17" Height="17"
-                                             IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.Off}}">
-                                        <Canvas Width="24" Height="24">
-                                            <Path Fill="{DynamicResource SystemControlForegroundBaseMediumBrush}" Data="{StaticResource RepeatAllIcon}"/>
-                                        </Canvas>
-                                    </Viewbox>
-                                    <Viewbox Width="17" Height="17"
-                                             IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.All}}">
-                                        <Canvas Width="24" Height="24">
-                                            <Path Fill="{DynamicResource AccentColorBrush}" Data="{StaticResource RepeatAllIcon}"/>
-                                        </Canvas>
-                                    </Viewbox>
-                                    <Viewbox Width="17" Height="17"
-                                             IsVisible="{Binding Player.RepeatMode, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:RepeatMode.One}}">
-                                        <Canvas Width="24" Height="24">
-                                            <Path Fill="{DynamicResource AccentColorBrush}" Data="{StaticResource RepeatOneIcon}"/>
-                                        </Canvas>
-                                    </Viewbox>
-                                </Panel>
-                            </Button>
+                            <Panel Margin="0,8,0,0">
+                                <Grid Classes="mini-seek-row" ColumnDefinitions="Auto,*,Auto">
+                                    <TextBlock Classes="mini-time mini-elapsed"/>
+                                    <controls:WaveformSeekBar Classes="mini-wave"/>
+                                    <Slider x:Name="SleeveSeekSlider" Classes="mini-slider mini-seek"/>
+                                    <TextBlock Classes="mini-time mini-remaining"/>
+                                </Grid>
+                                <Grid Classes="mini-volume-row" ColumnDefinitions="Auto,*,Auto">
+                                    <Button Classes="mini-transport mini-mute"/>
+                                    <Slider x:Name="SleeveVolumeSlider" Classes="mini-slider mini-volume"/>
+                                    <Viewbox Classes="mini-volume-max"/>
+                                </Grid>
+                            </Panel>
+                            <Grid x:Name="SleeveTransport" Classes="mini-transport-row" ColumnDefinitions="Auto,*,Auto" Margin="0,6,0,0">
+                                <Button x:Name="SleeveShuffleButton" Classes="mini-transport glass-circle mini-shuffle"/>
+                                <StackPanel Classes="mini-transport-center">
+                                    <Button x:Name="SleevePrevButton" Classes="mini-transport tx mini-prev"/>
+                                    <Button x:Name="SleevePlayButton" Classes="mini-transport tx mini-play"/>
+                                    <Button x:Name="SleeveNextButton" Classes="mini-transport tx mini-next"/>
+                                </StackPanel>
+                                <Button x:Name="SleeveRepeatButton" Classes="mini-transport glass-circle mini-repeat"/>
                             </Grid>
                         </StackPanel>
                     </Grid>
@@ -2367,47 +2034,39 @@
                             </Grid>
                         </Border>
                         <ScrollViewer Grid.Row="1" Margin="0,8,0,0" HorizontalScrollBarVisibility="Disabled">
-                            <ItemsControl ItemsSource="{Binding SearchResults}">
+                            <!-- Right gutter: the overlay scroll bar sat on the rows' play buttons. -->
+                            <ItemsControl ItemsSource="{Binding SearchResults}" Margin="0,0,10,0">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="m:Track">
                                         <Border Classes="mini-row">
                                             <Grid ColumnDefinitions="Auto,*,Auto">
-                                                <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8">
+                                                <Border Grid.Column="0" Width="36" Height="36" CornerRadius="7">
                                                     <Panel>
                                                         <Panel.Clip>
-                                                            <RectangleGeometry Rect="0,0,36,36" RadiusX="8" RadiusY="8"/>
+                                                            <RectangleGeometry Rect="0,0,36,36" RadiusX="7" RadiusY="7"/>
                                                         </Panel.Clip>
                                                         <controls:CachedImage SourcePath="{Binding AlbumArtworkPath}"
                                                                               DecodeWidth="128" Width="36" Height="36"
                                                                               Stretch="UniformToFill"/>
                                                     </Panel>
                                                 </Border>
-                                                <StackPanel Grid.Column="1" x:Name="ResultInfoHost"
-                                                            VerticalAlignment="Center" Margin="10,0,6,0" Spacing="1">
-                                                    <!-- Badge rides the title as marquee InlineContent, the same way every
-                                                         form does it. A Grid put the badge at the far end of the text
-                                                         column instead of against the title, and a horizontal StackPanel
-                                                         would measure at infinite width — killing the ellipsis and letting
-                                                         a long title shove the badge out (issue #30). The marquee subtracts
-                                                         the badge's width from its own viewport, so the title trims against
-                                                         the badge rather than through it. -->
-                                                    <controls:MarqueeTextBlock Text="{Binding TitleDisplay}"
-                                                                               FontSize="13" FontWeight="SemiBold"
-                                                                               Foreground="{DynamicResource MiniDrawerText}"
-                                                                               MaxDisplayWidth="{Binding #ResultInfoHost.Bounds.Width}"
-                                                                               HorizontalAlignment="Left" IsMiniPlayer="True">
-                                                        <controls:MarqueeTextBlock.InlineContent>
-                                                            <Border Classes="mini-explicit"
-                                                                    IsVisible="{Binding IsExplicit, FallbackValue=False}"
-                                                                    ToolTip.Tip="{loc:T MiniPlayer.ExplicitTip}">
-                                                                <TextBlock Text="E" FontSize="9" FontWeight="Bold"
-                                                                           VerticalAlignment="Center" TextAlignment="Center"
-                                                                           Foreground="{DynamicResource MiniDrawerBadgeText}"/>
-                                                            </Border>
-                                                        </controls:MarqueeTextBlock.InlineContent>
-                                                    </controls:MarqueeTextBlock>
+                                                <StackPanel Grid.Column="1"
+                                                            VerticalAlignment="Center" Margin="10,0,8,0" Spacing="1">
+                                                    <!-- The main queue rows' title line (LeadTailPanel): the title trims
+                                                         with an ellipsis and the explicit badge stays right after it. A
+                                                         marquee per row scrolled behind the play button with no ellipsis. -->
+                                                    <controls:LeadTailPanel HorizontalAlignment="Left">
+                                                        <TextBlock Text="{Binding TitleDisplay}" FontSize="13" FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource MiniDrawerText}"
+                                                                   TextTrimming="CharacterEllipsis" MaxLines="1"/>
+                                                        <Border Classes="explicit-badge compact" Margin="4,0,0,0"
+                                                                IsVisible="{Binding IsExplicit, FallbackValue=False}"
+                                                                ToolTip.Tip="{loc:T MiniPlayer.ExplicitTip}">
+                                                            <TextBlock Classes="explicit-badge-text compact" Text="E" FontSize="8" Opacity="0.9"/>
+                                                        </Border>
+                                                    </controls:LeadTailPanel>
                                                     <TextBlock Text="{Binding ArtistDisplay}" FontSize="11"
-                                                               Foreground="{DynamicResource MiniDrawerTextSoft}" TextTrimming="CharacterEllipsis"/>
+                                                               Foreground="{DynamicResource MiniDrawerTextSoft}" TextTrimming="CharacterEllipsis" MaxLines="1"/>
                                                 </StackPanel>
                                                 <!-- glass-circle: persistent disc so the row reads as a button, not a
                                                      floating glyph. The 1px right nudge is optical centring — a play
@@ -2456,7 +2115,7 @@
                                       PointerMoved="OnMiniQueueDragPointerMoved"
                                       PointerReleased="OnMiniQueueDragPointerReleased"
                                       PointerCaptureLost="OnMiniQueueDragPointerCaptureLost">
-                            <ItemsControl x:Name="QueueList" ItemsSource="{Binding QueuePreview}">
+                            <ItemsControl x:Name="QueueList" ItemsSource="{Binding QueuePreview}" Margin="0,0,10,0">
                                 <!-- Virtualized. A plain StackPanel inflates one row per queued
                                      track the moment it is added: measured 1.6-2.5 ms per row,
                                      so 100 rows cost 157-245 ms of blocking UI-thread work.
@@ -2519,40 +2178,31 @@
                                                 </ContextMenu>
                                             </Border.ContextMenu>
                                             <Grid ColumnDefinitions="Auto,*,Auto">
-                                                <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8">
+                                                <Border Grid.Column="0" Width="36" Height="36" CornerRadius="7">
                                                     <Panel>
                                                         <Panel.Clip>
-                                                            <RectangleGeometry Rect="0,0,36,36" RadiusX="8" RadiusY="8"/>
+                                                            <RectangleGeometry Rect="0,0,36,36" RadiusX="7" RadiusY="7"/>
                                                         </Panel.Clip>
                                                         <controls:CachedImage SourcePath="{Binding Track.AlbumArtworkPath}"
                                                                               DecodeWidth="128" Width="36" Height="36"
                                                                               Stretch="UniformToFill"/>
                                                     </Panel>
                                                 </Border>
-                                                <StackPanel Grid.Column="1" x:Name="QueueInfoHost"
-                                                            VerticalAlignment="Center" Margin="10,0,6,0" Spacing="1">
-                                                    <!-- Same badge-as-marquee-InlineContent arrangement the search
-                                                         results use, for the same reason (issue #30): a horizontal
-                                                         StackPanel measures at infinite width and a Grid parks the
-                                                         badge at the far end of the column instead of against the
-                                                         title. -->
-                                                    <controls:MarqueeTextBlock Text="{Binding Track.TitleDisplay}"
-                                                                               FontSize="13" FontWeight="SemiBold"
-                                                                               Foreground="{DynamicResource MiniDrawerText}"
-                                                                               MaxDisplayWidth="{Binding #QueueInfoHost.Bounds.Width}"
-                                                                               HorizontalAlignment="Left" IsMiniPlayer="True">
-                                                        <controls:MarqueeTextBlock.InlineContent>
-                                                            <Border Classes="mini-explicit"
-                                                                    IsVisible="{Binding Track.IsExplicit, FallbackValue=False}"
-                                                                    ToolTip.Tip="{loc:T MiniPlayer.ExplicitTip}">
-                                                                <TextBlock Text="E" FontSize="9" FontWeight="Bold"
-                                                                           VerticalAlignment="Center" TextAlignment="Center"
-                                                                           Foreground="{DynamicResource MiniDrawerBadgeText}"/>
-                                                            </Border>
-                                                        </controls:MarqueeTextBlock.InlineContent>
-                                                    </controls:MarqueeTextBlock>
+                                                <StackPanel Grid.Column="1"
+                                                            VerticalAlignment="Center" Margin="10,0,8,0" Spacing="1">
+                                                    <!-- Same title line as the search rows (see there). -->
+                                                    <controls:LeadTailPanel HorizontalAlignment="Left">
+                                                        <TextBlock Text="{Binding Track.TitleDisplay}" FontSize="13" FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource MiniDrawerText}"
+                                                                   TextTrimming="CharacterEllipsis" MaxLines="1"/>
+                                                        <Border Classes="explicit-badge compact" Margin="4,0,0,0"
+                                                                IsVisible="{Binding Track.IsExplicit, FallbackValue=False}"
+                                                                ToolTip.Tip="{loc:T MiniPlayer.ExplicitTip}">
+                                                            <TextBlock Classes="explicit-badge-text compact" Text="E" FontSize="8" Opacity="0.9"/>
+                                                        </Border>
+                                                    </controls:LeadTailPanel>
                                                     <TextBlock Text="{Binding Track.ArtistDisplay}" FontSize="11"
-                                                               Foreground="{DynamicResource MiniDrawerTextSoft}" TextTrimming="CharacterEllipsis"/>
+                                                               Foreground="{DynamicResource MiniDrawerTextSoft}" TextTrimming="CharacterEllipsis" MaxLines="1"/>
                                                 </StackPanel>
                                                 <!-- Same persistent disc + optical nudge as the search-result row. -->
                                                 <Button Grid.Column="2" Classes="mini-transport glass-circle" Width="28" Height="28"
@@ -2589,7 +2239,7 @@
                                 </TransformGroup>
                             </Border.RenderTransform>
                             <Grid ColumnDefinitions="Auto,*">
-                                <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8" ClipToBounds="True">
+                                <Border Grid.Column="0" Width="36" Height="36" CornerRadius="7" ClipToBounds="True">
                                     <controls:CachedImage SourcePath="{Binding AlbumArtworkPath}"
                                                           DecodeWidth="128" Width="36" Height="36"
                                                           Stretch="UniformToFill"/>
@@ -2606,33 +2256,6 @@
                         </Border>
                     </Grid>
 
-                    <!-- Volume layer -->
-                    <Grid ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding IsVolumeDrawer}" Margin="4,6">
-                        <Button Grid.Column="0" Classes="mini-transport" Width="26" Height="26"
-                                Command="{Binding Player.ToggleMuteCommand}" ToolTip.Tip="{loc:T MiniPlayer.MuteTip}">
-                            <Panel>
-                                <Viewbox Width="13" Height="13" Opacity="0.75" IsVisible="{Binding !Player.IsMuted}">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Fill="{DynamicResource MiniDrawerText}" Data="{StaticResource SpeakerZeroIcon}"/>
-                                    </Canvas>
-                                </Viewbox>
-                                <Viewbox Width="13" Height="13" Opacity="0.55" IsVisible="{Binding Player.IsMuted}">
-                                    <Canvas Width="24" Height="24">
-                                        <Path Fill="{DynamicResource MiniDrawerText}" Data="{StaticResource SpeakerMuteIcon}"/>
-                                    </Canvas>
-                                </Viewbox>
-                            </Panel>
-                        </Button>
-                        <Slider Grid.Column="1" x:Name="DrawerVolumeSlider" Classes="mini-seek mini-volume"
-                                Minimum="0" Maximum="100" Focusable="False"
-                                Value="{Binding Player.Volume, Mode=TwoWay}"
-                                Margin="6,0" VerticalAlignment="Center"/>
-                        <Viewbox Grid.Column="2" Width="15" Height="15" Opacity="0.75" VerticalAlignment="Center">
-                            <Canvas Width="24" Height="24">
-                                <Path Fill="{DynamicResource MiniDrawerText}" Data="{StaticResource SpeakerHighIcon}"/>
-                            </Canvas>
-                        </Viewbox>
-                    </Grid>
                 </Panel>
             </Border>
             </Grid>
@@ -2711,24 +2334,18 @@
                                 <TextBlock Text="{loc:T MiniPlayer.Queue}" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
-                        <!-- The large-icon form has its own always-visible volume bar -->
-                        <Button Classes="mini-menu-item" Command="{Binding ToggleVolumeDrawerCommand}"
+                        <!-- Swaps the card's seek row for its volume row (accent while shown). The
+                             large-icon form has its own always-visible volume bar. -->
+                        <Button Classes="mini-menu-item" Command="{Binding ToggleVolumeCommand}"
                                 AutomationProperties.Name="{loc:T MiniPlayer.Volume}"
                                 Click="OnMenuItemClick"
                                 IsVisible="{Binding ShowVolumeMenuItem}">
                             <StackPanel Orientation="Horizontal" Spacing="11">
-                                <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineVolume}"/>
+                                <Panel Width="16" Height="16">
+                                    <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineVolume}" IsVisible="{Binding !IsVolumeShown}"/>
+                                    <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineVolume}" Foreground="{DynamicResource AccentColorBrush}" IsVisible="{Binding IsVolumeShown}"/>
+                                </Panel>
                                 <TextBlock Text="{loc:T MiniPlayer.Volume}" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-                        <!-- The fixed designs have no heart button on the card, so the menu carries it. -->
-                        <Button Classes="mini-menu-item" Command="{Binding Player.ToggleCurrentTrackFavoriteCommand}"
-                                AutomationProperties.Name="{loc:T MiniPlayer.FavoritesTip}"
-                                Click="OnMenuItemClick" IsVisible="{Binding IsDesignForm}">
-                            <StackPanel Orientation="Horizontal" Spacing="11">
-                                <controls:HeartIcon Size="16" OffBrush="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"
-                                                    IsFavorite="{Binding Player.CurrentTrack.IsFavorite, FallbackValue=False}"/>
-                                <TextBlock Text="{loc:T MiniPlayer.FavoritesTip}" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                         <!-- Stays in the list while lyrics are open: it is the only way back

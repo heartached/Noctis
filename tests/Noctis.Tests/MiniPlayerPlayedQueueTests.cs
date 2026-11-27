@@ -278,7 +278,7 @@ public class MiniPlayerPlayedQueueTests
 
             var panel = rig.List.GetVisualDescendants().OfType<Panel>().First(p => p.GetVisualParent() is ItemsPresenter);
             Assert.IsType<VirtualizingStackPanel>(panel);
-            var liveRows = rig.List.GetVisualDescendants().OfType<MarqueeTextBlock>().Count();
+            var liveRows = rig.List.GetVisualDescendants().OfType<Border>().Count(b => b.Classes.Contains("mini-queue-row"));
             _out.WriteLine($"liveRows={liveRows}, offset={rig.Scroller.Offset}, viewport={rig.Scroller.Viewport}, extent={rig.Scroller.Extent}");
             Assert.InRange(liveRows, 1, (int)Math.Ceiling(rig.Scroller.Viewport.Height / 48.0) + 3);
 

@@ -1468,7 +1468,7 @@ public partial class LyricsView : UserControl
     // Maps the current synced ActiveLineIndex to the corresponding row in UnsyncedLines.
     // UnsyncedLines mirrors LyricLines minus the "..." placeholders (the intro at index 0
     // and any instrumental interludes), so every placeholder up to the line is skipped.
-    private static int MapSyncedToUnsyncedIndex(LyricsViewModel vm)
+    internal static int MapSyncedToUnsyncedIndex(LyricsViewModel vm)
     {
         if (vm.ActiveLineIndex < 0 || vm.LyricLines.Count == 0 || vm.UnsyncedLines.Count == 0)
             return -1;
