@@ -47,6 +47,8 @@ public partial class SidebarView : UserControl
         // A right-click in the empty part of the playlist area: the PLAYLISTS header's menu.
         NavScroller.AddHandler(PointerPressedEvent, OnNavScrollerPointerPressed);
         DataContextChanged += OnDataContextChanged;
+        // A row made anew while the Settings sheet is open gets its mark too.
+        NavList.ContainerPrepared += (_, _) => ApplySettingsSheetOpen();
         SearchPopupContent.AddHandler(KeyDownEvent, OnSearchCapsuleKeyDown, RoutingStrategies.Tunnel);
         DetachedFromVisualTree += (_, _) =>
         {
@@ -87,6 +89,20 @@ public partial class SidebarView : UserControl
             SyncSelectionFromViewModel();
         else if (e.PropertyName == nameof(SidebarViewModel.TopBar))
             AttachTopBar(_vm?.TopBar);
+        else if (e.PropertyName == nameof(SidebarViewModel.IsSettingsSheetOpen))
+            ApplySettingsSheetOpen();
+    }
+
+    /// <summary>The Settings row holds its hover look while the sheet is open (style
+    /// "sheet-open"): every row is checked, so a rebuilt list never keeps a stale mark.</summary>
+    internal void ApplySettingsSheetOpen()
+    {
+        var open = _vm?.IsSettingsSheetOpen == true;
+        foreach (var item in NavList.Items)
+        {
+            if (item is NavItem nav && NavList.ContainerFromItem(nav) is { } row)
+                row.Classes.Set("sheet-open", open && nav.Key == "settings");
+        }
     }
 
     // TopBar is assigned to the sidebar VM after composition, so (re)subscribe

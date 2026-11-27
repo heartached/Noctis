@@ -176,6 +176,38 @@ public class DropOverlayProbeTests
         });
     }
 
+    // Owner 11-27: the Settings icon lost its highlight as soon as the pointer moved into the
+    // sheet (it only ever had the hover disc). It holds the hover look while the sheet is open.
+    [AvaloniaFact]
+    public void SettingsRow_HoldsItsHighlightWhileTheSheetIsOpen_AndNoOtherRowDoes()
+    {
+        EnsureAppStyles();
+        var vm = new SidebarViewModel(new PlaylistPersistence(), new FakeLibraryService()) { IsExpanded = true };
+        var view = new SidebarView { DataContext = vm };
+        var win = new Window { Width = 260, Height = 1400, Content = view };
+        win.Show();
+        Pump();
+        try
+        {
+            var list = view.FindControl<ListBox>("NavList")!;
+            List<string> Marked() => list.GetRealizedContainers().Where(c => c.Classes.Contains("sheet-open"))
+                .Select(c => ((NavItem)c.DataContext!).Key).ToList();
+            Assert.Contains(list.GetRealizedContainers(), c => (c.DataContext as NavItem)?.Key == "settings");
+            Assert.Empty(Marked());
+
+            vm.IsSettingsSheetOpen = true;
+            Pump();
+            Assert.Equal(new[] { "settings" }, Marked());
+            // The section the user is in keeps the selection; Settings never takes it.
+            Assert.NotEqual("settings", (list.SelectedItem as NavItem)?.Key);
+
+            vm.IsSettingsSheetOpen = false;
+            Pump();
+            Assert.Empty(Marked());
+        }
+        finally { win.Close(); }
+    }
+
     [AvaloniaFact]
     public async Task SidebarPlaylistRow_TakesOutsideFiles_ButNotASmartPlaylistOrAFolder()
     {

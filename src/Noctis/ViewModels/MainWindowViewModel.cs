@@ -67,6 +67,7 @@ public partial class MainWindowViewModel : ViewModelBase
     partial void OnIsSettingsModalOpenChanged(bool value)
     {
         UpdateSectionActiveFlags();
+        Sidebar.IsSettingsSheetOpen = value;
         // An artist page's hero video holds still under the sheet (ArtistDetailViewModel.IsCovered).
         if (CurrentView is ArtistDetailViewModel coveredArtist) coveredArtist.IsCovered = value;
         // A plugin view open in place of its page goes with the sheet (its control is released).
