@@ -2891,6 +2891,8 @@ Años: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar sear
   <data name="StudioPicker.OneSong" xml:space="preserve"><value>1 canción</value><comment>Choose songs: tag on an album row with one local song</comment></data>
   <data name="StudioPicker.SongCount" xml:space="preserve"><value>{0} canciones</value><comment>Choose songs: tag on an album row ({0} = local songs on it)</comment></data>
   <data name="LyricsStudio.ReviewEmptyTitle" xml:space="preserve"><value>Nada que revisar aún</value><comment>Review pane empty state</comment></data>
+  <data name="LyricsStudio.LoadingLyrics" xml:space="preserve"><value>Leyendo la letra de la canción…</value></data>
+  <data name="LyricsStudio.TagWriteFailed" xml:space="preserve"><value>No se pudo escribir la letra en las etiquetas de «{0}».</value></data>
   <data name="LyricsStudio.ReviewEmptyBody" xml:space="preserve"><value>Elige una canción de la lista. Las canciones con letra se sincronizan al pulsar Iniciar; las que no la tienen abren un cuadro para pegarla.</value><comment>Review pane empty state</comment></data>
   <data name="LyricsStudio.Upgrade" xml:space="preserve"><value>Sincronizar cada palabra</value><comment>Review button, shown for line-level lyrics</comment></data>
   <data name="LyricsStudio.UpgradeTip" xml:space="preserve"><value>Sincroniza cada palabra de estas líneas. Se conserva el archivo por líneas.</value><comment>Review button tooltip</comment></data>

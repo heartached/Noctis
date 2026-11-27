@@ -2917,6 +2917,8 @@ Yıllar: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar se
   <data name="StudioPicker.OneSong" xml:space="preserve"><value>1 şarkı</value><comment>Choose songs: tag on an album row with one local song</comment></data>
   <data name="StudioPicker.SongCount" xml:space="preserve"><value>{0} şarkı</value><comment>Choose songs: tag on an album row ({0} = local songs on it)</comment></data>
   <data name="LyricsStudio.ReviewEmptyTitle" xml:space="preserve"><value>Henüz incelenecek bir şey yok</value><comment>Review pane empty state</comment></data>
+  <data name="LyricsStudio.LoadingLyrics" xml:space="preserve"><value>Şarkı sözleri okunuyor…</value></data>
+  <data name="LyricsStudio.TagWriteFailed" xml:space="preserve"><value>Sözler “{0}” etiketlerine yazılamadı.</value></data>
   <data name="LyricsStudio.ReviewEmptyBody" xml:space="preserve"><value>Listeden bir şarkı seç. Sözü olan şarkılar Başlat'a bastığında zamanlanır; sözü olmayanlar için yapıştırma kutusu açılır.</value><comment>Review pane empty state</comment></data>
   <data name="LyricsStudio.Upgrade" xml:space="preserve"><value>Her kelimeyi zamanla</value><comment>Review button, shown for line-level lyrics</comment></data>
   <data name="LyricsStudio.UpgradeTip" xml:space="preserve"><value>Bu satırların her kelimesini zamanlar. Satır düzeyindeki dosya korunur.</value><comment>Review button tooltip</comment></data>

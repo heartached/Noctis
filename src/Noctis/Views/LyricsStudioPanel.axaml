@@ -648,12 +648,12 @@
                                                     IsVisible="{Binding ShowBatchProgress}"
                                                     FillBrush="{DynamicResource AccentColorBrush}" TrackBrush="#1AFFFFFF" />
                         <Panel>
-                            <Button Command="{Binding StartCommand}" IsEnabled="{Binding CanStart}" IsVisible="{Binding !IsRunning}"
+                            <Button Command="{Binding StartCommand}" IsEnabled="{Binding CanStart}" IsVisible="{Binding !CanStop}"
                                     Classes="studio-btn accent-btn studio-start" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                     Background="{DynamicResource AccentButtonBackground}" Foreground="{DynamicResource AccentForegroundBrush}">
                                 <TextBlock Text="{Binding StartLabel}" />
                             </Button>
-                            <Button Command="{Binding StopCommand}" IsVisible="{Binding IsRunning}"
+                            <Button Command="{Binding StopCommand}" IsVisible="{Binding CanStop}"
                                     Classes="studio-btn pill-outline studio-start" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
                                 <TextBlock Text="{loc:T LyricsStudio.Stop}" />
                             </Button>
@@ -743,6 +743,8 @@
                         <TextBlock Text="{loc:T LyricsStudio.ReviewEmptyTitle}" FontSize="16" FontWeight="SemiBold" TextAlignment="Center" Opacity="0.8" />
                         <TextBlock Text="{loc:T LyricsStudio.ReviewEmptyBody}" FontSize="12.5" Opacity="0.5" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="380" />
                     </StackPanel>
+
+                    <TextBlock IsVisible="{Binding IsSelectedLoading}" Text="{loc:T LyricsStudio.LoadingLyrics}" VerticalAlignment="Center" HorizontalAlignment="Center" FontSize="12.5" Opacity="0.5" Margin="0,0,20,0" />
 
                     <!-- The song on screen is being run (09-29): its three steps (decode, listen, time),
                          a gliding bar with the percentage in a fixed box, what it is doing in words,

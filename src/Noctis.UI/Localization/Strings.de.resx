@@ -2890,6 +2890,8 @@ Jahre: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar sear
   <data name="StudioPicker.OneSong" xml:space="preserve"><value>1 Song</value><comment>Choose songs: tag on an album row with one local song</comment></data>
   <data name="StudioPicker.SongCount" xml:space="preserve"><value>{0} Songs</value><comment>Choose songs: tag on an album row ({0} = local songs on it)</comment></data>
   <data name="LyricsStudio.ReviewEmptyTitle" xml:space="preserve"><value>Noch nichts zu prüfen</value><comment>Review pane empty state</comment></data>
+  <data name="LyricsStudio.LoadingLyrics" xml:space="preserve"><value>Songtext wird gelesen…</value></data>
+  <data name="LyricsStudio.TagWriteFailed" xml:space="preserve"><value>Der Songtext konnte nicht in die Tags von „{0}“ geschrieben werden.</value></data>
   <data name="LyricsStudio.ReviewEmptyBody" xml:space="preserve"><value>Wähle einen Song in der Liste. Songs mit Songtext werden bei Start getimt; Songs ohne öffnen eine Box zum Einfügen.</value><comment>Review pane empty state</comment></data>
   <data name="LyricsStudio.Upgrade" xml:space="preserve"><value>Jedes Wort timen</value><comment>Review button, shown for line-level lyrics</comment></data>
   <data name="LyricsStudio.UpgradeTip" xml:space="preserve"><value>Timet jedes Wort dieser Zeilen. Die Zeilen-Datei bleibt.</value><comment>Review button tooltip</comment></data>
