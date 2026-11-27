@@ -1,4 +1,6 @@
 using System.Globalization;
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
 
 namespace Noctis.Plugins.ABLoop.Looping;
 
@@ -12,7 +14,21 @@ public sealed class PluginLoopHost : ILoopHost, IDisposable
         _host = host;
         host.NowPlaying.TrackChanged += OnTrackChanged;
         host.Settings.Changed += OnSettings;
+        // The plugin API does not say why Shutdown() is called (switched off, or Noctis closing).
+        // Noctis's exit starts with the desktop lifetime's ShutdownRequested (closing the main
+        // window raises it too) and unloads plugins only after its saves, so a flag set here is
+        // up by then. Its handler cancels the first request and runs the exit itself; we only listen.
+        _lifetime = Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;
+        if (_lifetime is not null) _lifetime.ShutdownRequested += OnShutdownRequested;
     }
+
+    private readonly IClassicDesktopStyleApplicationLifetime? _lifetime;
+    private bool _exiting;
+
+    private void OnShutdownRequested(object? sender, ShutdownRequestedEventArgs e) => _exiting = true;
+
+    /// <summary>Noctis is closing: its desktop lifetime asked to shut down.</summary>
+    public bool HostExiting => _exiting;
 
     private void OnTrackChanged(object? sender, EventArgs e) => TrackChanged?.Invoke(this, EventArgs.Empty);
     private void OnSettings(object? sender, string key) => SettingsChanged?.Invoke(this, EventArgs.Empty);
@@ -51,6 +67,7 @@ public sealed class PluginLoopHost : ILoopHost, IDisposable
     {
         _host.NowPlaying.TrackChanged -= OnTrackChanged;
         _host.Settings.Changed -= OnSettings;
+        if (_lifetime is not null) _lifetime.ShutdownRequested -= OnShutdownRequested;
         TrackChanged = null;
         SettingsChanged = null;
     }

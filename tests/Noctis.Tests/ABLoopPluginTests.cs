@@ -130,6 +130,7 @@ public class ABLoopPluginTests
         public event EventHandler? SettingsChanged;
         public void RaiseSettings() => SettingsChanged?.Invoke(this, EventArgs.Empty);
         public string? DataDirectory { get; set; }
+        public bool HostExiting { get; set; }
         public void Log(string message) { }
     }
 
@@ -277,6 +278,72 @@ public class ABLoopPluginTests
         while (!engine.InGap) Run(sim, engine, Ms(15), random);
         engine.Enabled = false;
         Assert.True(sim.IsPlaying);
+    }
+
+    /// <summary>A session in the pause before a repeat, playing before it (owner 11-26: switching the
+    /// plugin off then left the music paused).</summary>
+    private static (SimPlayer, LoopSession) SessionInGap()
+    {
+        var sim = new SimPlayer { GapSetting = Ms(1500) };
+        sim.Start(S(10));
+        var session = new LoopSession(sim, () => sim.Now, useTimer: false);
+        session.Engine.SetPart(S(10.2), S(11));
+        session.Engine.Enabled = true;
+        var random = new Random(4);
+        while (!session.Engine.InGap) Run(sim, session.Engine, Ms(15), random);
+        Assert.False(sim.IsPlaying);
+        return (sim, session);
+    }
+
+    [Fact]
+    public void SwitchedOff_DuringTheGap_PlaysOn()
+    {
+        var (sim, session) = SessionInGap();
+        session.Dispose();
+        Assert.True(sim.IsPlaying);
+        Assert.Equal("play", sim.Calls.Last());
+    }
+
+    [Fact]
+    public void NoctisExiting_DuringTheGap_StartsNoAudio()
+    {
+        var (sim, session) = SessionInGap();
+        sim.HostExiting = true;
+        session.Dispose();
+        Assert.False(sim.IsPlaying);
+        Assert.DoesNotContain("play", sim.Calls);
+    }
+
+    [Fact]
+    public void UserPausedDuringTheGap_SwitchingOff_KeepsItPaused()
+    {
+        var (sim, session) = SessionInGap();
+        sim.Play();  // the user takes over: play...
+        sim.Advance(Ms(20));
+        session.Engine.Tick();
+        sim.Pause(); // ...and pause
+        sim.Advance(Ms(20));
+        session.Engine.Tick();
+        var plays = sim.Calls.Count(c => c == "play");
+        session.Dispose();
+        Assert.False(sim.IsPlaying);
+        Assert.Equal(plays, sim.Calls.Count(c => c == "play"));
+        // nor does the gap's own end restart it
+    }
+
+    [Fact]
+    public void UserPausedDuringTheGap_TheGapsEndDoesNotPlay()
+    {
+        var (sim, session) = SessionInGap();
+        sim.Play();
+        sim.Advance(Ms(20));
+        session.Engine.Tick();
+        sim.Pause();
+        var random = new Random(2);
+        Run(sim, session.Engine, Ms(2000), random);
+        Assert.False(sim.IsPlaying);
+        Assert.False(session.Engine.InGap);
+        session.Dispose();
     }
 
     /// <summary>

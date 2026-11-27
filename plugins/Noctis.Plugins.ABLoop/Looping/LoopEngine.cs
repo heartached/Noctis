@@ -189,6 +189,18 @@ public sealed class LoopEngine
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>
+    /// The loop is going away (the plugin switched off) during a gap it paused for: the song plays
+    /// on, as when the loop is turned off in a gap. Nothing happens when the user took over (they
+    /// pressed play in the gap, see <see cref="Tick"/>), so a song they paused stays paused.
+    /// </summary>
+    public void EndGap()
+    {
+        if (_gapUntil is null) return;
+        _gapUntil = null;
+        if (!_player.IsPlaying) _player.Play();
+    }
+
     /// <summary>Seeks the song (a click on the strip), keeping the prediction in step.</summary>
     public void SeekHost(TimeSpan at) => SeekTo(Clamp(at), _clock());
 
@@ -247,6 +259,13 @@ public sealed class LoopEngine
         Observe();
         if (_gapUntil is { } until)
         {
+            if (_player.IsPlaying)
+            {
+                // The user pressed play in the gap: it is theirs now. The gap's end must not
+                // play again later (they may have paused once more).
+                _gapUntil = null;
+                return;
+            }
             if (now < until) return;
             _gapUntil = null;
             _anchorTime = now;

@@ -26,6 +26,9 @@ public interface ILoopHost : ILoopPlayer
     /// <summary>The plugin's data folder (loops.json), or null to keep nothing on disk.</summary>
     string? DataDirectory { get; }
 
+    /// <summary>Noctis is closing (not just this plugin switching off): start no audio then.</summary>
+    bool HostExiting => false;
+
     void Log(string message);
 }
 
@@ -211,6 +214,9 @@ public sealed class LoopSession : IDisposable
         if (_disposed) return;
         _disposed = true;
         _timer?.Stop();
+        // Switched off in the pause before a repeat: the music the loop paused plays on. Not
+        // while Noctis closes: its exit has just silenced playback on purpose.
+        if (!_host.HostExiting) Engine.EndGap();
         Engine.Changed -= OnEngineChanged;
         Engine.Finished -= OnFinished;
         _host.TrackChanged -= OnTrackChanged;
