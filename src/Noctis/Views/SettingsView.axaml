@@ -2107,7 +2107,11 @@
                 ToolTip.Tip="{loc:T Settings.CloseTip}"
                 Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CloseSettingsCommand}"
                 VerticalAlignment="Top" Margin="12,2,0,0">
-            <controls:LineIcon Data="{StaticResource MenuLineClose}" Width="26" Height="26" Margin="-6" StrokeThickness="1.85"/>
+            <!-- The icon takes the circle's own box and is scaled down around its centre (26/34):
+                 as a small centred child it was laid out on whole pixels and sat ~1px right and
+                 below the circle's centre at 125% display scaling. -->
+            <controls:LineIcon Data="{StaticResource MenuLineClose}" Width="34" Height="34" StrokeThickness="1.85"
+                               RenderTransform="scale(0.7647)"/>
         </Button>
     </Grid>
 
