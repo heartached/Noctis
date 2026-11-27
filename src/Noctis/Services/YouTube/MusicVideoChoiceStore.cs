@@ -81,6 +81,17 @@ public sealed class MusicVideoChoiceStore
         }
     }
 
+    /// <summary>Settings › Reset Everything: forgets every choice, in memory and on disk.</summary>
+    public void Clear()
+    {
+        lock (_lock)
+        {
+            _choices = new Dictionary<string, MusicVideoChoice>(StringComparer.OrdinalIgnoreCase);
+            try { if (File.Exists(_path)) File.Delete(_path); }
+            catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.State, "MusicVideo.ChoicesClearFailed", ex.Message); }
+        }
+    }
+
     /// <summary>Every stored choice (tests, a future export).</summary>
     public IReadOnlyList<MusicVideoChoice> All()
     {

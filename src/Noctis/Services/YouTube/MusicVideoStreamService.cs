@@ -264,6 +264,13 @@ public sealed class MusicVideoStreamService
         ChoiceChanged?.Invoke(this, track.Id);
     }
 
+    /// <summary>Settings › Reset Everything: every song's choice and the stream addresses held.</summary>
+    public void ClearChoices()
+    {
+        _store.Clear();
+        lock (_cacheLock) _urls.Clear();
+    }
+
     private MusicVideoChoice NewChoice(Track track, MusicVideoChoiceKind kind, MusicVideoChoiceSource source, YouTubeVideoInfo? video) => new()
     {
         TrackKey = MusicVideoChoiceStore.KeyFor(track.Id),

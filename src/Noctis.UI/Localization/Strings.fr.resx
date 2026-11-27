@@ -764,8 +764,8 @@ Deezer et TIDAL : collez le lien.</value></data>
   <data name="Settings.AreYouSureAction" xml:space="preserve"><value>Êtes-vous sûr ? Cette action est irréversible.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ResetEverything" xml:space="preserve"><value>Tout réinitialiser</value><comment>Content in SettingsView.axaml</comment></data>
   <data name="Settings.ClearArtworkCache" xml:space="preserve"><value>Vider le cache des pochettes</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.DeleteCachedArtworkWill" xml:space="preserve"><value>Supprime les pochettes en cache. Elles seront reconstruites à la prochaine analyse.</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.NoteRemovesAllArtwork" xml:space="preserve"><value>Remarque : cela supprime toutes les pochettes de votre bibliothèque.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.DeleteCachedArtworkWill" xml:space="preserve"><value>Supprime les pochettes et photos d'artistes enregistrées. Les pochettes de vos fichiers et dossiers reviennent aussitôt, les photos d'artistes sont retéléchargées.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.NoteRemovesAllArtwork" xml:space="preserve"><value>Remarque : les photos d'artistes que vous avez choisies et les pochettes présentes uniquement dans Noctis sont perdues.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ClearCache" xml:space="preserve"><value>Vider le cache</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeyboardShortcuts" xml:space="preserve"><value>Raccourcis clavier</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ClickKeyChangePress" xml:space="preserve"><value>Cliquez sur une touche pour la modifier. Échap annule et Retour arrière l'efface.</value><comment>Text in SettingsView.axaml</comment></data>

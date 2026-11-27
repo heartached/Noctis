@@ -770,8 +770,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.AreYouSureAction" xml:space="preserve"><value>Вы уверены? Это действие нельзя отменить.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ResetEverything" xml:space="preserve"><value>Сбросить всё</value><comment>Content in SettingsView.axaml</comment></data>
   <data name="Settings.ClearArtworkCache" xml:space="preserve"><value>Очистить кэш обложек</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.DeleteCachedArtworkWill" xml:space="preserve"><value>Удалить кэшированные обложки. Они будут созданы заново при следующем сканировании.</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.NoteRemovesAllArtwork" xml:space="preserve"><value>Примечание: это удалит все обложки из вашей медиатеки.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.DeleteCachedArtworkWill" xml:space="preserve"><value>Удалить сохранённые обложки и фото исполнителей. Обложки из ваших файлов и папок вернутся сразу, фото исполнителей загрузятся заново.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.NoteRemovesAllArtwork" xml:space="preserve"><value>Примечание: выбранные вами фото исполнителей и обложки, которые есть только в Noctis, будут потеряны.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ClearCache" xml:space="preserve"><value>Очистить кэш</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeyboardShortcuts" xml:space="preserve"><value>Сочетания клавиш</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ClickKeyChangePress" xml:space="preserve"><value>Нажмите на клавишу, чтобы изменить её. Esc — отмена, Backspace — снять назначение. Мультимедийные клавиши работают всегда.</value><comment>Text in SettingsView.axaml</comment></data>

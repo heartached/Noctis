@@ -764,8 +764,8 @@ Deezer y TIDAL: pega el enlace.</value></data>
   <data name="Settings.AreYouSureAction" xml:space="preserve"><value>¿Estás seguro? Esta acción no se puede deshacer.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ResetEverything" xml:space="preserve"><value>Restablecer todo</value><comment>Content in SettingsView.axaml</comment></data>
   <data name="Settings.ClearArtworkCache" xml:space="preserve"><value>Limpiar caché de portadas</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.DeleteCachedArtworkWill" xml:space="preserve"><value>Elimina las portadas en caché. Se reconstruirán en el próximo escaneo.</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.NoteRemovesAllArtwork" xml:space="preserve"><value>Nota: esto elimina todas las portadas de tu biblioteca.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.DeleteCachedArtworkWill" xml:space="preserve"><value>Elimina las portadas y fotos de artistas guardadas. Las portadas de tus archivos y carpetas vuelven al momento; las fotos de artistas se descargan de nuevo.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.NoteRemovesAllArtwork" xml:space="preserve"><value>Nota: se pierden las fotos de artistas que elegiste y las portadas que solo están en Noctis.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ClearCache" xml:space="preserve"><value>Limpiar caché</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeyboardShortcuts" xml:space="preserve"><value>Atajos de teclado</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ClickKeyChangePress" xml:space="preserve"><value>Haz clic en una tecla para cambiarla. Esc cancela y Retroceso la borra.</value><comment>Text in SettingsView.axaml</comment></data>

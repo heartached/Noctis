@@ -2023,11 +2023,11 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.DeleteCachedArtworkWill" xml:space="preserve">
-    <value>删除缓存的封面。下次扫描时会重新生成。</value>
+    <value>删除已保存的封面和艺人照片。歌曲文件和文件夹中的封面会立即恢复，艺人照片会重新下载。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.NoteRemovesAllArtwork" xml:space="preserve">
-    <value>注意：这会移除资料库中的所有封面。</value>
+    <value>注意：你选择的艺人照片以及仅存在于 Noctis 中的封面将会丢失。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ClearCache" xml:space="preserve">

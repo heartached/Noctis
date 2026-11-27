@@ -770,8 +770,8 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.AreYouSureAction" xml:space="preserve"><value>Are you sure? This action cannot be undone.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ResetEverything" xml:space="preserve"><value>Reset Everything</value><comment>Content in SettingsView.axaml</comment></data>
   <data name="Settings.ClearArtworkCache" xml:space="preserve"><value>Clear Artwork Cache</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.DeleteCachedArtworkWill" xml:space="preserve"><value>Delete cached artwork. It will rebuild on the next scan.</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.NoteRemovesAllArtwork" xml:space="preserve"><value>Note: This removes all artwork from your library.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.DeleteCachedArtworkWill" xml:space="preserve"><value>Delete saved covers and artist photos. Covers in your song files and folders come back right away, artist photos download again.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.NoteRemovesAllArtwork" xml:space="preserve"><value>Note: Artist photos you picked, and covers that are only in Noctis, are lost.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ClearCache" xml:space="preserve"><value>Clear Cache</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeyboardShortcuts" xml:space="preserve"><value>Keyboard shortcuts</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ClickKeyChangePress" xml:space="preserve"><value>Click a key to change it. Esc cancels and Backspace clears it.</value><comment>Text in SettingsView.axaml</comment></data>
