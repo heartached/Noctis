@@ -51,20 +51,21 @@ public class ArtistVideoLookupTests
     [InlineData("Chase Atlantic")]
     [InlineData("chase atlantic")]
     [InlineData("CHASE ATLANTIC")]
-    public async Task ExactName_FindsTheArtist_AndTheWide1080pH264Loop(string name)
+    public async Task ExactName_FindsTheArtist_AndTheWideH264Loop_AtTheHeroSize(string name)
     {
         var found = await Service().FindArtistVideoAsync(name);
 
         Assert.Equal(ArtistVideoOutcome.Found, found.Outcome);
         Assert.Equal(879496517, found.ArtistId);
         var v = found.Variant!;
-        Assert.Equal((1920, 1080), (v.Width, v.Height));
+        // Owner 11-26 "slow and choppy": the smallest H.264 frame that still fills the hero's 960 px
+        // decode (this master: 1024x576), not one of the four 1080p streams decoded at full size.
+        Assert.Equal((1024, 576), (v.Width, v.Height));
         Assert.StartsWith("avc1", v.Codec);
         Assert.Equal("SDR", v.VideoRange);
-        // The lightest of the four 1080p H.264 streams (peak 4.2 / 6.0 / 8.0 / 12.4 Mb/s). The
-        // master parser reads AVERAGE-BANDWIDTH (its "BANDWIDTH=" match lands there first): 3.8 Mb/s.
-        Assert.Equal(3811217, v.Bandwidth);
-        Assert.EndsWith("P1197232327_Anull_video_gr265_sdr_1920x1080.m3u8", v.Url);
+        // The master parser reads AVERAGE-BANDWIDTH (its "BANDWIDTH=" match lands there first).
+        Assert.Equal(2200108, v.Bandwidth);
+        Assert.EndsWith("_sdr_1024x576.m3u8", v.Url);
         Assert.True(IsAppleMediaHost(v.Url));
         Assert.Equal("https://music.apple.com/us/artist/chase-atlantic/879496517", found.PageUrl);
         // One search (home = us), one page, one master: nothing else asked.
@@ -209,14 +210,31 @@ public class ArtistVideoLookupTests
             V(1920, 1080, "avc1.640028", 2_000_000, "PQ"),
             V(1280, 720, "avc1.64001f", 3_522_350),
         })!;
-        Assert.Equal((1920, 1080, "avc1.640028", 4_223_697L, "SDR"), (pick.Width, pick.Height, pick.Codec, pick.Bandwidth, pick.VideoRange));
+        // Owner 11-26 "slow and choppy": the smallest H.264 frame that still fills the hero's
+        // 960 px decode, not the 1080p one (decoded at full size, then scaled down).
+        Assert.Equal((1280, 720, "avc1.64001f", 3_522_350L, "SDR"), (pick.Width, pick.Height, pick.Codec, pick.Bandwidth, pick.VideoRange));
 
-        // No H.264 at all: the H.265 1080p, still never the 4K one.
+        // No H.264 at all: the H.265 one, still never the 4K one.
         var hevc = PickArtistVideoVariant(new[] { V(3840, 2160, "hvc1.2", 9), V(1920, 1080, "hvc1.2", 5), V(1280, 720, "hvc1.2", 3) })!;
-        Assert.Equal((1920, 1080), (hevc.Width, hevc.Height));
+        Assert.Equal((1280, 720), (hevc.Width, hevc.Height));
 
         // Only 4K / HDR: nothing.
         Assert.Null(PickArtistVideoVariant(new[] { V(3840, 2160, "avc1", 9), V(1920, 1080, "avc1", 5, "HLG") }));
+    }
+
+    [Fact]
+    public void Picker_TakesTheSmallestFrameAtLeastTheHeroDecodeWide()
+    {
+        Assert.Equal(960, ArtistVideoWantedWidth);
+        // 960x540 exists: that one, under the 720p and 1080p.
+        var exact = PickArtistVideoVariant(new[] { V(1920, 1080, "avc1", 5), V(960, 540, "avc1", 2), V(1280, 720, "avc1", 3), V(640, 360, "avc1", 1) })!;
+        Assert.Equal((960, 540), (exact.Width, exact.Height));
+        // Only 1080p fills it: 1080p, never the 360p one below the decode size.
+        var big = PickArtistVideoVariant(new[] { V(1920, 1080, "avc1", 5), V(640, 360, "avc1", 1) })!;
+        Assert.Equal((1920, 1080), (big.Width, big.Height));
+        // Nothing reaches 960 px: the largest there is.
+        var small = PickArtistVideoVariant(new[] { V(640, 360, "avc1", 1), V(854, 480, "avc1", 2) })!;
+        Assert.Equal((854, 480), (small.Width, small.Height));
     }
 
     private sealed class StubHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
