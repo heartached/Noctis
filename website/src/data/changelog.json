@@ -1,6 +1,90 @@
 {
   "releases": [
     {
+      "tag": "plugin-youtubeimport-v1.0.3",
+      "version": "plugin-youtubeimport-v1.0.3",
+      "name": "Add from YouTube plugin 1.0.3",
+      "label": "Add from YouTube",
+      "publishedAt": "2026-11-27T10:53:44Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/plugin-youtubeimport-v1.0.3",
+      "prerelease": true,
+      "sections": [
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved a video you downloaded before: it now says it is in the library, with a Show button, instead of downloading again."
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed the same video downloading twice at once.",
+            "Fixed a stopped import leaving its half-made file behind.",
+            "Fixed the smallest window size cutting off the view.",
+            "Fixed long recent titles not trimming.",
+            "Fixed placeholder text not showing in the light theme."
+          ]
+        }
+      ],
+      "summary": null
+    },
+    {
+      "tag": "plugin-trueshuffle-v1.0.1",
+      "version": "plugin-trueshuffle-v1.0.1",
+      "name": "True Shuffle plugin 1.0.1",
+      "label": "True Shuffle",
+      "publishedAt": "2026-11-27T10:53:40Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/plugin-trueshuffle-v1.0.1",
+      "prerelease": true,
+      "sections": [
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed Shuffle and Forget heard songs failing after a damaged save file.",
+            "Fixed the view scrolling sideways."
+          ]
+        }
+      ],
+      "summary": null
+    },
+    {
+      "tag": "plugin-chords-v1.0.1",
+      "version": "plugin-chords-v1.0.1",
+      "name": "Chords plugin 1.0.1",
+      "label": "Chords",
+      "publishedAt": "2026-11-27T10:53:36Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/plugin-chords-v1.0.1",
+      "prerelease": true,
+      "sections": [
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed the layout at the smallest window size.",
+            "Fixed the missing gap between the chord lane and Analyze again."
+          ]
+        }
+      ],
+      "summary": null
+    },
+    {
+      "tag": "plugin-albumtown-v1.0.3",
+      "version": "plugin-albumtown-v1.0.3",
+      "name": "Album Town plugin 1.0.3",
+      "label": "Album Town",
+      "publishedAt": "2026-11-27T10:53:32Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/plugin-albumtown-v1.0.3",
+      "prerelease": true,
+      "sections": [
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed an error on older Noctis versions that have no lyric lines for plugins."
+          ]
+        }
+      ],
+      "summary": null
+    },
+    {
       "tag": "plugin-albumroulette-v1.0.4",
       "version": "plugin-albumroulette-v1.0.4",
       "name": "Album Roulette plugin 1.0.4",
@@ -4739,6 +4823,6 @@
       "summary": "Initial Release"
     }
   ],
-  "updatedAt": "2026-11-27T10:53:32.002Z",
+  "updatedAt": "2026-11-27T10:54:12.798Z",
   "degraded": false
 }
