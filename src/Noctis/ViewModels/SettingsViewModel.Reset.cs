@@ -33,7 +33,8 @@ namespace Noctis.ViewModels;
 ///     settings, credentials included)
 ///   animated_artwork_bulk_ledger.json, lyrics_bulk_ledger.json, animated_artwork_no_autofetch.json,
 ///     animated_artwork_autofetch_ledger.json (album pages' fetch), artist_video_no_autofetch.json,
-///     artist_video_autofetch_ledger.json, artist_video_index.json (artist pages' video), *-backfill.progress,
+///     artist_video_autofetch_ledger.json, artist_video_index.json, artist_video_shrink_tried.json
+///     (artist pages' video), *-backfill.progress,
 ///     mp3_decoder_fallback.txt, musixmatch_token (anonymous token, fetched again),
 ///     whats_new_cache.json (About's What's new notes, fetched again when it opens)
 ///   tidal-auth.json (signed out, as the other services' sign-ins live in settings.json)
@@ -77,6 +78,7 @@ public partial class SettingsViewModel
         // Artist pages' video (Settings › Artwork › Artist videos): the same, plus the Apple
         // artist each library artist resolved to.
         "artist_video_no_autofetch.json", "artist_video_autofetch_ledger.json", "artist_video_index.json",
+        "artist_video_shrink_tried.json",
     };
 
     /// <summary>File patterns deleted in the data folder itself (not below it).</summary>

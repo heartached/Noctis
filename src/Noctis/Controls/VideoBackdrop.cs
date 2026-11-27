@@ -192,6 +192,58 @@ public sealed class VideoBackdrop : Control
 
     private bool _countedActive;
 
+    // ── One video at a time the user looks at (owner 11-26) ──
+
+    /// <summary>
+    /// Rank among the backdrops that want a player: one with a lower rank holds its frame
+    /// (paused, the frame stays) while any with a higher rank wants one, and plays on once those
+    /// are gone. The lyrics page's backdrops and anything new keep the default; the artist page's
+    /// hero is <see cref="HeroPriority"/> and yields to them.
+    /// </summary>
+    public int Priority { get; set; } = DefaultPriority;
+
+    public const int DefaultPriority = 1;
+    public const int HeroPriority = 0;
+
+    /// <summary>Backdrops that want a player now (UI thread), what <see cref="ActiveCount"/> counts.</summary>
+    private static readonly List<VideoBackdrop> Registered = new();
+
+    /// <summary>A backdrop of a higher <see cref="Priority"/> wants a player.</summary>
+    internal bool IsYielding { get; private set; }
+
+    /// <summary>The player holds its frame: paused, minimized or yielding.</summary>
+    internal bool IsHeld => IsPaused || _hostWindow.IsMinimized || IsYielding;
+
+    /// <summary>Backdrops that want a player and are not holding (tests).</summary>
+    internal static int PlayingCount => Registered.Count(b => !b.IsHeld);
+
+    private static void Register(VideoBackdrop backdrop, bool on)
+    {
+        if (on) Registered.Add(backdrop);
+        else Registered.Remove(backdrop);
+        var top = Registered.Count == 0 ? int.MinValue : Registered.Max(b => b.Priority);
+        foreach (var b in Registered.ToList())
+        {
+            var yielding = b.Priority < top;
+            if (yielding == b.IsYielding) continue;
+            b.IsYielding = yielding;
+            b.ApplyHold();
+        }
+        if (!on) backdrop.IsYielding = false;
+    }
+
+    private void ApplyHold() => _session?.SetPaused(IsHeld);
+
+    /// <summary>The clip's own size, known once a player started on it (0x0 otherwise).</summary>
+    public static readonly DirectProperty<VideoBackdrop, PixelSize> ClipPixelSizeProperty =
+        AvaloniaProperty.RegisterDirect<VideoBackdrop, PixelSize>(nameof(ClipPixelSize), o => o.ClipPixelSize);
+    private PixelSize _clipPixelSize;
+    public PixelSize ClipPixelSize
+    {
+        get => _clipPixelSize;
+        private set => SetAndRaise(ClipPixelSizeProperty, ref _clipPixelSize, value);
+    }
+
     /// <summary>The decoder's rate in one-second windows (<see cref="SlowStep"/>).</summary>
     internal struct SlowMeter
     {
@@ -274,7 +326,7 @@ public sealed class VideoBackdrop : Control
     }
 
     // Park the decoder while the window can't be seen; resume where it left off.
-    private void OnHostMinimizedChanged() => _session?.SetPaused(_hostWindow.IsMinimized || IsPaused);
+    private void OnHostMinimizedChanged() => ApplyHold();
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
@@ -282,7 +334,7 @@ public sealed class VideoBackdrop : Control
         if (change.Property == SourceProperty || change.Property == IsActiveProperty)
             Refresh();
         else if (change.Property == IsPausedProperty)
-            _session?.SetPaused(IsPaused || _hostWindow.IsMinimized);
+            ApplyHold();
         else if (change.Property == SyncPositionProperty)
         {
             if (SyncPosition is { } pos) _session?.SyncTo((long)pos.TotalMilliseconds);
@@ -337,13 +389,14 @@ public sealed class VideoBackdrop : Control
 
         _countedActive = true;
         Interlocked.Increment(ref s_active);
+        Register(this, true);
         if (SkipDecoderForTests) return;
 
         var generation = _generation;
         var logName = LogName;
         var stopWhenSlow = StopWhenSlow && SyncPosition == null;
         var maxFps = MaxFps;
-        var startPaused = _hostWindow.IsMinimized || IsPaused;
+        var startPaused = IsHeld;
         var synced = SyncPosition != null;
         var rate = Rate;
         var maxSide = MaxDecodeSide;
@@ -371,7 +424,7 @@ public sealed class VideoBackdrop : Control
                 var (bw, bh) = FitBuffer(vw, vh, maxSide);
                 session = new Session(this, bw, bh, probe.Duration, remote, source, generation)
                 {
-                    LogName = logName, ClipSize = $"{vw}x{vh}", StopWhenSlow = stopWhenSlow,
+                    LogName = logName, ClipSize = $"{vw}x{vh}", ClipPixels = new PixelSize(vw, vh), StopWhenSlow = stopWhenSlow,
                     MinFrameTicks = maxFps > 0 ? Stopwatch.Frequency / maxFps : 0,
                 };
             }
@@ -415,6 +468,9 @@ public sealed class VideoBackdrop : Control
                 }
                 _session = session;
                 HasVideoStream = hasVideo;
+                ClipPixelSize = session.ClipPixels;
+                // Held (yielding, paused) since this start was queued: VLC takes the latest.
+                session.SetPaused(IsHeld);
                 // Line the clip up with the song as it is NOW. The source switches while the
                 // track changes, before the song's position resets, so a position captured at
                 // start-up could still be the previous song's.
@@ -433,11 +489,13 @@ public sealed class VideoBackdrop : Control
         {
             _countedActive = false;
             Interlocked.Decrement(ref s_active);
+            Register(this, false);
         }
         _generation++;
         var session = _session;
         _session = null;
         _current = null;
+        ClipPixelSize = default;
         HasFrame = false;
         session?.ShutDown();
         InvalidateVisual();
@@ -491,6 +549,7 @@ public sealed class VideoBackdrop : Control
         public readonly int Width, Height;
         public string LogName { get; init; } = "Backdrop";
         public string ClipSize { get; init; } = "?";
+        public PixelSize ClipPixels { get; init; }
         public bool StopWhenSlow { get; init; }
         /// <summary>Shortest gap between two frames handed to the UI (Stopwatch ticks, 0 = none).</summary>
         public long MinFrameTicks { get; init; }

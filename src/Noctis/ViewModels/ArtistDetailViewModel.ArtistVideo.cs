@@ -108,6 +108,26 @@ public partial class ArtistDetailViewModel
         }
     }
 
+    /// <summary>The background replacement of an oversized cached video, for tests.</summary>
+    internal Task ArtistVideoShrinkTask { get; private set; } = Task.CompletedTask;
+
+    /// <summary>
+    /// The hero started the cached video, which is <paramref name="width"/>x<paramref name="height"/>:
+    /// one saved at 1080p before the picker took the hero-size stream is fetched again smaller in
+    /// the background (ArtistVideoAutoFetcher.ShrinkAsync); this one keeps playing meanwhile.
+    /// </summary>
+    internal void OnArtistVideoClipSize(int width, int height)
+    {
+        if (width <= ArtistVideoAutoFetcher.ShrinkAboveWidth || !ArtistVideosAllowed(_settings)) return;
+        if (ArtistVideoFetcherProvider() is not { } fetcher) return;
+        var (id, name, cap) = (Artist.Id, ArtistName, _settings!.AnimatedArtworkCacheBytes);
+        ArtistVideoShrinkTask = Task.Run(async () =>
+        {
+            try { await fetcher.ShrinkAsync(id, name, width, height, cap, CancellationToken.None); }
+            catch (Exception ex) { DebugLog.Write(ITunesArtworkService.LogSource, $"artist video shrink: {ex.Message}"); }
+        });
+    }
+
     /// <summary>
     /// Deletes the artist's cached video and marks the artist so it is never fetched again
     /// (Remove Animated Artwork on the album page, for artists).

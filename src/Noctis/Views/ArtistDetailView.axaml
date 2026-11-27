@@ -741,11 +741,13 @@
                 <!-- The artist's Apple Music motion video, muted and looping, across the whole
                      band under the darkening gradients and the fade below. Paused while the hero
                      is mostly scrolled away, the Settings sheet covers the page or the window is
-                     in the background (code-behind); stopped as too slow on a slow machine;
+                     in the background (code-behind); holds while another video backdrop plays
+                     (Priority 0: the lyrics videos go first); stopped as too slow on a slow machine;
                      stopped
                      when the page is left (the VM clears the path) or the window is minimized. -->
                 <ctrl:VideoBackdrop x:Name="HeroVideo"
                                     LogName="ArtistVideo"
+                                    Priority="0"
                                     StopWhenSlow="True"
                                     MaxFps="30"
                                     Source="{Binding ArtistVideoPath}"
