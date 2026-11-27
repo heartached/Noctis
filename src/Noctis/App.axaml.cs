@@ -470,6 +470,8 @@ public partial class App : Application
         try
         {
             accentApplied = ApplyThemeParts(layer, themeName);
+            if (layer.IsChangePending)
+                ThemeResourcesApplying?.Invoke(this, EventArgs.Empty);
         }
         finally
         {
@@ -478,6 +480,11 @@ public partial class App : Application
         if (accentApplied)
             AccentApplied?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>Raised inside a theme switch's resource update, once the new theme, accent and
+    /// variant are in place and before the tree is told: a window's overlay derived from them
+    /// (Liquid Glass) follows silently and rides on the same notification.</summary>
+    internal static event EventHandler? ThemeResourcesApplying;
 
     /// <summary>Lays the theme's overlay, the accent overlay built for it and the theme variant;
     /// true when the accent overlay was rebuilt.</summary>

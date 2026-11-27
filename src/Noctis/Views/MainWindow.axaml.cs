@@ -125,6 +125,24 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     private void ApplyTrackLinkAccent(bool accent) => Classes.Set("plain-track-links", !accent);
 
     private EventHandler? _accentWindowTintGlassHandler;
+    private EventHandler? _themeResourcesApplyingHandler;
+
+    /// <summary>A theme switch has its new surfaces in place but has not told the tree yet: the
+    /// glass overlay follows them inside that one notification (the switch's own refresh after it
+    /// then finds nothing to do), instead of a second walk of the whole window.</summary>
+    private void FollowThemeWithLiquidGlass()
+    {
+        if (!_liquidGlassActive || _liquidGlassLayer == null) return;
+        _liquidGlassLayer.BeginUpdate();
+        try
+        {
+            ApplyLiquidGlass(true);
+        }
+        finally
+        {
+            _liquidGlassLayer.EndUpdateCovered();
+        }
+    }
 
     /// <summary>GitHub #240: "Tint window with accent colour" on or off. App re-applies the
     /// accent with (or without) the shaded backgrounds; Liquid Glass then re-reads them.</summary>
@@ -784,6 +802,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                 ApplyAccentWindowTint(vm.Settings.TintWindowWithAccent);
                 _accentWindowTintGlassHandler = (_, _) => RefreshLiquidGlassForAccentTint();
                 App.AccentApplied += _accentWindowTintGlassHandler;
+                _themeResourcesApplyingHandler = (_, _) => FollowThemeWithLiquidGlass();
+                App.ThemeResourcesApplying += _themeResourcesApplyingHandler;
 
                 _liquidGlassChangedHandler = (_, on) => ApplyLiquidGlass(on);
                 vm.Settings.LiquidGlassChanged += _liquidGlassChangedHandler;
@@ -1835,6 +1855,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
             if (_accentWindowTintGlassHandler != null)
                 App.AccentApplied -= _accentWindowTintGlassHandler;
+            if (_themeResourcesApplyingHandler != null)
+                App.ThemeResourcesApplying -= _themeResourcesApplyingHandler;
 
             if (_liquidGlassChangedHandler != null)
                 vm.Settings.LiquidGlassChanged -= _liquidGlassChangedHandler;

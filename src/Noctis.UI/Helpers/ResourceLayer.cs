@@ -58,6 +58,9 @@ public sealed class ResourceLayer : ResourceProvider
         return false;
     }
 
+    /// <summary>True inside an update once a part has changed (the owner will be told at the end).</summary>
+    public bool IsChangePending => _updating > 0 && _changed;
+
     /// <summary>Holds the owner's notification until the matching <see cref="EndUpdate"/>.</summary>
     public void BeginUpdate() => _updating++;
 
@@ -67,6 +70,15 @@ public sealed class ResourceLayer : ResourceProvider
         if (_updating == 0 || --_updating > 0 || !_changed) return;
         _changed = false;
         Notify();
+    }
+
+    /// <summary>Ends an update without telling the owner, for a caller that knows a wider
+    /// notification follows which covers this layer's owner (an application-wide one reaches every
+    /// window and re-resolves through each window's resources).</summary>
+    public void EndUpdateCovered()
+    {
+        if (_updating == 0 || --_updating > 0) return;
+        _changed = false;
     }
 
     private void Changed()
