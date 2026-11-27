@@ -85,6 +85,70 @@ public class LyricsStudioScrollPerfTests : IDisposable
         finally { win.Close(); }
     }
 
+    /// <summary>Owner 11-26: a song picked after scrolling another opened at the old offset (often its end).</summary>
+    [AvaloniaFact]
+    public void ANewlyPickedSong_OpensAtItsFirstLine_EvenOneSeenBefore()
+    {
+        EnsureAppResources();
+        var vm = StudioWithRestoredReviews(2);
+        var panel = new LyricsStudioPanel { DataContext = vm, ShowHeader = false };
+        var win = new Window { Width = 1400, Height = 900, Content = panel, RequestedThemeVariant = ThemeVariant.Dark };
+        win.Show();
+        try
+        {
+            vm.Selected = vm.Queue[0];
+            Settle(win);
+            var scroller = Scroller(panel, vm);
+            scroller.Offset = new Vector(0, 2000);
+            Settle(win);
+            Assert.True(scroller.Offset.Y > 1000);
+
+            vm.Selected = vm.Queue[1];
+            Settle(win);
+            Assert.Equal(0, scroller.Offset.Y);
+            Assert.Contains(Rows(panel), r => ReferenceEquals(r.DataContext, vm.ReviewLines[0]));
+
+            scroller.Offset = new Vector(0, 1500);
+            Settle(win);
+            vm.Selected = vm.Queue[0]; // back to the first song
+            Settle(win);
+            Assert.Equal(0, scroller.Offset.Y);
+        }
+        finally { win.Close(); }
+    }
+
+    /// <summary>The same song's lines refreshed (a shift, a save) leave the view where it was.</summary>
+    [AvaloniaFact]
+    public async Task TheSameSong_RefreshedOrSaved_KeepsItsScrollPosition()
+    {
+        EnsureAppResources();
+        var vm = StudioWithRestoredReviews(1);
+        vm.Confirm = _ => Task.FromResult(true);
+        var panel = new LyricsStudioPanel { DataContext = vm, ShowHeader = false };
+        var win = new Window { Width = 1400, Height = 900, Content = panel, RequestedThemeVariant = ThemeVariant.Dark };
+        win.Show();
+        try
+        {
+            vm.Selected = vm.Queue[0];
+            Settle(win);
+            var scroller = Scroller(panel, vm);
+            scroller.Offset = new Vector(0, 1200);
+            Settle(win);
+            var kept = scroller.Offset.Y;
+            Assert.True(kept > 1000);
+
+            vm.NudgeLaterCommand.Execute(null); // shift every line
+            Settle(win);
+            Assert.Equal(kept, scroller.Offset.Y);
+
+            await vm.SaveCommand.ExecuteAsync(null);
+            Settle(win);
+            Assert.Equal(LyricsStudioViewModel.StudioStatus.Saved, vm.Queue[0].Status);
+            Assert.Equal(kept, scroller.Offset.Y);
+        }
+        finally { win.Close(); }
+    }
+
     /// <summary>The body's narrow layout is a class set from its width now (it was a container query
     /// on the body, which made every control inside it watch the body's size): same widths as before.</summary>
     [AvaloniaTheory]

@@ -1161,7 +1161,7 @@
                             </Border>
                         </StackPanel>
 
-                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,20,0">
+                        <ScrollViewer x:Name="ReviewScroller" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,20,0">
                             <controls:KeptRowsItemsControl Rows="{Binding ReviewLines}">
                                 <!-- Virtualized: only the lines in view exist. As a StackPanel every line of
                                      the song (a TextBox, buttons and a word strip each) was built and laid

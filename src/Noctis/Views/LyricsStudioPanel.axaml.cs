@@ -153,9 +153,38 @@ public partial class LyricsStudioPanel : UserControl
                 studio.PickLyricsFile = PickLyricsFileAsync;
             WireLyricsPagePreview();
             if (this.IsAttachedToVisualTree()) { WatchModel(); WatchLivePreview(); }
+            WatchSelection();
         };
         AttachedToVisualTree += (_, _) => { WireLyricsPagePreview(); HookKeys(); WatchModel(); WatchLivePreview(); };
         DetachedFromVisualTree += (_, _) => { UnhookKeys(); UnwatchModel(); _liveWatch?.SuspendLivePreview(); UnwatchLivePreview(); _speedOwner?.RestoreSpeed(); };
+    }
+
+    // ── Review scroll position (owner 11-26): a newly picked song opens at its first line ──
+    // The review's scroll viewer is shared by every song, so a song picked after scrolling another
+    // opened at the old offset (often its end). The offset is kept only while the same song stays
+    // picked: a save, a nudge or a re-sync that rebuilds its lines leaves the view where it was.
+    private LyricsStudioViewModel? _selectionWatch;
+    private object? _shownSong;
+
+    private void WatchSelection()
+    {
+        if (_selectionWatch is not null) _selectionWatch.PropertyChanged -= OnStudioSelectionChanged;
+        _selectionWatch = DataContext as LyricsStudioViewModel;
+        if (_selectionWatch is not null) _selectionWatch.PropertyChanged += OnStudioSelectionChanged;
+        ShowSongFromTop(_selectionWatch?.Selected);
+    }
+
+    private void OnStudioSelectionChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(LyricsStudioViewModel.Selected) && sender is LyricsStudioViewModel vm)
+            ShowSongFromTop(vm.Selected);
+    }
+
+    private void ShowSongFromTop(object? song)
+    {
+        if (ReferenceEquals(song, _shownSong)) return;
+        _shownSong = song;
+        ReviewScroller.Offset = default;
     }
 
     // The Studio whose speed steps are undone when it leaves the screen (the page has no Close).
