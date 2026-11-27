@@ -32,7 +32,7 @@ public partial class AlbumPage : UserControl
     public AlbumPage()
     {
         InitializeComponent();
-        _chrome = new HeroChrome(this, Hero, HeroFade, TopFade, TopScrim, TopBar, PageBody, "Album", UpdateScrollChrome, SetDescriptionMoreFade);
+        _chrome = new HeroChrome(this, Hero, HeroFade, TopFade, TopScrim, TopBar, PageBody, "Album", UpdateScrollChrome, SetDescriptionMoreFade, SelectBar);
         AlbumScroll.SizeChanged += (_, _) => LayoutHero();
         AlbumScroll.ScrollChanged += (_, _) => UpdateScrollChrome();
         AlbumTitle.SizeChanged += (_, _) => UpdateScrollChrome();
