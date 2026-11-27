@@ -25,7 +25,11 @@ public sealed class RouletteView : UserControl
     public const double WindowWidth = 440;
     public const double WindowHeight = 700;
     public const double MinWindowWidth = 360;
-    public const double MinWindowHeight = 560;
+    // At the narrowest width the chips take three rows and a long title two; below this height the
+    // reel was squeezed up over the chips (MinHeight was 560, the view needed about 674).
+    public const double MinWindowHeight = 680;
+    /// <summary>The reel's smallest height (the window's minimum leaves it this much).</summary>
+    public const double StageMinHeight = 160;
     /// <summary>Covers that warm up (decode) for the reel; a spin draws its strip from them.</summary>
     public const int PoolSize = 24;
 
@@ -154,7 +158,7 @@ public sealed class RouletteView : UserControl
             IsVisible = false,
             Margin = new Thickness(24, 0),
         };
-        var stage = new Grid { Children = { _reel, _hint, _empty }, MinHeight = 200 };
+        var stage = new Grid { Children = { _reel, _hint, _empty }, MinHeight = StageMinHeight };
 
         // ── Spin and the three pills ──
         _spinLabel = new TextBlock
