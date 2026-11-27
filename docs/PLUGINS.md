@@ -28,7 +28,7 @@ deciding whether to install one.
 
 ## What a plugin can do
 
-API **1.9** (Noctis 1.7.3 and later; 1.8 since 1.7.0; 1.7 since 1.6.9; 1.3 to 1.6 since 1.6.6; 1.2 since 1.5.9; 1.1 since 1.5.3):
+API **1.10** (Noctis 1.7.4 and later; 1.9 since 1.7.3; 1.8 since 1.7.0; 1.7 since 1.6.9; 1.3 to 1.6 since 1.6.6; 1.2 since 1.5.9; 1.1 since 1.5.3):
 
 | Area | What | Permission |
 |---|---|---|
@@ -141,8 +141,8 @@ samples live in the repository:
   lyrics motion and right-to-left layout through `RegisterLyricsEffect`, with no allocation per frame.
 - `plugins/Noctis.Plugins.YouTubeImport` — *Add from YouTube* (API 1.5): a view of its own that
   downloads audio with yt-dlp (installed and kept current by the plugin, checked against the
-  release's SHA-256 list), tags it with the app's TagLib#, and adds it through
-  `host.LibraryImport`.
+  release's SHA-256 list), tags it with the app's TagLib#, adds it through
+  `host.LibraryImport`, and its Show button opens the song with `ShowTrack` (1.10).
 - `plugins/Noctis.Plugins.Chords` — *Chords* (API 1.6): estimates the playing song's chords from
   its audio, decoded through `host.AudioDecoder`, and shows them in time with the song in a view
   of its own.
@@ -271,6 +271,7 @@ Everything lives in the `Noctis.Plugins` namespace.
 | `IDisposable RegisterView(IPluginViewProvider)` | 1.3 | | A view of your own; see [Views](#views). |
 | `bool OpenView(IPluginViewProvider)` | 1.3 | | Opens a view you registered (from a menu command, say). False when it is not registered or the plugin stopped. |
 | `bool ShowAlbum(string albumId)` | 1.3 | | Shows the album's page (`TrackInfo.AlbumId`) in the main window and brings it forward. False for an unknown album. |
+| `bool ShowTrack(string trackId)` | 1.10 | | Shows a library song (`TrackInfo.Id`, e.g. from `LibraryImport.ImportFilesAsync`) on its album's page, scrolled to and highlighted, and brings the main window forward. Settings closes when the plugin's view was shown there (since 1.7.4 `ShowAlbum` does too). False for a song the library does not show. |
 | `IDisposable RegisterLyricsEffect(ILyricsEffect)` | 1.5 | | How word-synced lyrics move; see [Lyrics effects](#lyrics-effects). |
 | `ILibraryImport LibraryImport` | 1.5 | `library.import` | Adds audio files the plugin saved to the library; see [Adding files to the library](#adding-files-to-the-library). |
 | `IAudioDecoder AudioDecoder` | 1.6 | `audio.decode` | Decodes a song file to mono PCM; see [Decoding songs for analysis](#decoding-songs-for-analysis). |
@@ -1055,6 +1056,7 @@ Planned for phase 2, modelled on Flow Launcher and Obsidian:
 | 1.8 | 1.7.0+ | Lyrics renderers: `RegisterLyricsRenderer`, `ILyricsRenderer`, `ILyricsLineView`, `LyricsLineInfo`, `LyricsLineWord`, `LyricsLineVoice`, `LyricsLineState`, `LyricsLineStyle`, `LyricsLineFrame` (no permission); the user picks one in Settings → Lyrics. Needs `"minAppVersion": "1.7.0"`. `PluginApi.Minor` reads 8 from this kit on (the 1.7 kit still reported 6). |
 | 1.7 | 1.6.9+ | `ILibraryReader.GetLyricLines` (under `library.read`), `IPlaybackControl.QueueTracks` (under `playback.control`), `RegisterLibraryCommand` / `LibraryCommandPlaces` / `LibraryCommandContext` (under `menu.commands`). A plugin that calls them needs `"minAppVersion": "1.6.9"`: on an older Noctis the call fails with `MissingMethodException` when the calling method is compiled, before any `catch` in that method runs. |
 | 1.9 | 1.7.3+ | Media servers (under `library.read` / `playback.control`): `ILibraryReader.GetServerAlbumsAsync()` lists the albums of every connected Navidrome/Jellyfin/Ampache/Subsonic server merged into one list (`ServerAlbumInfo`, with `PlayCount` / `LastPlayed` as the servers report them plus the album's plays in Noctis, which the servers never see: null = neither knows, which is not "never played"), `GetServerAlbumArtworkAsync(albumId)` downloads a cover once; `IPlaybackControl.PlayServerAlbumAsync` / `QueueServerAlbumAsync` play one from its server. Their songs are not library tracks. On an older Noctis neither the calls nor `ServerAlbumInfo` exist: keep every use in its own `[MethodImpl(NoInlining)]` method and catch `MissingMethodException` / `TypeLoadException` around the call (what Album Roulette 1.0.3 and later do), or set `"minAppVersion": "1.7.3"`. |
+| 1.10 | 1.7.4+ | `IPluginHost.ShowTrack(trackId)`: a library song on its album page, scrolled to and highlighted (no permission). On an older Noctis the call fails with `MissingMethodException` when the calling method is compiled: set `"minAppVersion": "1.7.4"` (Add from YouTube 1.0.4 does), or fall back to `ShowAlbum`. |
 
 ## Legacy plugins (API 1.0, no plugin.json)
 

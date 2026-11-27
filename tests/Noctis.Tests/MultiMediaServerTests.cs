@@ -522,7 +522,7 @@ public class MultiMediaServerTests : IDisposable
     {
         ILibraryReader reader = new OldReader();
         Assert.Contains("1.9", (await Assert.ThrowsAsync<NotSupportedException>(() => reader.GetServerAlbumsAsync())).Message);
-        Assert.Equal("1.9", PluginApi.Version);
+        Assert.True(PluginApi.Minor >= 9); // 1.10 added ShowTrack on top
     }
 
     private sealed class OldReader : ILibraryReader

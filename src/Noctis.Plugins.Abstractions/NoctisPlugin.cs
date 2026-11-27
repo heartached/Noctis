@@ -28,7 +28,7 @@ public sealed record PluginInfo(string Id, string Name, string Version, string A
 
 /// <summary>
 /// What the host offers a plugin. Everything here is safe to call from the UI thread.
-/// Members added in API 1.1 to 1.8 have default bodies that throw <see cref="NotSupportedException"/>,
+/// Members added in API 1.1 to 1.10 have default bodies that throw <see cref="NotSupportedException"/>,
 /// so code compiled against an older kit (and any older implementation of this interface) keeps working;
 /// Noctis itself implements all of them. Hooks marked with a permission throw
 /// <see cref="PluginPermissionException"/> unless plugin.json declares it.
@@ -161,6 +161,15 @@ public interface IPluginHost
     /// keep applying to Noctis's own lines. Dispose the result to withdraw it (Noctis also does
     /// on disable); Noctis's own lines then come back.</summary>
     IDisposable RegisterLyricsRenderer(ILyricsRenderer renderer) => throw Missing("1.8");
+
+    // ── API 1.10 ──
+
+    /// <summary>API 1.10: shows a library song where it lives: its album's page in the main window,
+    /// scrolled to the song and highlighted (as the app's own "go to song" does), and brings the
+    /// window forward; Settings closes when the plugin's view was shown there. <paramref name="trackId"/>
+    /// is <see cref="TrackInfo.Id"/> (for example from <see cref="ILibraryImport.ImportFilesAsync"/>).
+    /// False for a song the library does not show.</summary>
+    bool ShowTrack(string trackId) => throw Missing("1.10");
 
     private static NotSupportedException Missing(string api = "1.1")
         => new($"This Noctis build does not implement plugin API {api}. Set minAppVersion in plugin.json.");

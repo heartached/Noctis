@@ -786,6 +786,10 @@ public sealed class PluginHost
     /// Set by the app; null = false.</summary>
     public Func<Guid, bool>? AlbumOpener { get; set; }
 
+    /// <summary>API 1.10: opens a library song's album page scrolled to the song
+    /// (<see cref="IPluginHost.ShowTrack"/>). Set by the app; null = false.</summary>
+    public Func<Guid, bool>? TrackOpener { get; set; }
+
     /// <summary>API 1.4: the user's playlists, in sidebar order (<see cref="ILibraryReader.GetPlaylists"/>).
     /// Set by the app; null (tests, headless) = no playlists. Plugins may call it off the UI
     /// thread, so the adapter copies what it reads.</summary>
@@ -2248,7 +2252,7 @@ public sealed class PluginHost
             });
         }
 
-        // OpenView and ShowAlbum build windows and move the main window's page: from a plugin's
+        // OpenView, ShowAlbum and ShowTrack build windows and move the main window's page: from a plugin's
         // background task they run on the UI thread (waited for, as they answer), so CreateView, the
         // presenter and the album page never run off it (where Avalonia throws and the plugin failed).
         public bool OpenView(IPluginViewProvider provider)
@@ -2263,6 +2267,13 @@ public sealed class PluginHost
         {
             if (!Dispatcher.UIThread.CheckAccess()) return Dispatcher.UIThread.Invoke(() => ShowAlbum(albumId));
             if (_disposed || !Guid.TryParse(albumId, out var id) || _owner.AlbumOpener is not { } open) return false;
+            return open(id);
+        }
+
+        public bool ShowTrack(string trackId)
+        {
+            if (!Dispatcher.UIThread.CheckAccess()) return Dispatcher.UIThread.Invoke(() => ShowTrack(trackId));
+            if (_disposed || !Guid.TryParse(trackId, out var id) || _owner.TrackOpener is not { } open) return false;
             return open(id);
         }
 

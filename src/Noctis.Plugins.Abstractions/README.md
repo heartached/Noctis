@@ -15,6 +15,8 @@ https://github.com/heartached/Noctis/blob/main/docs/PLUGINS.md
 
 ## Release notes
 
+- **1.10** (Noctis 1.7.4+): `IPluginHost.ShowTrack` shows a library song on its album page,
+  scrolled to and highlighted. Needs `"minAppVersion": "1.7.4"`.
 - **1.8** (Noctis 1.7.0+): lyrics renderers (`RegisterLyricsRenderer`, `ILyricsRenderer`,
   `ILyricsLineView`, `LyricsLineInfo`, `LyricsLineFrame`, `LyricsLineStyle`): draw the lyric lines
   in place of Noctis's own once the user picks the renderer in Settings → Lyrics. Needs

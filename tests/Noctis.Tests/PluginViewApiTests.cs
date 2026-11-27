@@ -228,4 +228,63 @@ public class PluginViewApiTests : IDisposable
         Assert.Equal(new[] { true }, openedOnUi);
         Assert.Equal(PluginStatus.Running, plugin.Status);
     }
+
+    // ── API 1.10: ShowTrack (Add from YouTube's Show, owner 11-27) ──
+
+    [AvaloniaFact]
+    public void ShowTrack_GoesThroughTheAppsTrackOpener_OnTheUiThread()
+    {
+        var (script, _, host) = Start(_ => { });
+        Assert.False(script.Host!.ShowTrack(Guid.NewGuid().ToString("D"))); // no opener (tests, headless)
+        var opened = new List<(Guid Id, bool OnUi)>();
+        host.TrackOpener = id => { opened.Add((id, Dispatcher.UIThread.CheckAccess())); return true; };
+        var track = Guid.NewGuid();
+
+        Assert.True(script.Host.ShowTrack(track.ToString("D")));
+        Assert.False(script.Host.ShowTrack("not a guid"));
+        var work = Task.Run(() => script.Host.ShowTrack(track.ToString("D")));
+        while (!work.IsCompleted) Dispatcher.UIThread.RunJobs();
+        Assert.True(work.Result);
+        Assert.Equal(new[] { (track, true), (track, true) }, opened);
+    }
+
+    /// <summary>The plugin's view sits in the Settings sheet (its Open button, its sidebar entry): the
+    /// album page opened under the sheet, which stayed up, so Show did nothing. The page opens first,
+    /// then the sheet closes (as Settings' Statistics link does), then the window comes forward.</summary>
+    [Fact]
+    public void Navigator_OpensTheSongsAlbumScrolledToIt_ThenLeavesSettings()
+    {
+        var library = new FakeLibraryService();
+        var albumId = Guid.NewGuid();
+        var song = new Track { Title = "Song", Album = "Single", AlbumId = albumId, FilePath = "C:/Music/YouTube/A - Song.m4a" };
+        library.TrackList.Add(song);
+        var album = new Album { Id = albumId, Name = "Single", Tracks = new List<Track> { song } };
+        ((List<Album>)library.Albums).Add(album);
+        var steps = new List<string>();
+        var navigator = new PluginLibraryNavigator(library,
+            (a, reveal) => steps.Add($"open {a.Name} at {(reveal == song.Id ? "song" : reveal?.ToString() ?? "top")}"),
+            () => steps.Add("leave settings"),
+            () => steps.Add("bring forward"));
+
+        Assert.True(navigator.ShowTrack(song.Id));
+        Assert.Equal(new[] { "open Single at song", "leave settings", "bring forward" }, steps);
+
+        steps.Clear();
+        Assert.True(navigator.ShowAlbum(albumId));
+        Assert.Equal(new[] { "open Single at top", "leave settings", "bring forward" }, steps);
+
+        // The song moved to another album since the import (an edit, a regrouping): its album now.
+        var moved = new Album { Id = Guid.NewGuid(), Name = "Deluxe", Tracks = new List<Track> { song } };
+        ((List<Album>)library.Albums).Add(moved);
+        song.AlbumId = moved.Id;
+        steps.Clear();
+        Assert.True(navigator.ShowTrack(song.Id));
+        Assert.Equal("open Deluxe at song", steps[0]);
+
+        // Unknown song or album: false, and nothing moves.
+        steps.Clear();
+        Assert.False(navigator.ShowTrack(Guid.NewGuid()));
+        Assert.False(navigator.ShowAlbum(Guid.NewGuid()));
+        Assert.Empty(steps);
+    }
 }
