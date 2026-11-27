@@ -15,7 +15,7 @@ public sealed class YouTubeImportPlugin : INoctisPlugin, IPluginViewProvider
 {
     public const string Id = "dev.noctis.plugins.youtubeimport";
     public const string DisplayName = "Add from YouTube";
-    public const string Version = "1.0.2";
+    public const string Version = "1.0.3";
     public const string About = "Save audio from a YouTube link to your library.";
     /// <summary>plugin.json setting: a yt-dlp of the user's own (never replaced).</summary>
     public const string CustomYtDlpSetting = "ytDlpPath";
@@ -34,6 +34,10 @@ public sealed class YouTubeImportPlugin : INoctisPlugin, IPluginViewProvider
 
     /// <summary>API 1.5: the view's column is 760 wide at most (plus its margins), so no wider window.</summary>
     public Size? PreferredWindowSize => new Size(840, 680);
+
+    /// <summary>Below this the results and the recent list ran up over the search row (the
+    /// default minimum, 480 x 360, is smaller than the header, a result and the footer).</summary>
+    public Size? MinWindowSize => new Size(560, 600);
 
     /// <summary>Tests: swaps the importer (and its yt-dlp) the window uses.</summary>
     internal IYouTubeImporter? ImporterOverride { get; set; }

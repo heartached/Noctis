@@ -131,6 +131,37 @@ public class YouTubeImportPluginTests : IDisposable
         PumpUntil(() => !win.IsVisible);
     }
 
+    /// <summary>At the default minimum window (480 x 360) the results ran up over the search row and
+    /// the recent list scrolled sideways instead of trimming: the plugin now asks for a minimum
+    /// that fits, and the list trims.</summary>
+    [AvaloniaFact]
+    public void SmallestWindow_ResultsStayBelowTheSearchRow_AndRecentTitlesTrim()
+    {
+        AddToPlaylistDialogTests.EnsureAppStyles();
+        var longTitle = "The Extraordinarily Long Title of a Song That Never Seems to End (Remastered Deluxe Edition)";
+        var state = State();
+        state.AddRecent(new RecentDownload(longTitle, "Juniper Hollow and the Midnight Orchestra", "C:/Music/a.m4a", DateTimeOffset.Now, true));
+        state.AddRecent(new RecentDownload("Short", "Ada Vale", "C:/Music/b.m4a", DateTimeOffset.Now, false));
+        var view = NewView(_root);
+        foreach (var id in new[] { "a1", "b2", "c3" })
+            view.ViewModel.Results.Add(new YouTubeImportViewModel.ResultRow(Info(id, longTitle, "Channel"), view.ViewModel));
+        var min = new YouTubeImportPlugin().MinWindowSize!.Value;
+        var win = new Window { RequestedThemeVariant = ThemeVariant.Dark, Width = min.Width, Height = min.Height, Content = view };
+        win.Show();
+        Dispatcher.UIThread.RunJobs();
+        win.UpdateLayout();
+        try
+        {
+            var searchBottom = view.QueryBox.TranslatePoint(new Point(0, view.QueryBox.Bounds.Height), view)!.Value.Y;
+            var results = view.ResultsList.GetVisualAncestors().OfType<ScrollViewer>().First();
+            Assert.True(results.TranslatePoint(new Point(0, 0), view)!.Value.Y >= searchBottom, "the results overlap the search row");
+            var recent = view.RecentList.GetVisualAncestors().OfType<ScrollViewer>().First();
+            Assert.Equal(Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled, recent.HorizontalScrollBarVisibility);
+            Assert.True(recent.TranslatePoint(new Point(0, recent.Bounds.Height), view)!.Value.Y <= view.Bounds.Height);
+        }
+        finally { Close(win); }
+    }
+
     [AvaloniaFact]
     public void Window_UsesThePillStyles_AndItsActionsWork()
     {
@@ -595,6 +626,33 @@ public class YouTubeImportPluginTests : IDisposable
         Assert.Contains("music folder", ex.Message);
     }
 
+    /// <summary>Stopped (Noctis closing) after the file reached the music folder: it used to stay
+    /// there untagged and outside the library, and showed up half-made on the next rescan.</summary>
+    [Fact]
+    public async Task Import_StoppedAfterTheMove_TakesTheHalfMadeFileBackOut()
+    {
+        var library = new FakeLibraryImport { Folders = { Path.Combine(_root, "Music") } };
+        using var cts = new CancellationTokenSource();
+        var importer = new YouTubeImporter(DownloadingTool(new()), library, new HttpClient(new CancelOnRequest(cts)), () => "", () => null);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => importer.ImportAsync(Info("vid", "A - B", "A"), AudioFormat.M4a, null, cts.Token));
+
+        var folder = Path.Combine(_root, "Music", "YouTube");
+        Assert.Empty(Directory.GetFiles(folder));
+        Assert.Empty(Directory.GetDirectories(folder)); // no scratch folder either
+        Assert.Empty(library.Calls);
+    }
+
+    /// <summary>The cover download is where the user stops it.</summary>
+    private sealed class CancelOnRequest(CancellationTokenSource cts) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            cts.Cancel();
+            return Task.FromCanceled<HttpResponseMessage>(cts.Token);
+        }
+    }
+
     private sealed class NoNetwork : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
@@ -669,7 +727,7 @@ public class YouTubeImportPluginTests : IDisposable
     {
         var m = PluginManifest.TryLoad(PluginSandbox.RepoFile("plugins/Noctis.Plugins.YouTubeImport"))!;
         var plugin = new YouTubeImportPlugin();
-        Assert.Equal((YouTubeImportPlugin.Id, "Add from YouTube", "1.0.2", "Noctis"), (m.Id, m.Name, m.Version, m.Author));
+        Assert.Equal((YouTubeImportPlugin.Id, "Add from YouTube", "1.0.3", "Noctis"), (m.Id, m.Name, m.Version, m.Author));
         Assert.Equal((plugin.Info.Id, plugin.Info.Name, plugin.Info.Version, plugin.Info.Description), (m.Id, m.Name, m.Version, m.Description));
         Assert.Equal("Save audio from a YouTube link to your library.", m.Description);
         Assert.Equal(new[] { "library.import", "network" }, m.Permissions);
