@@ -245,20 +245,17 @@ internal static class MediaCaseArt
         ctx.DrawEllipse(DiscSheenBrush, DiscRimPen, c, radius - 0.5, radius - 0.5);
     }
 
-    // Printed card with a faint satin sheen, the record's ring pressed through it, and the open
-    // edge on the right where its two plies part.
+    // Printed card with a faint satin sheen and the open edge on the right where its two plies
+    // part. No ring wear: the worn band read as a circle drawn over the cover art.
     private static readonly IBrush SleeveSheen = Linear(0, 0, 1, 1, (0x16FFFFFF, 0), (0x00FFFFFF, 0.45), (0x00000000, 0.7), (0x18000000, 1));
     private static readonly IBrush SleeveOpening = Linear(0, 0, 1, 0, (0x00000000, 0), (0x48000000, 0.85), (0x22FFFFFF, 0.86), (0x30000000, 1));
     private static readonly IPen SleeveEdgePen = new Pen(Linear(0, 0, 1, 1, (0x50FFFFFF, 0), (0x18FFFFFF, 0.5), (0x40000000, 1)), 1);
-    // Ring wear: a soft worn band where the record inside presses through the card.
-    private static readonly IBrush RingWear = Radial(0.5, 0.5, (0x00FFFFFF, 0.9), (0x0EFFFFFF, 0.95), (0x00FFFFFF, 1));
 
     /// <summary>The sleeve's card finish over the cover art.</summary>
     internal static void DrawSleeveFinish(DrawingContext ctx, Rect sleeve)
     {
         var s = sleeve.Width;
         ctx.DrawRectangle(SleeveSheen, null, sleeve);
-        ctx.DrawEllipse(RingWear, null, sleeve.Center, s * 0.46, s * 0.46);
         ctx.DrawRectangle(SleeveOpening, null, new Rect(sleeve.Right - s * 0.028, sleeve.Y, s * 0.028, sleeve.Height));
         ctx.DrawRectangle(null, SleeveEdgePen, sleeve.Deflate(0.5));
     }
