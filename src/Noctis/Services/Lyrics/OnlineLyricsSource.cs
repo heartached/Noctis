@@ -20,15 +20,19 @@ public sealed record OnlineLyricsSource(
     public const string LrcRed = "lrc.red";
     public const string Unison = "Unison";
     public const string LrcMux = "lrcmux";
+    public const string Genius = "Genius";
 
     /// <summary>The built-in extra sources in Auto's priority order: on a format tie the earlier wins,
     /// so Musixmatch's hand-made richsync beats lrc.red's and Unison's TTML, which keep duet voices
     /// and background vocals and so beat Kugou's KRC; all beat YouTube's line sync. lrcmux (GitHub #219)
     /// comes last: it relays sources asked before it, so it mostly fills what they missed, and its
-    /// 60-requests-a-minute limit keeps a bulk run's requests to it a second apart.</summary>
+    /// 60-requests-a-minute limit keeps a bulk run's requests to it a second apart. Genius (GitHub #265)
+    /// has plain lyrics only, so any timed answer beats it; it sits before lrcmux so its curated text
+    /// wins a plain-only tie.</summary>
     public static IReadOnlyList<OnlineLyricsSource> BuiltIns(
         IMusixmatchService musixmatch, IKugouLyricsService kugou, IYouTubeMusicLyricsService youTubeMusic,
-        ILrcRedLyricsService lrcRed, IUnisonLyricsService unison, ILrcMuxLyricsService? lrcMux = null)
+        ILrcRedLyricsService lrcRed, IUnisonLyricsService unison, ILrcMuxLyricsService? lrcMux = null,
+        IGeniusLyricsService? genius = null)
     {
         var list = new List<OnlineLyricsSource>
         {
@@ -38,6 +42,8 @@ public sealed record OnlineLyricsSource(
             new(Kugou, s => s.KugouEnabled, kugou.SearchLyricsAsync),
             new(YouTubeMusic, s => s.YouTubeMusicLyricsEnabled, youTubeMusic.SearchLyricsAsync),
         };
+        if (genius is not null)
+            list.Add(new(Genius, s => s.GeniusEnabled, genius.SearchLyricsAsync));
         if (lrcMux is not null)
             list.Add(new(LrcMux, s => s.LrcMuxEnabled, lrcMux.SearchLyricsAsync) { MinInterval = TimeSpan.FromSeconds(1.1) });
         return list;

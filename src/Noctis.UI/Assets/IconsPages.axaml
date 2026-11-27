@@ -23,6 +23,9 @@
     <!-- Follow / jump back to the current line: a locate crosshair -->
     <StreamGeometry x:Key="PageLineFollow">M12 18.5a6.5 6.5 0 1 0 0-13a6.5 6.5 0 0 0 0 13ZM12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M12 12h.01</StreamGeometry>
 
+    <!-- What's new (Settings › About): a four-point sparkle with a small one beside it -->
+    <StreamGeometry x:Key="PageLineSparkle">M10.5 5C11.2 9.3 12.7 10.8 17 11.5C12.7 12.2 11.2 13.7 10.5 18C9.8 13.7 8.3 12.2 4 11.5C8.3 10.8 9.8 9.3 10.5 5ZM18 3.5v4M16 5.5h4M17.5 16.5v3M16 18h3</StreamGeometry>
+
     <!-- Listening recap (Noctis Wrap): a portrait story card with rising bars -->
     <StreamGeometry x:Key="PageLineRecap">M7 3.5h10A1.5 1.5 0 0 1 18.5 5v14a1.5 1.5 0 0 1-1.5 1.5H7A1.5 1.5 0 0 1 5.5 19V5A1.5 1.5 0 0 1 7 3.5ZM9 16.5v-2.5M12 16.5V9.5M15 16.5v-4.5</StreamGeometry>
 

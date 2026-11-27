@@ -237,22 +237,25 @@ public sealed class LibraryServerAdapter : IServerLibrary
             var track = _library.GetTrackById(trackId);
             if (track is null) return;
             var favoriteChanged = track.IsFavorite != state.Favorite;
-            track.IsFavorite = state.Favorite;
-            if (state.FavoritedAt.HasValue) track.FavoritedAt = state.FavoritedAt;
-            // Play counts only ever grow: a device that missed a few plays must not roll them back.
-            if (state.PlayCount > track.PlayCount) track.PlayCount = state.PlayCount;
-            if (state.LastPlayed.HasValue && (track.LastPlayed is null || state.LastPlayed > track.LastPlayed)) track.LastPlayed = state.LastPlayed;
-            // Snooze is app state only (SetTracksSnoozedAsync writes no tag), so it is set here,
-            // before the save, which then records the same payload the ledger already holds.
-            // Absent: the sender said nothing about it (an older phone). A past date: not snoozed.
-            if (state.SnoozedUntil is { } snooze)
-                track.SnoozedUntil = snooze > DateTime.UtcNow ? snooze : null;
-            await _library.SaveTrackUserStateAsync(new[] { track });
+            // Every field first, then one save: the save's background ledger record then sees
+            // exactly the state the ledger already holds under the sender's stamp (no new change).
+            // A save before the rating was set let it stamp the old rating as this computer's
+            // newest change, which the next sync sent back over the synced one.
+            await _library.ApplyTrackUserStateAsync(track, t =>
+            {
+                t.IsFavorite = state.Favorite;
+                if (state.FavoritedAt.HasValue) t.FavoritedAt = state.FavoritedAt;
+                // Play counts only ever grow: a device that missed a few plays must not roll them back.
+                if (state.PlayCount > t.PlayCount) t.PlayCount = state.PlayCount;
+                if (state.LastPlayed.HasValue && (t.LastPlayed is null || state.LastPlayed > t.LastPlayed)) t.LastPlayed = state.LastPlayed;
+                // Absent: the sender said nothing about it (an older phone). A past date: not snoozed.
+                if (state.SnoozedUntil is { } snooze)
+                    t.SnoozedUntil = snooze > DateTime.UtcNow ? snooze : null;
+                // The rating/dislike file tags are written (deferred) when these changed.
+                t.Rating = Math.Clamp(state.Rating, 0, 5);
+                t.IsDisliked = state.Disliked;
+            });
             if (favoriteChanged) _library.NotifyFavoritesChanged(new[] { track });
-            // Rating/dislike go through the same calls the desktop's star clicks use, so the
-            // file tags get written (deferred) — both are no-ops when nothing changed.
-            await _library.SetTracksRatingAsync(new[] { track }, Math.Clamp(state.Rating, 0, 5));
-            await _library.SetTracksDislikedAsync(new[] { track }, state.Disliked);
         });
 
     public string PlaylistCoverStagingDirectory => Sync.PlaylistCovers.StagingDirectory(_persistence.DataDirectory);

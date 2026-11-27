@@ -51,6 +51,11 @@ public sealed class AlbumCarousel : Panel
     public static readonly StyledProperty<ICommand?> OpenCommandProperty =
         AvaloniaProperty.Register<AlbumCarousel, ICommand?>(nameof(OpenCommand));
 
+    /// <summary>Runs with the artist name clicked in the caption (the album tiles' artist link,
+    /// <see cref="CaptionCreditLink"/>). Unset, the artist line is plain text.</summary>
+    public static readonly StyledProperty<ICommand?> ArtistCommandProperty =
+        AvaloniaProperty.Register<AlbumCarousel, ICommand?>(nameof(ArtistCommand));
+
     /// <summary>The centred album (two-way): the host can remember it and hand it back so the
     /// row comes back where it was, e.g. after visiting the album's page.</summary>
     public static readonly StyledProperty<Album?> CenterAlbumProperty =
@@ -75,6 +80,7 @@ public sealed class AlbumCarousel : Panel
     public IEnumerable? Albums { get => GetValue(AlbumsProperty); set => SetValue(AlbumsProperty, value); }
     public AlbumCarouselStyle CaseStyle { get => GetValue(CaseStyleProperty); set => SetValue(CaseStyleProperty, value); }
     public ICommand? OpenCommand { get => GetValue(OpenCommandProperty); set => SetValue(OpenCommandProperty, value); }
+    public ICommand? ArtistCommand { get => GetValue(ArtistCommandProperty); set => SetValue(ArtistCommandProperty, value); }
     public Album? CenterAlbum { get => GetValue(CenterAlbumProperty); set => SetValue(CenterAlbumProperty, value); }
 
     /// <summary>Height kept under the cards for the caption.</summary>
@@ -110,6 +116,9 @@ public sealed class AlbumCarousel : Panel
     private double _reachRight;
     private readonly StackPanel _caption;
     private readonly TextBlock _title;
+    private readonly TextBlock _qualityTipTitle;
+    private readonly TextBlock _qualityTipInfo;
+    private readonly TextBlock _qualityTipDescription;
     private readonly Border _explicit;
     private readonly TextBlock _subtitle;
     private readonly TextBlock _details;
@@ -179,6 +188,7 @@ public sealed class AlbumCarousel : Panel
         {
             Orientation = Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Center,
+            IsHitTestVisible = false,
             Children = { _title, _explicit },
         };
         // Artist in the accent colour, like the album page's artist links.
@@ -192,23 +202,32 @@ public sealed class AlbumCarousel : Panel
             MaxLines = 1,
         };
         _subtitle.Bind(TextBlock.ForegroundProperty, _subtitle.GetResourceObservable("AccentTextExactBrush"));
+        // Each name opens its artist, as on an album tile (owner 11-27).
+        _subtitle.Bind(CaptionCreditLink.CommandProperty, this.GetObservable(ArtistCommandProperty));
         // Third row: genre · release date · tracks · length · quality badge (album page line).
         _details = new TextBlock { FontSize = 12, FontWeight = FontWeight.SemiBold, Opacity = 0.5, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, MaxLines = 1 };
         _qualityDot = new TextBlock { Text = " · ", FontSize = 12, FontWeight = FontWeight.SemiBold, Opacity = 0.5, VerticalAlignment = VerticalAlignment.Center };
         _qualityText = new TextBlock { FontSize = 12, FontWeight = FontWeight.SemiBold, Opacity = 0.5, VerticalAlignment = VerticalAlignment.Center };
         var waves = new Avalonia.Controls.Shapes.Path { Data = Geometry.Parse(QualityWavesPath) };
         waves[!Shape.FillProperty] = _qualityText[!TextBlock.ForegroundProperty];
+        // The album page's quality pop-up (owner 11-27: hovering "Lossless" here said nothing).
+        _qualityTipTitle = new TextBlock { FontSize = 13, FontWeight = FontWeight.SemiBold };
+        _qualityTipInfo = new TextBlock { FontSize = 12, Opacity = 0.9 };
+        _qualityTipDescription = new TextBlock { FontSize = 11, Opacity = 0.85, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) };
         _quality = new StackPanel
         {
             Orientation = Orientation.Horizontal,
             Spacing = 4,
             VerticalAlignment = VerticalAlignment.Center,
+            Background = Brushes.Transparent, // hovered anywhere on the badge, not only on its glyphs
             Children =
             {
                 new Viewbox { Width = 15, Height = 10, Opacity = 0.5, Margin = new Thickness(0, 1, 0, 0), VerticalAlignment = VerticalAlignment.Center, Child = waves },
                 _qualityText,
             },
         };
+        ToolTip.SetTip(_quality, new StackPanel { Width = 220, Spacing = 4, Children = { _qualityTipTitle, _qualityTipInfo, _qualityTipDescription } });
+        _details.IsHitTestVisible = _qualityDot.IsHitTestVisible = false;
         var detailsRow = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -221,11 +240,13 @@ public sealed class AlbumCarousel : Panel
             Opacity = 0.35,
             HorizontalAlignment = HorizontalAlignment.Center,
             Margin = new Thickness(0, 4, 0, 0),
+            IsHitTestVisible = false,
         };
+        // Only the artist names and the quality badge take the pointer; the rest of the caption
+        // stays part of the row (a drag started on the title still turns the carousel).
         _caption = new StackPanel
         {
             Spacing = 2,
-            IsHitTestVisible = false,
             Children = { titleRow, _subtitle, detailsRow, _counter },
         };
         Children.Add(_glow);
@@ -247,6 +268,8 @@ public sealed class AlbumCarousel : Panel
     internal IReadOnlyDictionary<int, AlbumCarouselCard> RealizedCards => _realized;
 
     internal string CaptionTitle => _title.Text ?? "";
+    internal TextBlock CaptionArtist => _subtitle;
+    internal Control CaptionQuality => _quality;
 
     /// <summary>Albums wearing their own style (GitHub #233). Filled from settings while the
     /// carousel is on screen; tests set it directly.</summary>
@@ -752,11 +775,15 @@ public sealed class AlbumCarousel : Panel
         _title.Text = album.Name;
         _explicit.IsVisible = album.IsExplicit;
         _subtitle.Text = album.ArtistDisplay;
+        CaptionCreditLink.SetCredit(_subtitle, album.ArtistDisplay);
         _details.Text = (string)MetadataLine.Convert(
             new object?[] { album.GenreDisplay, album.ReleaseDateFormatted, album.TrackCountText, album.HeaderDurationFormatted },
             typeof(string), null, System.Globalization.CultureInfo.CurrentCulture);
         var badge = album.AudioQualityBadge;
         _qualityText.Text = badge;
+        _qualityTipTitle.Text = badge;
+        _qualityTipInfo.Text = album.AudioQualityDetailedInfo;
+        _qualityTipDescription.Text = album.AudioQualityDescription;
         _quality.IsVisible = !string.IsNullOrEmpty(badge);
         _qualityDot.IsVisible = _quality.IsVisible && !string.IsNullOrEmpty(_details.Text);
         _counter.Text = Loc.T("AlbumCarousel.Counter", index + 1, _items.Count);

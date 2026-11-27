@@ -133,6 +133,17 @@ public class CommandPaletteSelectionTests
     }
 
     [AvaloniaFact]
+    public async Task Typing_Sidebar_ThenEnter_PicksTheExpandCollapseSidebarAction()
+    {
+        // Discord (Luwi 11-25): the sidebar toggle is also a palette action.
+        var vm = NewVm();
+        vm.Query = "sidebar";
+        await vm.ExecuteSelectedCommand.ExecuteAsync(null);
+
+        Assert.Equal(Noctis.Localization.Loc.T("Shortcuts.Action.ToggleSidebar"), vm.Results[vm.SelectedIndex].Title);
+    }
+
+    [AvaloniaFact]
     public async Task Enter_RightAfterTyping_PicksFromTheTypedQuery_NotThePreviousRows()
     {
         var library = new FakeLibraryService();

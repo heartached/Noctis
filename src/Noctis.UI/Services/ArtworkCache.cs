@@ -248,6 +248,51 @@ public static class ArtworkCache
         Invalidated?.Invoke(path);
     }
 
+    /// <summary>
+    /// Settings › Clear Artwork Cache: forgets every decoded cover whose file lies under
+    /// <paramref name="folder"/> (cached, or evicted but still on screen), and the colours
+    /// worked out from them, then tells the controls showing one to load again. Covers
+    /// written back to the same paths later are decoded fresh instead of served from memory.
+    /// Returns how many cached bitmaps were dropped.
+    /// </summary>
+    public static int ForgetFolder(string folder)
+    {
+        if (string.IsNullOrEmpty(folder)) return 0;
+        var dropped = 0;
+        foreach (var entry in Cache.Values)
+        {
+            if (!IsUnder(entry.Path, folder)) continue;
+            if (!Cache.TryRemove(new KeyValuePair<string, CacheEntry>(entry.Key, entry))) continue;
+            dropped++;
+            OnEntryRemoved(entry);
+        }
+        DominantColorExtractor.ForgetUnder(folder);
+        ArtworkVibrantColor.ForgetUnder(folder);
+        FolderInvalidated?.Invoke(folder);
+        return dropped;
+    }
+
+    /// <summary>Raised by <see cref="ForgetFolder"/>: controls showing a cover under the folder reload.</summary>
+    public static event Action<string>? FolderInvalidated;
+
+    /// <summary>True when <paramref name="path"/> is a file somewhere under <paramref name="folder"/>.</summary>
+    public static bool IsUnder(string? path, string folder)
+    {
+        if (string.IsNullOrEmpty(path) || string.IsNullOrEmpty(folder)) return false;
+        var root = folder.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
+        return path.Length > root.Length
+               && path.StartsWith(root, StringComparison.OrdinalIgnoreCase)
+               && (path[root.Length] == System.IO.Path.DirectorySeparatorChar
+                   || path[root.Length] == System.IO.Path.AltDirectorySeparatorChar);
+    }
+
+    /// <summary>Removes every key under <paramref name="folder"/> from a path-keyed cache.</summary>
+    internal static void RemoveKeysUnder<T>(ConcurrentDictionary<string, T> cache, string folder)
+    {
+        foreach (var key in cache.Keys)
+            if (IsUnder(key, folder)) cache.TryRemove(key, out _);
+    }
+
     /// <summary>Normalized decode widths seen so far (used as a set; the value is unused).</summary>
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<int, byte> _observedWidths = new();
 

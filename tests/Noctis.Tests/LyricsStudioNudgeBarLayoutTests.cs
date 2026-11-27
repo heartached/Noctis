@@ -162,7 +162,8 @@ public class LyricsStudioNudgeBarLayoutTests : IDisposable
             var pill = actions.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("studio-speed"));
             Assert.DoesNotContain(Bar(panel).GetVisualDescendants().OfType<Border>(), b => b.Classes.Contains("studio-speed"));
             var preview = actions.GetVisualDescendants().OfType<Button>().Single(b => Equals(b.Command, vm.PreviewOnLyricsPageCommand));
-            var save = actions.GetVisualDescendants().OfType<Button>().Single(b => Equals(b.Command, vm.SaveCommand));
+            // Save holds the toolbar's right edge beside the groups (11-26 redesign), not inside them.
+            var save = panel.GetVisualDescendants().OfType<Button>().Single(b => Equals(b.Command, vm.SaveCommand));
             var p = BoundsIn(preview, actions); var s = BoundsIn(pill, actions); var v = BoundsIn(save, actions);
             Assert.True(p.Right < s.Left && s.Right < v.Left, $"order: preview {p}, speed {s}, save {v}");
             Assert.Equal(p.Center.Y, s.Center.Y, 1);

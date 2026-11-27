@@ -795,6 +795,15 @@ public sealed class PluginHost
     /// <see cref="IPluginHost.AudioDecoder"/>. Set by the app; null (tests, headless) = no decoder.</summary>
     public Func<string?>? FfmpegPathSource { get; set; }
 
+    /// <summary>API 1.9: the user's media servers (<see cref="ILibraryReader.GetServerAlbumsAsync"/>,
+    /// <see cref="IPlaybackControl.PlayServerAlbumAsync"/>). Set by the app; null (tests,
+    /// headless) = no server albums.</summary>
+    public Services.MediaServer.IMediaServerService? MediaServer { get; set; }
+
+    /// <summary>The play log (<see cref="IPlayHistoryService.Events"/>), so a server album's plays
+    /// include the ones made in Noctis (GitHub #268). Set by the app; null (tests, headless) = none.</summary>
+    public Func<IReadOnlyList<PlayHistoryEvent>>? PlayHistorySource { get; set; }
+
     /// <summary>A plain copy of a playlist for plugins: its library tracks in order (a smart
     /// playlist's current matches), ids the library no longer has left out.</summary>
     public static PlaylistInfo ToPlaylistInfo(Playlist p, ILibraryService? library)
@@ -2104,6 +2113,56 @@ public sealed class PluginHost
             });
         }
 
+        // API 1.9: albums of the user's media servers (GitHub #268). Their songs are not
+        // library tracks, so they are fetched from the album's server and queued directly.
+        public async Task<bool> PlayServerAlbumAsync(string albumId, bool shuffle = false, CancellationToken ct = default)
+        {
+            var tracks = await ServerAlbumTracksAsync(albumId, ct).ConfigureAwait(false);
+            if (tracks.Count == 0 || _disposed || _player is null) return false;
+            OnUi(p =>
+            {
+                var player = p.WithSource(PlaySource.Section(PlaySourceKind.Server));
+                if (shuffle) player.PlayShuffled(tracks.ToList());
+                else player.PlayAll(tracks.ToList());
+            });
+            return true;
+        }
+
+        public async Task<bool> QueueServerAlbumAsync(string albumId, bool playNext, CancellationToken ct = default)
+        {
+            var tracks = await ServerAlbumTracksAsync(albumId, ct).ConfigureAwait(false);
+            if (tracks.Count == 0 || _disposed || _player is null) return false;
+            OnUi(p =>
+            {
+                if (playNext) p.AddNextRange(tracks.ToList());
+                else p.AddRangeToQueue(tracks.ToList());
+            });
+            return true;
+        }
+
+        private async Task<IReadOnlyList<Track>> ServerAlbumTracksAsync(string albumId, CancellationToken ct)
+        {
+            if (_disposed || _owner.MediaServer is not { IsConfigured: true } server || string.IsNullOrEmpty(albumId))
+                return Array.Empty<Track>();
+            try
+            {
+                var album = server.FindAlbum(albumId);
+                if (album is null)
+                {
+                    // Not read yet in this session (Album of the Day picked it on an earlier day).
+                    await server.GetAllAlbumsAsync(ct).ConfigureAwait(false);
+                    album = server.FindAlbum(albumId);
+                }
+                return album is null ? Array.Empty<Track>() : await server.GetAlbumTracksAsync(album, ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+            catch (Exception ex)
+            {
+                DebugLogger.Error(DebugLogger.Category.State, "Plugins", $"{_plugin.Id} server album: {ex.Message}");
+                return Array.Empty<Track>();
+            }
+        }
+
         public void QueueTracks(IReadOnlyList<string> trackIds, bool playNext)
         {
             if (_disposed || trackIds is null || _library is not { } library) return;
@@ -2400,6 +2459,48 @@ public sealed class PluginHost
             try { snapshot = _library.Tracks.ToArray(); }
             catch (InvalidOperationException) { snapshot = _library.Tracks.ToArray(); } // mutated mid-copy by a scan: once more
             return snapshot.Select(ToTrackInfo).ToArray();
+        }
+
+        public async Task<IReadOnlyList<ServerAlbumInfo>> GetServerAlbumsAsync(CancellationToken ct = default)
+        {
+            if (_disposed || _owner.MediaServer is not { IsConfigured: true } server) return Array.Empty<ServerAlbumInfo>();
+            IReadOnlyList<Services.MediaServer.ServerAlbum> albums;
+            try { albums = await server.GetAllAlbumsAsync(ct).ConfigureAwait(false); }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+            catch (Exception ex)
+            {
+                DebugLogger.Error(DebugLogger.Category.State, "Plugins", $"{_plugin.Id} server albums: {ex.Message}");
+                return Array.Empty<ServerAlbumInfo>();
+            }
+            if (_disposed) return Array.Empty<ServerAlbumInfo>();
+            IReadOnlyList<PlayHistoryEvent>? history = null;
+            try { history = _owner.PlayHistorySource?.Invoke(); }
+            catch (Exception ex) { DebugLogger.Error(DebugLogger.Category.State, "Plugins", $"{_plugin.Id} play history: {ex.Message}"); }
+            var noctisPlays = Services.MediaServer.NoctisAlbumPlays.Build(history, albums);
+            var result = new ServerAlbumInfo[albums.Count];
+            for (var i = 0; i < albums.Count; i++)
+            {
+                var a = albums[i];
+                var (playCount, lastPlayed) = Services.MediaServer.MediaServerService.WithNoctisPlays(
+                    Services.MediaServer.MediaServerService.CombinedPlayInfo(a), noctisPlays.For(a));
+                result[i] = new ServerAlbumInfo(a.Key, a.Name, a.Artist, a.Year, a.Genre, a.SongCount, a.ServerName)
+                {
+                    ArtworkPath = server.CachedArtworkPath(a),
+                    PlayCount = playCount,
+                    LastPlayed = lastPlayed,
+                };
+            }
+            return result;
+        }
+
+        public async Task<string?> GetServerAlbumArtworkAsync(string albumId, CancellationToken ct = default)
+        {
+            if (_disposed || _owner.MediaServer is not { IsConfigured: true } server
+                || string.IsNullOrEmpty(albumId) || server.FindAlbum(albumId) is not { } album)
+                return null;
+            try { return await server.EnsureAlbumArtworkAsync(album, ct).ConfigureAwait(false); }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+            catch (Exception) { return null; }
         }
 
         public IReadOnlyList<string> GetLyricLines(string trackId)

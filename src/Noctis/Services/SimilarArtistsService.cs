@@ -50,7 +50,9 @@ public sealed class SimilarArtistsService
         var path = Path.Combine(_cacheDir, $"{artistId}.similar.json");
         var cached = ReadCache(path);
         var sameAccount = cached != null && cached.PinnedDeezerId == pinnedDeezerId;
-        if (cached != null && sameAccount && !IsStale(cached))
+        // A portrait downloaded before and gone now (Settings › Clear Artwork Cache empties
+        // artwork/similar) is fetched again, instead of a month of empty circles.
+        if (cached != null && sameAccount && !IsStale(cached) && !LostAPortrait(cached))
             return cached.Artists;
 
         await _gate.WaitAsync(ct).ConfigureAwait(false);
@@ -83,6 +85,9 @@ public sealed class SimilarArtistsService
     private static bool IsStale(SimilarArtistsCache c)
         => c.Picker != PickerVersion
            || DateTime.UtcNow - c.FetchedAtUtc > (c.Artists.Count > 0 ? HitTtl : MissTtl);
+
+    private static bool LostAPortrait(SimilarArtistsCache c)
+        => c.Artists.Any(a => !string.IsNullOrEmpty(a.ImagePath) &&!File.Exists(a.ImagePath));
 
     private static SimilarArtistsCache? ReadCache(string path)
     {

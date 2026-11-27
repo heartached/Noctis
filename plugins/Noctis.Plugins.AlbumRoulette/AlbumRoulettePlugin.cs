@@ -17,7 +17,7 @@ namespace Noctis.Plugins.AlbumRoulette;
 public sealed class AlbumRoulettePlugin : INoctisPlugin, IPluginViewProvider
 {
     public const string Id = "dev.noctis.plugins.albumroulette";
-    public const string Version = "1.0.2";
+    public const string Version = "1.0.4";
     public const string About = "Spin a reel of albums or songs and let it pick for you.";
     public const string SpinFromArtistLabel = "Spin from this artist";
     public const string AlbumRouletteLabel = "Album Roulette";

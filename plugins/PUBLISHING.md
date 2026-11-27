@@ -22,8 +22,8 @@ GitHub release, tagged `plugin-<short name>-v<version>`. Format and app behaviou
 ## Steps
 
 The zips below were built on Windows with .NET SDK 10.0.401. The build is reproducible: the same
-source, OS and SDK give the same bytes. Another SDK or OS may give a different (equally valid)
-zip; then use the new hash and size in step 3.
+source, OS and SDK give the same bytes, in any folder. Another SDK or OS may give a different
+(equally valid) zip; then use the new hash and size in step 3.
 
 ### 1. Build the zip
 
@@ -59,10 +59,17 @@ They must describe the exact file you upload, or Noctis refuses to install it.
 
 ### 4. Create the release
 
+Push a **signed** tag first, then make the release from it. Without `--target`, and with the tag
+already on GitHub, `gh` uses that tag; if the tag is missing, `gh` makes an unsigned one and the
+release shows no Verified badge.
+
 ```powershell
+git tag -s plugin-mixxx-v1.0.1 -m "Mixxx plugin 1.0.1" origin/main
+git cat-file tag plugin-mixxx-v1.0.1   # must contain BEGIN SSH SIGNATURE
+git push origin plugin-mixxx-v1.0.1
 gh release create plugin-mixxx-v1.0.1 `
   plugins/Noctis.Plugins.Mixxx/bin/Release/Noctis.Plugins.Mixxx-1.0.1.zip `
-  --repo heartached/Noctis --target main `
+  --repo heartached/Noctis --verify-tag `
   --title "Mixxx plugin 1.0.1" `
   --notes "Imports the BPM and musical key that Mixxx found for your tracks. Needs Noctis 1.5.9 or newer. Install it from Settings → Plugins → Get plugins." `
   --prerelease --latest=false

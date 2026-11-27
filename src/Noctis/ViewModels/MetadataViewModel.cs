@@ -163,6 +163,13 @@ public partial class MetadataViewModel : ViewModelBase
     /// <summary>The query the artwork chooser's box shows when the search came from the tags.</summary>
     [ObservableProperty] private string _artworkSearchQueryHint = string.Empty;
     [ObservableProperty] private bool _isArtworkSearchOpen;
+    /// <summary>Owner 11-26: the chooser's results in sections (ArtworkSearchResults, grouped).</summary>
+    public ObservableCollection<ArtworkResultSection> ArtworkSearchSections { get; } = new();
+    /// <summary>The artist whose library the chooser shows; empty for a plain search.</summary>
+    [ObservableProperty] private string _artworkLibraryArtist = string.Empty;
+    /// <summary>"36 releases" under the artist's name.</summary>
+    [ObservableProperty] private string _artworkLibraryDetail = string.Empty;
+    private CancellationTokenSource? _artworkSearchCts;
 
     // ── iTunes animated-cover search ──
     [ObservableProperty] private bool _isSearchingAnimatedCover;
@@ -194,6 +201,9 @@ public partial class MetadataViewModel : ViewModelBase
     [ObservableProperty] private string _syncedLyrics = string.Empty;
     [ObservableProperty] private bool _hasCustomLyrics;
     [ObservableProperty] private bool _hasCustomSyncedLyrics;
+
+    // The song's lyrics when this window loaded them, to tell a later change made elsewhere.
+    private (string? Plain, string? Synced)? _openedTrackLyrics;
 
     // True while ApplyLyrics fills the lyric fields from the song: that text is no paste.
     private bool _applyingLyrics;
@@ -442,14 +452,14 @@ public partial class MetadataViewModel : ViewModelBase
                     .DefaultIfEmpty()
                     .Max();
                 return lastPlayed != default
-                    ? $"{total} (Last Played {lastPlayed.ToLocalTime():M/d/yyyy, h:mm tt})"
+                    ? Localization.Loc.T("Metadata.PlayCountLastPlayed", total, lastPlayed.ToLocalTime().ToString("g", Localization.Loc.Instance.Culture))
                     : total.ToString();
             }
 
             if (_track.LastPlayed.HasValue)
             {
                 var lastPlayed = _track.LastPlayed.Value.ToLocalTime();
-                return $"{_track.PlayCount} (Last Played {lastPlayed:M/d/yyyy, h:mm tt})";
+                return Localization.Loc.T("Metadata.PlayCountLastPlayed", _track.PlayCount, lastPlayed.ToString("g", Localization.Loc.Instance.Culture));
             }
             return _track.PlayCount.ToString();
         }
@@ -639,6 +649,7 @@ public partial class MetadataViewModel : ViewModelBase
         string? loadedCustomTagsBaseline = null;
         var trackSynced = _track.SyncedLyrics;
         var trackPlain = _track.Lyrics;
+        _openedTrackLyrics = (trackPlain, trackSynced);
         var renamePattern = RenamePattern;
         // The cover first, in its own task (owner 10-08: cover shows late in the metadata
         // window). It comes from the app's cover cache, but it used to wait behind the TagLib
@@ -1363,6 +1374,29 @@ public partial class MetadataViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// The number in a Details box (year, track, disc, BPM, movement): empty is cleared (0),
+    /// spaces don't count, a pasted "3/12" (track/total) is 3 and a decimal is rounded. Anything
+    /// else (letters, a negative or too large number) keeps <paramref name="current"/>: a typo
+    /// used to save as 0, which wiped the value in the file (owner 11-25 audit).
+    /// </summary>
+    internal static int ParseNumberBox(string? text, int current)
+    {
+        var s = text?.Trim() ?? string.Empty;
+        if (s.Length == 0) return 0;
+        var slash = s.IndexOf('/');
+        if (slash > 0) s = s[..slash].TrimEnd();
+        if (int.TryParse(s, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var n))
+            return n;
+        if (double.TryParse(s, System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var d)
+            && d <= int.MaxValue)
+            return (int)Math.Round(d, MidpointRounding.AwayFromZero);
+        return current;
+    }
+
+    /// <summary>True when the field differs from what the editor showed once loaded.</summary>
+    private bool EditedHere(string name) => !Equals(ReadTracked(name), _changeBaseline.GetValueOrDefault(name));
+
+    /// <summary>
     /// Applies the album-scoped Details edits: only fields the user changed are
     /// fanned out to every track of the album, so untouched ("Mixed") and
     /// per-track fields (titles, track numbers, …) keep their own values.
@@ -1399,44 +1433,35 @@ public partial class MetadataViewModel : ViewModelBase
         bool dislikedChg = IsDisliked != _loadedIsDisliked;
         int ratingVal = Math.Clamp(Rating, 0, 5);
 
-        int yearVal = int.TryParse(Year, out var yr) ? yr : 0;
-        int trackNumberVal = int.TryParse(TrackNumber, out var tn) ? tn : 0;
-        int trackCountVal = int.TryParse(TrackCount, out var tc) ? tc : 0;
-        int discNumberVal = int.TryParse(DiscNumber, out var dn) ? Math.Max(1, dn) : 1;
-        int discCountVal = int.TryParse(DiscCount, out var dc) ? Math.Max(1, dc) : 1;
-        int bpmVal = int.TryParse(Bpm, out var bp) ? Math.Max(0, bp) : 0;
-        int movementNumberVal = int.TryParse(MovementNumber, out var mvn) ? Math.Max(0, mvn) : 0;
-        int movementCountVal = int.TryParse(MovementCount, out var mvc) ? Math.Max(0, mvc) : 0;
-
         foreach (var t in _albumTracks)
         {
-            if (artistChg) t.Artist = Artist;
+            if (artistChg) t.Artist = (Artist ?? string.Empty).Trim();
             if (albumArtistChg)
             {
-                t.AlbumArtist = AlbumArtist;
+                t.AlbumArtist = (AlbumArtist ?? string.Empty).Trim();
                 t.AlbumArtistFromTag = !string.IsNullOrWhiteSpace(AlbumArtist); // the user's tag (GitHub #178)
             }
             if (albumChg)
             {
-                t.Album = Album;
+                t.Album = (Album ?? string.Empty).Trim();
                 t.AlbumFromFolder = false; // the user's album name, not the folder's (GitHub #193)
             }
-            if (composerChg) t.Composer = Composer;
+            if (composerChg) t.Composer = (Composer ?? string.Empty).Trim();
             if (groupingChg) t.Grouping = Grouping;
             if (versionChg) t.Version = songVersion;
             if (genreChg) t.Genre = genre;
-            if (yearChg) t.Year = yearVal;
-            if (trackNumberChg) t.TrackNumber = trackNumberVal;
-            if (trackCountChg) t.TrackCount = trackCountVal;
-            if (discNumberChg) t.DiscNumber = discNumberVal;
-            if (discCountChg) t.DiscCount = discCountVal;
-            if (bpmChg) t.Bpm = bpmVal;
+            if (yearChg) t.Year = ParseNumberBox(Year, t.Year);
+            if (trackNumberChg) t.TrackNumber = ParseNumberBox(TrackNumber, t.TrackNumber);
+            if (trackCountChg) t.TrackCount = ParseNumberBox(TrackCount, t.TrackCount);
+            if (discNumberChg) t.DiscNumber = Math.Max(1, ParseNumberBox(DiscNumber, t.DiscNumber));
+            if (discCountChg) t.DiscCount = Math.Max(1, ParseNumberBox(DiscCount, t.DiscCount));
+            if (bpmChg) t.Bpm = ParseNumberBox(Bpm, t.Bpm);
             if (commentChg) t.Comment = Comment;
             if (useWorkChg) t.UseWorkAndMovement = UseWorkAndMovement;
             if (workNameChg) t.WorkName = WorkName;
             if (movementNameChg) t.MovementName = MovementName;
-            if (movementNumberChg) t.MovementNumber = movementNumberVal;
-            if (movementCountChg) t.MovementCount = movementCountVal;
+            if (movementNumberChg) t.MovementNumber = ParseNumberBox(MovementNumber, t.MovementNumber);
+            if (movementCountChg) t.MovementCount = ParseNumberBox(MovementCount, t.MovementCount);
             if (compChg) t.IsCompilation = IsCompilation;
             if (showComposerChg) t.ShowComposerInAllViews = ShowComposerInAllViews;
             if (ratingChg) t.Rating = ratingVal;
@@ -1605,8 +1630,8 @@ public partial class MetadataViewModel : ViewModelBase
         Channels = info.ChannelDescription;
         FileSize = info.FileSizeFormatted;
         Duration = info.DurationFormatted;
-        DateAdded = _track.DateAdded.ToLocalTime().ToString("M/d/yyyy, h:mm tt");
-        DateModified = info.DateModified.ToString("M/d/yyyy, h:mm tt");
+        DateAdded = _track.DateAdded.ToLocalTime().ToString("g", Localization.Loc.Instance.Culture);
+        DateModified = info.DateModified.ToString("g", Localization.Loc.Instance.Culture);
         FileLocation = info.FilePath;
         FullFilePath = info.FilePath;
         FolderName = Path.GetDirectoryName(info.FilePath) ?? string.Empty;
@@ -1760,6 +1785,10 @@ public partial class MetadataViewModel : ViewModelBase
         if (_itunes == null) { ArtworkSearchStatus = Localization.Loc.T("Metadata.AnimSearchUnavailable"); return; }
 
         var gen = ++_artworkSearchGeneration;
+        // A new search stops the one still running (its requests and its covers).
+        _artworkSearchCts?.Cancel();
+        var cts = _artworkSearchCts = new CancellationTokenSource();
+        var ct = cts.Token;
         IsSearchingArtwork = true;
         ArtworkSearchStatus = Localization.Loc.T("Metadata.AnimSearching");
         ClearArtworkSearchResults();
@@ -1767,44 +1796,36 @@ public partial class MetadataViewModel : ViewModelBase
         IsArtworkSearchOpen = true;
         try
         {
-            // The chooser's box (same as the animated one): a typed name replaces the tags and
-            // is read as the album, artist words included, so no artist filter applies.
+            // The chooser's box (same as the animated one): a typed name replaces the tags. Owner
+            // 11-26: an artist's name lists that artist's artwork library; "artist title" finds
+            // the release in it (ArtworkLibrarySearch).
             var typed = (ArtworkSearchInput ?? string.Empty).Trim();
-            var artist = typed.Length > 0 ? string.Empty
-                : !string.IsNullOrWhiteSpace(AlbumArtist) ? AlbumArtist : Artist;
+            // The library's placeholder is no artist (a song with no album artist tag has
+            // "Unknown Artist" there, which named nobody in the store and sank the search).
+            static bool Known(string? a) => !string.IsNullOrWhiteSpace(a) &&
+                !string.Equals(a.Trim(), "Unknown Artist", StringComparison.OrdinalIgnoreCase);
+            var artist = Known(AlbumArtist) ? AlbumArtist : Known(Artist) ? Artist : string.Empty;
             var album = typed.Length > 0 ? typed : GetArtworkSearchAlbumTerm();
             ArtworkSearchQueryHint = typed.Length > 0 || string.IsNullOrWhiteSpace(artist) ? album : $"{album} — {artist}";
-            var results = await _itunes.SearchAlbumsAsync(artist, album);
+            var query = typed.Length > 0 ? typed : ITunesArtworkService.BuildAlbumSearchTerm(artist, album);
+            var result = await _itunes.SearchArtworkLibraryAsync(query, artist, searchPreferredArtist: typed.Length == 0, ct);
+            // Tags whose artist the store does not know: the album title alone, as before.
+            if (gen == _artworkSearchGeneration && typed.Length == 0 && !result.Sections.Any() &&
+                !string.Equals(query, album, StringComparison.OrdinalIgnoreCase))
+                result = await _itunes.SearchArtworkLibraryAsync(album, artist, searchPreferredArtist: false, ct);
             if (gen != _artworkSearchGeneration) return;
 
-            if (!string.IsNullOrWhiteSpace(artist))
-            {
-                // Multi-artist tags ("Rema & Selena Gomez") rarely equal iTunes's
-                // artist string exactly, so match loosely on normalized text —
-                // and keep the ranked list untouched when nothing survives,
-                // since the service already sorts best matches first.
-                var wanted = NormalizeArtistForMatch(artist);
-                var matched = results.Where(r =>
-                {
-                    var got = NormalizeArtistForMatch(r.ArtistName);
-                    return got.Length > 0 &&
-                           (got.Contains(wanted, StringComparison.Ordinal) ||
-                            wanted.Contains(got, StringComparison.Ordinal));
-                }).ToList();
-                if (matched.Count > 0)
-                    results = matched;
-            }
-            foreach (var r in results)
-            {
-                var item = await CreateArtworkSearchResultAsync(r);
-                if (gen != _artworkSearchGeneration) return;
-                ArtworkSearchResults.Add(item);
-            }
-
+            ShowArtworkLibrary(result);
             HasArtworkSearchResults = ArtworkSearchResults.Count > 0;
             // As the animated chooser: no status once results show (the tiles speak for
             // themselves); the line stays for errors.
             ArtworkSearchStatus = HasArtworkSearchResults ? string.Empty : Localization.Loc.T("Metadata.ArtNoMatches");
+            if (HasArtworkSearchResults)
+                _ = LoadArtworkPostersAsync(ArtworkSearchResults.ToList(), gen, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // A newer search took over.
         }
         catch (Exception ex)
         {
@@ -2248,18 +2269,6 @@ public partial class MetadataViewModel : ViewModelBase
         try { if (File.Exists(path)) File.Delete(path); } catch { }
     }
 
-    /// <summary>Lowercases and strips punctuation/joiners so artist strings from
-    /// tags and iTunes compare on words alone ("A & B" == "a b").</summary>
-    private static string NormalizeArtistForMatch(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return string.Empty;
-
-        var normalized = System.Text.RegularExpressions.Regex.Replace(
-            value.ToLowerInvariant(), @"[^\p{L}\p{Nd}]+", " ");
-        return System.Text.RegularExpressions.Regex.Replace(normalized, @"\s+", " ").Trim();
-    }
-
     private string GetArtworkSearchAlbumTerm()
     {
         if (!string.IsNullOrWhiteSpace(Album) &&
@@ -2271,28 +2280,68 @@ public partial class MetadataViewModel : ViewModelBase
         return Title.Trim();
     }
 
-    private async Task<ArtworkSearchResult> CreateArtworkSearchResultAsync(ITunesArtworkService.ArtworkCandidate candidate)
+    /// <summary>
+    /// Owner 11-26: fills the chooser from a library answer — the artist header, the sections
+    /// (Albums, Singles &amp; EPs, Appears On; or Best Matches then More by …; or one untitled
+    /// list for a plain search) and the flat list the picks and tests read, in the same order.
+    /// </summary>
+    private void ShowArtworkLibrary(ArtworkLibraryResult result)
     {
-        Bitmap? thumbnail = null;
-        if (_itunes != null)
+        var artist = result.ArtistName ?? string.Empty;
+        foreach (var section in result.Sections)
         {
-            var data = await _itunes.DownloadAsync(candidate.ThumbUrl);
-            if (data is { Length: > 0 })
+            var items = section.Items.Select(c => new ArtworkSearchResult(c, null)).ToList();
+            foreach (var item in items)
+                ArtworkSearchResults.Add(item);
+            var title = section.Kind switch
             {
+                ArtworkSectionKind.Albums => Localization.Loc.T("Metadata.ArtLibAlbums"),
+                ArtworkSectionKind.SinglesAndEps => Localization.Loc.T("Metadata.ArtLibSinglesEps"),
+                ArtworkSectionKind.AppearsOn => Localization.Loc.T("Metadata.ArtLibAppearsOn"),
+                ArtworkSectionKind.Matches => Localization.Loc.T("Metadata.ArtLibMatches"),
+                ArtworkSectionKind.MoreByArtist => Localization.Loc.T("Metadata.ArtLibMoreBy", artist),
+                _ => string.Empty,
+            };
+            ArtworkSearchSections.Add(new ArtworkResultSection(title, items));
+        }
+        ArtworkLibraryArtist = artist;
+        ArtworkLibraryDetail = artist.Length > 0 && result.ReleaseCount > 0
+            ? Localization.Loc.Plural("Metadata.ArtLibReleases", result.ReleaseCount)
+            : string.Empty;
+    }
+
+    /// <summary>The covers, a few at a time, in the order shown; a new search or the pop-up's
+    /// results going away stops it.</summary>
+    private async Task LoadArtworkPostersAsync(IReadOnlyList<ArtworkSearchResult> items, int gen, CancellationToken ct)
+    {
+        if (_itunes == null) return;
+        using var gate = new SemaphoreSlim(6);
+        var tasks = items.Select(async item =>
+        {
+            await gate.WaitAsync(ct).ConfigureAwait(true);
+            try
+            {
+                if (string.IsNullOrWhiteSpace(item.Candidate.ThumbUrl)) return;
+                var data = await _itunes.DownloadAsync(item.Candidate.ThumbUrl, ct).ConfigureAwait(true);
+                if (data is not { Length: > 0 } || ct.IsCancellationRequested || gen != _artworkSearchGeneration) return;
+                Bitmap? bitmap = null;
                 try
                 {
                     using var ms = new MemoryStream(data);
-                    thumbnail = new Bitmap(ms);
+                    bitmap = new Bitmap(ms);
                 }
                 catch
                 {
-                    thumbnail?.Dispose();
-                    thumbnail = null;
+                    return;
                 }
+                // Cleared meanwhile (a new search): the tile is gone, so is its cover.
+                if (gen != _artworkSearchGeneration || !ArtworkSearchResults.Contains(item)) bitmap.Dispose();
+                else item.Thumbnail = bitmap;
             }
-        }
-
-        return new ArtworkSearchResult(candidate, thumbnail);
+            finally { gate.Release(); }
+        }).ToList();
+        try { await Task.WhenAll(tasks).ConfigureAwait(true); }
+        catch (OperationCanceledException) { /* a newer search */ }
     }
 
     private void ClearArtworkSearchResults()
@@ -2300,6 +2349,9 @@ public partial class MetadataViewModel : ViewModelBase
         foreach (var result in ArtworkSearchResults)
             result.Dispose();
         ArtworkSearchResults.Clear();
+        ArtworkSearchSections.Clear();
+        ArtworkLibraryArtist = string.Empty;
+        ArtworkLibraryDetail = string.Empty;
     }
 
     [RelayCommand]
@@ -2471,25 +2523,29 @@ public partial class MetadataViewModel : ViewModelBase
         if (!_albumScoped)
         {
             // Apply Details changes to the track model
-            _track.Title = Title;
+            // Names are saved trimmed, like Version and Genre: " Song " kept its spaces in the
+            // file, sorting and search (owner 11-25 audit).
+            var albumArtist = (AlbumArtist ?? string.Empty).Trim();
+            var album = (Album ?? string.Empty).Trim();
+            _track.Title = (Title ?? string.Empty).Trim();
             _track.Version = (SongVersion ?? string.Empty).Trim();
-            _track.Artist = Artist;
+            _track.Artist = (Artist ?? string.Empty).Trim();
             // An album artist typed here is the user's tag (GitHub #178): the album-grouping
             // pass must not re-key it, even when the file write below fails.
-            if (!string.Equals(_track.AlbumArtist, AlbumArtist, StringComparison.Ordinal))
-                _track.AlbumArtistFromTag = !string.IsNullOrWhiteSpace(AlbumArtist);
-            _track.AlbumArtist = AlbumArtist;
-            if (!string.Equals(_track.Album, Album, StringComparison.Ordinal))
+            if (!string.Equals(_track.AlbumArtist, albumArtist, StringComparison.Ordinal))
+                _track.AlbumArtistFromTag = !string.IsNullOrWhiteSpace(albumArtist);
+            _track.AlbumArtist = albumArtist;
+            if (!string.Equals(_track.Album, album, StringComparison.Ordinal))
                 _track.AlbumFromFolder = false; // the user's album name, not the folder's (GitHub #193)
-            _track.Album = Album;
+            _track.Album = album;
             _track.Genre = Track.NormalizeGenre(Genre); // "Rock ;Pop" → "Rock; Pop", trimmed (GitHub #123)
-            _track.Composer = Composer;
-            _track.TrackNumber = int.TryParse(TrackNumber, out var tn) ? tn : 0;
-            _track.TrackCount = int.TryParse(TrackCount, out var tc) ? tc : 0;
-            _track.DiscNumber = int.TryParse(DiscNumber, out var dn) ? Math.Max(1, dn) : 1;
-            _track.DiscCount = int.TryParse(DiscCount, out var dc) ? Math.Max(1, dc) : 1;
-            _track.Bpm = int.TryParse(Bpm, out var bp) ? Math.Max(0, bp) : 0;
-            _track.Year = int.TryParse(Year, out var yr) ? yr : 0;
+            _track.Composer = (Composer ?? string.Empty).Trim();
+            _track.TrackNumber = ParseNumberBox(TrackNumber, _track.TrackNumber);
+            _track.TrackCount = ParseNumberBox(TrackCount, _track.TrackCount);
+            _track.DiscNumber = Math.Max(1, ParseNumberBox(DiscNumber, _track.DiscNumber));
+            _track.DiscCount = Math.Max(1, ParseNumberBox(DiscCount, _track.DiscCount));
+            _track.Bpm = ParseNumberBox(Bpm, _track.Bpm);
+            _track.Year = ParseNumberBox(Year, _track.Year);
             // Advanced Details › release date: the library's copy too, so the album page shows
             // the new date without a rescan (the file gets it with the advanced fields below).
             if (_originalAdvancedFields != null && AdvReleaseDate != _originalAdvancedFields.ReleaseDate)
@@ -2500,13 +2556,16 @@ public partial class MetadataViewModel : ViewModelBase
             _track.UseWorkAndMovement = UseWorkAndMovement;
             _track.WorkName = WorkName;
             _track.MovementName = MovementName;
-            _track.MovementNumber = int.TryParse(MovementNumber, out var mn) ? Math.Max(0, mn) : 0;
-            _track.MovementCount = int.TryParse(MovementCount, out var mc) ? Math.Max(0, mc) : 0;
-            _track.PlayCount = int.TryParse(PlayCount, out var pc) ? Math.Max(0, pc) : 0;
+            _track.MovementNumber = ParseNumberBox(MovementNumber, _track.MovementNumber);
+            _track.MovementCount = ParseNumberBox(MovementCount, _track.MovementCount);
+            // The play count has no box (only Reset, applied below), and the rating and Not
+            // Liked can be set elsewhere while this window is open (the playing song's stars,
+            // a song menu): written back unconditionally, Save undid a play counted meanwhile
+            // or that rating (owner 11-25 audit). Only an edit made here is applied.
             _track.Comment = Comment;
             _track.Copyright = Copyright ?? string.Empty;
-            _track.Rating = Math.Clamp(Rating, 0, 5);
-            _track.IsDisliked = IsDisliked;
+            if (EditedHere(nameof(Rating))) _track.Rating = Math.Clamp(Rating, 0, 5);
+            if (EditedHere(nameof(IsDisliked))) _track.IsDisliked = IsDisliked;
 
             // Recalculate AlbumId if album or artist changed
             _track.AlbumId = Track.ComputeAlbumId(_track.AlbumArtist, _track.Album);
@@ -2533,7 +2592,14 @@ public partial class MetadataViewModel : ViewModelBase
         // Single-track only: the album/multi-select dialog has no lyric tabs, and applying
         // the first track's sidecar text here changed its Lyrics, so an Options-only album
         // save rewrote that file's tags and sidecars (failing outright on the playing file).
-        if (!_albumScoped)
+        // Not when Lyrics Studio or Find Lyrics gave the song new lyrics while this window was
+        // open and its lyric tabs were left alone: writing the tabs back wiped them on an
+        // unrelated save (owner 11-25 audit).
+        var lyricsEditedHere = !_changeBaselineCaptured || PlainLyricsChanged || SyncedLyricsChanged;
+        var lyricsChangedElsewhere = _openedTrackLyrics is { } opened
+            && (!string.Equals(opened.Plain, _track.Lyrics, StringComparison.Ordinal)
+                || !string.Equals(opened.Synced, _track.SyncedLyrics, StringComparison.Ordinal));
+        if (!_albumScoped && (lyricsEditedHere || !lyricsChangedElsewhere))
         {
             var plainToWrite = HasCustomLyrics
                 ? (LyricsTextHelper.ContainsTimestamps(Lyrics) ? LyricsTextHelper.StripTimestamps(Lyrics) : Lyrics)
@@ -3260,12 +3326,14 @@ public partial class CustomTagItem : ObservableObject
     [ObservableProperty] private string _value = string.Empty;
 }
 
-public sealed class ArtworkSearchResult : IArtworkChooserItem, IDisposable
+public sealed class ArtworkSearchResult : ObservableObject, IArtworkChooserItem, IDisposable
 {
+    private Bitmap? _thumbnail;
+
     public ArtworkSearchResult(ITunesArtworkService.ArtworkCandidate candidate, Bitmap? thumbnail)
     {
         Candidate = candidate;
-        Thumbnail = thumbnail;
+        _thumbnail = thumbnail;
         Choices = new[]
         {
             new ArtworkSearchChoice(this, Highest: false, Localization.Loc.T("Metadata.Standard")),
@@ -3274,16 +3342,44 @@ public sealed class ArtworkSearchResult : IArtworkChooserItem, IDisposable
     }
 
     public ITunesArtworkService.ArtworkCandidate Candidate { get; }
-    public Bitmap? Thumbnail { get; }
+
+    /// <summary>The cover; arrives after the tile shows (owner 11-26: a library of up to 200).</summary>
+    public Bitmap? Thumbnail
+    {
+        get => _thumbnail;
+        set
+        {
+            var old = _thumbnail;
+            if (SetProperty(ref _thumbnail, value))
+            {
+                OnPropertyChanged(nameof(IArtworkChooserItem.Poster));
+                if (old != null && !ReferenceEquals(old, value)) old.Dispose();
+            }
+        }
+    }
+
     public string CollectionName => Candidate.CollectionName;
     public string ArtistName => Candidate.ArtistName;
 
     /// <summary>Standard, then Max (the accent pill).</summary>
     public IReadOnlyList<ArtworkSearchChoice> Choices { get; }
 
+    /// <summary>"2019 · Explicit", as the animated chooser: what tells same-titled tiles apart.</summary>
+    public string Detail
+    {
+        get
+        {
+            var parts = new List<string>(2);
+            if (Candidate.ReleaseYear > 0) parts.Add(Candidate.ReleaseYear.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            if (Candidate.Explicitness.Equals("cleaned", StringComparison.OrdinalIgnoreCase)) parts.Add(Localization.Loc.T("Metadata.AnimClean"));
+            else if (Candidate.Explicitness.Equals("explicit", StringComparison.OrdinalIgnoreCase)) parts.Add(Localization.Loc.T("Metadata.AnimExplicit"));
+            return string.Join(" · ", parts);
+        }
+    }
+
+    public bool HasDetail => Detail.Length > 0;
+
     Bitmap? IArtworkChooserItem.Poster => Thumbnail;
-    string IArtworkChooserItem.Detail => string.Empty;
-    bool IArtworkChooserItem.HasDetail => false;
     bool IArtworkChooserItem.CanPreview => false;
     string? IArtworkChooserItem.PosterTip => null;
     string? IArtworkChooserItem.PreviewPath => null;
@@ -3291,5 +3387,18 @@ public sealed class ArtworkSearchResult : IArtworkChooserItem, IDisposable
     bool IArtworkChooserItem.IsPreviewLoading => false;
     IReadOnlyList<IArtworkChooserChoice> IArtworkChooserItem.Choices => Choices;
 
-    public void Dispose() => Thumbnail?.Dispose();
+    public void Dispose()
+    {
+        var old = _thumbnail;
+        _thumbnail = null;
+        old?.Dispose();
+    }
+}
+
+/// <summary>A titled run of tiles in the Choose Artwork library ("Albums", "Singles &amp; EPs");
+/// an untitled one for a plain search.</summary>
+public sealed record ArtworkResultSection(string Title, IReadOnlyList<ArtworkSearchResult> Items)
+{
+    public bool HasTitle => Title.Length > 0;
+    public string CountText => Items.Count.ToString(System.Globalization.CultureInfo.CurrentCulture);
 }

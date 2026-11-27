@@ -446,6 +446,31 @@ public class AlbumRoulettePluginTests
 
     // ── Pictures (real Skia) ──
 
+    /// <summary>At the smallest window the reel was squeezed up over the filter chips: the window's
+    /// minimum (360 x 560) was ~110 DIP shorter than the view needs with three rows of chips.</summary>
+    [AvaloniaFact]
+    public void SmallestWindow_FitsTheChipsReelTitleAndPills_InBothModes()
+    {
+        AddToPlaylistDialogTests.EnsureAppStyles();
+        var title = "The Extraordinarily Long Title of a Song That Never Seems to End (Remastered Deluxe Edition)";
+        var tracks = new List<TrackInfo> { T(title, title, "Juniper Hollow and the Midnight Orchestra of Somewhere Far Away", albumId: "a1") };
+        foreach (var mode in new[] { RouletteMode.Albums, RouletteMode.Songs })
+        {
+            var view = new RouletteView(new FakeRouletteHost(), new Random(1), () => Now);
+            var window = new Window { Content = view, Width = RouletteView.MinWindowWidth, Height = RouletteView.MinWindowHeight };
+            window.Show();
+            view.SetLibrary(AlbumCatalog.Group(tracks), SongCatalog.Build(tracks, Now));
+            view.SetMode(mode);
+            view.Spin();
+            view.Spin(); // lands at once
+            Assert.NotNull(view.Pick);
+            Dispatcher.UIThread.RunJobs();
+            view.Measure(new Size(RouletteView.MinWindowWidth, double.PositiveInfinity));
+            Assert.True(view.DesiredSize.Height <= RouletteView.MinWindowHeight, $"{mode}: needs {view.DesiredSize.Height}");
+            window.Close();
+        }
+    }
+
     [AvaloniaFact]
     public void Preview_TheWindowAt125Percent()
     {
@@ -569,6 +594,42 @@ public class AlbumRoulettePluginTests
         f.Genre = null;
         f.Played = PlayedFilter.NeverPlayed;
         Assert.DoesNotContain("Ember", f.Apply(songs, Now).Select(s => s.Title));
+    }
+
+    /// <summary>Album mode picked albums whose songs are all ones Noctis's shuffle leaves out (not
+    /// liked, Skip when shuffling, snoozed), which song mode already skipped (owner 11-26).</summary>
+    private static IReadOnlyList<TrackInfo> HalfHiddenTracks() => new[]
+    {
+        T("Meh", "All Hidden", "Kite", 1996, albumId: "hidden") with { IsDisliked = true },
+        T("Skipped", "All Hidden", "Kite", 1996, albumId: "hidden", number: 2) with { SkipWhenShuffling = true },
+        T("Snoozed", "All Hidden", "Kite", 1996, albumId: "hidden", number: 3) with { SnoozedUntil = Now.AddDays(3) },
+        T("Meh too", "Mixed", "Ada", 2001, albumId: "mixed") with { IsDisliked = true },
+        T("Fine", "Mixed", "Ada", 2001, albumId: "mixed", number: 2),
+        T("Woke", "Woken", "Nova", 2010, albumId: "woken") with { SnoozedUntil = Now.AddDays(-3) },
+    };
+
+    [Fact]
+    public void AlbumMode_LeavesOutAlbumsWithNoPlayableSong_AsSongModeDoes()
+    {
+        var albums = AlbumCatalog.Group(HalfHiddenTracks(), Now);
+        Assert.Equal(new[] { "Mixed", "Woken" }, new RouletteFilter().Apply(albums, Now).Select(a => a.Title).OrderBy(t => t));
+        Assert.Equal(2, albums.Single(a => a.Title == "Mixed").TrackIds.Count); // the album itself is whole
+        for (var day = 0; day < 40; day++)
+            Assert.NotEqual("All Hidden", AlbumOfTheDay.Pick(albums, Now.AddDays(day), skipCompilations: false)!.Title);
+    }
+
+    [AvaloniaFact]
+    public void AlbumMode_OnlyHiddenAlbums_ShowsTheEmptyState_InsteadOfSpinning()
+    {
+        var view = new RouletteView(new FakeRouletteHost(), new Random(1), () => Now);
+        var window = new Window { Content = view, Width = RouletteView.WindowWidth, Height = RouletteView.WindowHeight };
+        window.Show();
+        view.SetAlbums(AlbumCatalog.Group(HalfHiddenTracks().Where(t => t.Album == "All Hidden"), Now));
+        Assert.True(view.IsEmptyStateShown);
+        Assert.False(view.SpinEnabled);
+        view.Spin();
+        Assert.Null(view.Pick);
+        window.Close();
     }
 
     [AvaloniaFact]

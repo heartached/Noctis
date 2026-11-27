@@ -67,13 +67,26 @@ public class YouTubeImportPluginTests : IDisposable
         public List<YouTubeTrackInfo> Found { get; } = new();
         public List<AudioFormat> Imports { get; } = new();
         public bool InLibrary = true;
+        /// <summary>When set, the "download" writes a real file here (so it can be found again).</summary>
+        public string? WriteInto;
+        /// <summary>When set, an import waits for it (a download still running).</summary>
+        public TaskCompletionSource? Gate;
+        public string AlbumId = "";
         public string ResolveDownloadFolder() => Folder;
         public Task<List<YouTubeTrackInfo>> SearchAsync(string query, CancellationToken ct) => Task.FromResult(Found.ToList());
         public Task<YouTubeTrackInfo?> ResolveAsync(string urlOrId, CancellationToken ct) => Task.FromResult(Found.FirstOrDefault());
-        public Task<YouTubeImportResult> ImportAsync(YouTubeTrackInfo info, AudioFormat format, IProgress<YouTubeImportProgress>? progress, CancellationToken ct)
+        public async Task<YouTubeImportResult> ImportAsync(YouTubeTrackInfo info, AudioFormat format, IProgress<YouTubeImportProgress>? progress, CancellationToken ct)
         {
             Imports.Add(format);
-            return Task.FromResult(new YouTubeImportResult($"C:/Music/YouTube/{info.Id}.m4a", info.Channel, info.Title, InLibrary));
+            if (Gate is { } gate) await gate.Task;
+            var path = $"C:/Music/YouTube/{info.Id}.m4a";
+            if (WriteInto is { } dir)
+            {
+                Directory.CreateDirectory(dir);
+                path = Path.Combine(dir, info.Id + ".m4a");
+                File.WriteAllBytes(path, new byte[] { 1 });
+            }
+            return new YouTubeImportResult(path, info.Channel, info.Title, InLibrary) { AlbumId = AlbumId };
         }
     }
 
@@ -129,6 +142,37 @@ public class YouTubeImportPluginTests : IDisposable
         if (!win.IsVisible) return;
         win.Close();
         PumpUntil(() => !win.IsVisible);
+    }
+
+    /// <summary>At the default minimum window (480 x 360) the results ran up over the search row and
+    /// the recent list scrolled sideways instead of trimming: the plugin now asks for a minimum
+    /// that fits, and the list trims.</summary>
+    [AvaloniaFact]
+    public void SmallestWindow_ResultsStayBelowTheSearchRow_AndRecentTitlesTrim()
+    {
+        AddToPlaylistDialogTests.EnsureAppStyles();
+        var longTitle = "The Extraordinarily Long Title of a Song That Never Seems to End (Remastered Deluxe Edition)";
+        var state = State();
+        state.AddRecent(new RecentDownload(longTitle, "Juniper Hollow and the Midnight Orchestra", "C:/Music/a.m4a", DateTimeOffset.Now, true));
+        state.AddRecent(new RecentDownload("Short", "Ada Vale", "C:/Music/b.m4a", DateTimeOffset.Now, false));
+        var view = NewView(_root);
+        foreach (var id in new[] { "a1", "b2", "c3" })
+            view.ViewModel.Results.Add(new YouTubeImportViewModel.ResultRow(Info(id, longTitle, "Channel"), view.ViewModel));
+        var min = new YouTubeImportPlugin().MinWindowSize!.Value;
+        var win = new Window { RequestedThemeVariant = ThemeVariant.Dark, Width = min.Width, Height = min.Height, Content = view };
+        win.Show();
+        Dispatcher.UIThread.RunJobs();
+        win.UpdateLayout();
+        try
+        {
+            var searchBottom = view.QueryBox.TranslatePoint(new Point(0, view.QueryBox.Bounds.Height), view)!.Value.Y;
+            var results = view.ResultsList.GetVisualAncestors().OfType<ScrollViewer>().First();
+            Assert.True(results.TranslatePoint(new Point(0, 0), view)!.Value.Y >= searchBottom, "the results overlap the search row");
+            var recent = view.RecentList.GetVisualAncestors().OfType<ScrollViewer>().First();
+            Assert.Equal(Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled, recent.HorizontalScrollBarVisibility);
+            Assert.True(recent.TranslatePoint(new Point(0, recent.Bounds.Height), view)!.Value.Y <= view.Bounds.Height);
+        }
+        finally { Close(win); }
     }
 
     [AvaloniaFact]
@@ -257,6 +301,105 @@ public class YouTubeImportPluginTests : IDisposable
         Assert.True(PumpUntil(() => vm.Results[0].IsDone));
         Assert.Equal("Saved to folder", vm.Results[0].StatusText);
         Assert.False(Assert.Single(vm.Recent).InLibrary);
+    }
+
+    // ── The same video twice (owner 11-26: a second search downloaded it again as "(2)") ──
+
+    [AvaloniaFact]
+    public void Download_SameVideoInALaterSearch_SaysItIsInTheLibrary_AndOffersToShowIt()
+    {
+        var importer = new FakeImporter(MakeTool(installed: true)) { WriteInto = Path.Combine(_root, "Music"), AlbumId = "album-1" };
+        importer.Found.Add(Info("a1", "A - B", "A"));
+        var shown = new List<string>();
+        var vm = new YouTubeImportViewModel(importer, new HttpClient(), State(), initialQuery: "b", showAlbum: id => { shown.Add(id); return true; });
+        Assert.True(PumpUntil(() => vm.Results.Count == 1));
+        vm.Results[0].DownloadCommand.Execute(null);
+        Assert.True(PumpUntil(() => vm.Results[0].IsDone));
+        Assert.Single(importer.Imports);
+
+        // Another window, another search: the row already says so; Download does nothing more.
+        var again = new YouTubeImportViewModel(importer, new HttpClient(), State(), initialQuery: "a b", showAlbum: id => { shown.Add(id); return true; });
+        Assert.True(PumpUntil(() => again.Results.Count == 1));
+        var row = again.Results[0];
+        Assert.True(row.IsDone);
+        Assert.Equal("Already in your library", row.StatusText);
+        row.DownloadCommand.Execute(null);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Single(importer.Imports);
+        Assert.True(row.CanShow);
+        row.ShowCommand.Execute(null);
+        Assert.Equal(new[] { "album-1" }, shown);
+    }
+
+    [AvaloniaFact]
+    public void Download_TheFileWasDeletedSince_DownloadsAgain()
+    {
+        var music = Path.Combine(_root, "Music");
+        var importer = new FakeImporter(MakeTool(installed: true)) { WriteInto = music };
+        importer.Found.Add(Info("a1", "A - B", "A"));
+        var vm = new YouTubeImportViewModel(importer, new HttpClient(), State(), initialQuery: "b");
+        Assert.True(PumpUntil(() => vm.Results.Count == 1));
+        vm.Results[0].DownloadCommand.Execute(null);
+        Assert.True(PumpUntil(() => vm.Results[0].IsDone));
+        File.Delete(Path.Combine(music, "a1.m4a"));
+
+        var again = new YouTubeImportViewModel(importer, new HttpClient(), State(), initialQuery: "b");
+        Assert.True(PumpUntil(() => again.Results.Count == 1));
+        Assert.False(again.Results[0].IsDone);
+        again.Results[0].DownloadCommand.Execute(null);
+        Assert.True(PumpUntil(() => again.Results[0].IsDone));
+        Assert.Equal(2, importer.Imports.Count);
+    }
+
+    [AvaloniaFact]
+    public void Download_SameVideoWhileItIsStillDownloading_DoesNotStartTwice()
+    {
+        var importer = new FakeImporter(MakeTool(installed: true)) { WriteInto = Path.Combine(_root, "Music"), Gate = new TaskCompletionSource() };
+        importer.Found.Add(Info("a1", "A - B", "A"));
+        var state = State();
+        var first = new YouTubeImportViewModel(importer, new HttpClient(), state, initialQuery: "b");
+        var second = new YouTubeImportViewModel(importer, new HttpClient(), state, initialQuery: "b");
+        Assert.True(PumpUntil(() => first.Results.Count == 1 && second.Results.Count == 1));
+        first.Results[0].DownloadCommand.Execute(null);
+        Assert.True(PumpUntil(() => first.Results[0].IsBusy));
+        second.Results[0].DownloadCommand.Execute(null);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Single(importer.Imports);
+        Assert.False(second.Results[0].IsBusy);
+        Assert.Contains("already downloading", second.StatusMessage);
+        importer.Gate.SetResult();
+        Assert.True(PumpUntil(() => first.Results[0].IsDone));
+        Assert.Single(importer.Imports);
+    }
+
+    /// <summary>A file from an import before the plugin kept an index: the same name in the folder,
+    /// tagged with the same video's link, is the same video.</summary>
+    [Fact]
+    public async Task Import_TheFileOfAnEarlierImportOfTheSameVideo_IsNotDownloadedAgain()
+    {
+        var runs = new List<IReadOnlyList<string>>();
+        var library = new FakeLibraryImport { Folders = { Path.Combine(_root, "Music") } };
+        var folder = Path.Combine(_root, "Music", "YouTube");
+        Directory.CreateDirectory(folder);
+        var mp3 = ReplayGainWriteTests.CreateMp3WithId3v2Only(folder);
+        var existing = Path.Combine(folder, "Artist - Song.mp3");
+        File.Move(mp3, existing);
+        using (var f = TagLib.File.Create(existing)) { f.Tag.Comment = "https://www.youtube.com/watch?v=vid"; f.Save(); }
+        var before = File.ReadAllBytes(existing);
+        var importer = new YouTubeImporter(DownloadingTool(runs), library, new HttpClient(new NoNetwork()), () => "", () => null);
+
+        var result = await importer.ImportAsync(Info("vid", "Artist - Song (Official Video)", "Artist"), AudioFormat.M4a, null, CancellationToken.None);
+
+        Assert.True(result.AlreadyDownloaded);
+        Assert.Equal(existing, result.FilePath);
+        Assert.DoesNotContain(runs, r => r.Contains("-o"));
+        Assert.Equal(before, File.ReadAllBytes(existing));
+        Assert.Single(Directory.GetFiles(folder));
+
+        // Another video that happens to have the same name is downloaded.
+        using (var f = TagLib.File.Create(existing)) { f.Tag.Comment = "https://www.youtube.com/watch?v=other"; f.Save(); }
+        var second = await importer.ImportAsync(Info("vid", "Artist - Song (Official Video)", "Artist"), AudioFormat.M4a, null, CancellationToken.None);
+        Assert.False(second.AlreadyDownloaded);
     }
 
     [AvaloniaFact]
@@ -595,6 +738,33 @@ public class YouTubeImportPluginTests : IDisposable
         Assert.Contains("music folder", ex.Message);
     }
 
+    /// <summary>Stopped (Noctis closing) after the file reached the music folder: it used to stay
+    /// there untagged and outside the library, and showed up half-made on the next rescan.</summary>
+    [Fact]
+    public async Task Import_StoppedAfterTheMove_TakesTheHalfMadeFileBackOut()
+    {
+        var library = new FakeLibraryImport { Folders = { Path.Combine(_root, "Music") } };
+        using var cts = new CancellationTokenSource();
+        var importer = new YouTubeImporter(DownloadingTool(new()), library, new HttpClient(new CancelOnRequest(cts)), () => "", () => null);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => importer.ImportAsync(Info("vid", "A - B", "A"), AudioFormat.M4a, null, cts.Token));
+
+        var folder = Path.Combine(_root, "Music", "YouTube");
+        Assert.Empty(Directory.GetFiles(folder));
+        Assert.Empty(Directory.GetDirectories(folder)); // no scratch folder either
+        Assert.Empty(library.Calls);
+    }
+
+    /// <summary>The cover download is where the user stops it.</summary>
+    private sealed class CancelOnRequest(CancellationTokenSource cts) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            cts.Cancel();
+            return Task.FromCanceled<HttpResponseMessage>(cts.Token);
+        }
+    }
+
     private sealed class NoNetwork : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
@@ -669,7 +839,7 @@ public class YouTubeImportPluginTests : IDisposable
     {
         var m = PluginManifest.TryLoad(PluginSandbox.RepoFile("plugins/Noctis.Plugins.YouTubeImport"))!;
         var plugin = new YouTubeImportPlugin();
-        Assert.Equal((YouTubeImportPlugin.Id, "Add from YouTube", "1.0.2", "Noctis"), (m.Id, m.Name, m.Version, m.Author));
+        Assert.Equal((YouTubeImportPlugin.Id, "Add from YouTube", "1.0.3", "Noctis"), (m.Id, m.Name, m.Version, m.Author));
         Assert.Equal((plugin.Info.Id, plugin.Info.Name, plugin.Info.Version, plugin.Info.Description), (m.Id, m.Name, m.Version, m.Description));
         Assert.Equal("Save audio from a YouTube link to your library.", m.Description);
         Assert.Equal(new[] { "library.import", "network" }, m.Permissions);

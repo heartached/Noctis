@@ -1752,6 +1752,21 @@
                                         <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding IsWatchingMusicVideo}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
+                                <!-- Discord 11-25: the song's music video from YouTube (paste a link to
+                                     stream or download, pick from a search, or no video). -->
+                                <MenuItem x:Name="MusicVideoFromYouTubeMenuItem"
+                                          Header="{loc:T PlaybackBar.MusicVideoFromYouTube}"
+                                          Command="{Binding PickMusicVideoCommand}">
+                                    <MenuItem.IsVisible>
+                                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                            <Binding Path="IsLyricsPageActive"/>
+                                            <Binding Path="CanPickMusicVideo"/>
+                                        </MultiBinding>
+                                    </MenuItem.IsVisible>
+                                    <MenuItem.Icon>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineVideo}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
                                 <Separator />
                                 <MenuItem Header="{loc:T PlaybackBar.RemoveFromLibrary}" Classes="danger"
                                           Command="{Binding RemoveCurrentTrackFromLibraryCommand}">

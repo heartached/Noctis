@@ -86,12 +86,14 @@ public partial class MediaArtwork : UserControl
     /// the disc speed read as sluggish.</summary>
     private const double ReelSpeedRatio = 1.8;
 
-    /// <summary>How far (canvas units) the record slides out of the sleeve on play. The
-    /// XAML tucks it at Canvas.Left 42; 26 more puts the label past the sleeve's edge.</summary>
-    private const double RecordSlideDistance = 26;
+    /// <summary>How far (× sleeve edge) the record slides out of the sleeve on play: tucked,
+    /// its label hides behind the sleeve; out, it sits where the carousel's record does.</summary>
+    private const double RecordSlideFraction = 0.2;
 
     private static readonly TransformOperations RecordTucked = TransformOperations.Parse("translateX(0px)");
-    private static readonly TransformOperations RecordOut = TransformOperations.Parse($"translateX({RecordSlideDistance}px)");
+    // Recomputed in pixels by LayoutCases; this stands in until the first layout.
+    private TransformOperations _recordOut = TransformOperations.Parse("translateX(40px)");
+    private double _recordSlide = 40;
 
     private readonly SpinClock _clock = new();
     private readonly RotateTransform _discRotate = new();
@@ -195,7 +197,65 @@ public partial class MediaArtwork : UserControl
     /// transition on VinylSlide eases the move.</summary>
     private void ApplyRecordSlide()
     {
-        VinylSlide.RenderTransform = IsSpinning ? RecordOut : RecordTucked;
+        VinylSlide.RenderTransform = IsSpinning ? _recordOut : RecordTucked;
+    }
+
+    protected override Size ArrangeOverride(Size finalSize)
+    {
+        LayoutCases(finalSize);
+        return base.ArrangeOverride(finalSize);
+    }
+
+    /// <summary>Places the vinyl and cassette parts in pixels for this size, centred, with the
+    /// carousel's proportions (<see cref="MediaCaseArt"/>). Setting the same values again on
+    /// the follow-up layout pass changes nothing, so this settles in one pass.</summary>
+    private void LayoutCases(Size size)
+    {
+        if (size.Width <= 0 || size.Height <= 0) return;
+
+        // Vinyl: sleeve s × s, the record (tucked) to its right.
+        var s = Math.Min(size.Width / MediaCaseArt.VinylWidth, size.Height);
+        var x0 = (size.Width - MediaCaseArt.VinylWidth * s) / 2;
+        var y0 = (size.Height - s) / 2;
+        Place(VinylSleeve, x0, y0, s, s);
+        VinylSleeve.CornerRadius = new CornerRadius(s * 0.004);
+        var r = MediaCaseArt.VinylDiscRadius * s;
+        var slide = Math.Round(s * RecordSlideFraction);
+        var centre = MediaCaseArt.VinylDiscCentre(s);
+        Place(VinylSlide, x0 + centre.X - slide - r, y0 + centre.Y - r, r * 2, r * 2);
+        var label = r * MediaCaseArt.VinylLabelRadius * 2;
+        VinylLabel.Width = VinylLabel.Height = label;
+        VinylLabelFinish.Width = VinylLabelFinish.Height = label;
+        if (Math.Abs(slide - _recordSlide) > 0.5)
+        {
+            _recordSlide = slide;
+            _recordOut = TransformOperations.Parse($"translateX({slide.ToString(System.Globalization.CultureInfo.InvariantCulture)}px)");
+            ApplyRecordSlide();
+        }
+
+        // Cassette: the shell centred; label, reels and layers in shell space.
+        s = Math.Min(size.Width / MediaCaseArt.CassetteWidth, size.Height / MediaCaseArt.CassetteHeight);
+        var w = MediaCaseArt.CassetteWidth * s;
+        var h = MediaCaseArt.CassetteHeight * s;
+        Place(CassetteShell, (size.Width - w) / 2, (size.Height - h) / 2, w, h);
+        foreach (var layer in new Control[] { CassetteBody, CassetteShellLayer, CassetteWindowLayer, CassetteGlassLayer })
+            Place(layer, 0, 0, w, h);
+        CassetteBody.CornerRadius = new CornerRadius(s * 0.035);
+        var labelRect = MediaCaseArt.CassetteLabelRect(s);
+        Place(CassetteLabel, labelRect.X, labelRect.Y, labelRect.Width, labelRect.Height);
+        CassetteLabel.CornerRadius = new CornerRadius(s * 0.018);
+        var (left, right) = MediaCaseArt.CassetteReelCentres(s);
+        var hub = MediaCaseArt.CassetteHubRadius(s);
+        Place(ReelLeftSpin, left.X - hub, left.Y - hub, hub * 2, hub * 2);
+        Place(ReelRightSpin, right.X - hub, right.Y - hub, hub * 2, hub * 2);
+    }
+
+    private static void Place(Control control, double x, double y, double width, double height)
+    {
+        Canvas.SetLeft(control, x);
+        Canvas.SetTop(control, y);
+        control.Width = width;
+        control.Height = height;
     }
 
     private void QueueFrame()

@@ -514,6 +514,12 @@ public class AppSettings : IJsonOnDeserializing
     /// every album opened.</summary>
     public bool AnimatedArtworkAutoFetch { get; set; }
 
+    /// <summary>Settings › Artwork › Artist videos: play an artist's Apple Music motion video
+    /// behind their page's header when one exists (only while <see cref="EnableAnimatedCovers"/>
+    /// is on), kept in the same size-capped cache as the album loops. Off by default: it asks
+    /// Apple about every artist page opened.</summary>
+    public bool ArtistVideos { get; set; }
+
     /// <summary>The cap of that cache in MB; one of <see cref="AnimatedArtworkCacheSizeChoices"/>.</summary>
     public int AnimatedArtworkCacheMb { get; set; } = 1024;
 
@@ -676,7 +682,7 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Also embed the plain lyrics in the audio file's tags when saving.</summary>
     public bool LyricsStudioEmbedTags { get; set; }
 
-    /// <summary>Songs with no lyrics at all: look the plain text up online (LRCLIB) before falling back to transcription.</summary>
+    /// <summary>Songs with no lyrics at all: look the plain text up online (LRCLIB, then Genius while it is on) before falling back to transcription.</summary>
     public bool LyricsStudioOnlineLyrics { get; set; } = true;
 
     /// <summary>Also save the timings as a .ttml sidecar, for players that read TTML but not ELRC (Discord: Light Cone).</summary>
@@ -1503,6 +1509,18 @@ public class AppSettings : IJsonOnDeserializing
     /// with the song) instead of replacing the cover. Off by default.</summary>
     public bool MusicVideoAsBackground { get; set; }
 
+    /// <summary>Discord #feedback 11-25: a song without a music video of its own gets one found
+    /// on YouTube (yt-dlp search), streamed muted behind the lyrics. Off by default: it sends
+    /// the song's artist and title to YouTube.</summary>
+    public bool MusicVideoAutoFind { get; set; }
+
+    /// <summary>11-25: yt-dlp reads the YouTube sign-in (cookies) of <see cref="MusicVideoCookiesBrowser"/>
+    /// for the music video lookups, past YouTube's "confirm you're not a bot". Off by default.</summary>
+    public bool MusicVideoUseBrowserCookies { get; set; }
+
+    /// <summary>yt-dlp's <c>--cookies-from-browser</c> name ("firefox", "chrome", "edge"…).</summary>
+    public string MusicVideoCookiesBrowser { get; set; } = "firefox";
+
     /// <summary>Opt-in fullscreen focus — dims everything but the active line and its
     /// closest neighbors while the lyrics page is fullscreen.</summary>
     public bool LyricsFullScreenFocusEnabled { get; set; }
@@ -1592,6 +1610,14 @@ public class AppSettings : IJsonOnDeserializing
     public bool BulkLyricsRecheck { get; set; }
     public bool BulkLyricsReviewFirst { get; set; }
 
+    /// <summary>GitHub #267: the Get Genres from Discogs dialog's options as last set. Source is
+    /// "Styles" (the default), "Genres" or "StylesAndGenres"; MaxGenres 0 = all; the master release
+    /// unless UseRelease; the found genres replace the album's unless AddToExisting.</summary>
+    public string DiscogsGenreSource { get; set; } = "Styles";
+    public int DiscogsMaxGenres { get; set; }
+    public bool DiscogsUseRelease { get; set; }
+    public bool DiscogsAddToExisting { get; set; }
+
     /// <summary>GitHub #219: every song without synced lyrics is looked up gradually in the background
     /// (and new songs as they arrive); misses are asked again after a month. Off by default.</summary>
     public bool LyricsAutoFindLibrary { get; set; }
@@ -1627,6 +1653,11 @@ public class AppSettings : IJsonOnDeserializing
     /// relayed, keyless, 60 requests a minute) is searched automatically, after the other sources.
     /// Off: a third-party relay whose loose match often credits the composer, so fewer answers validate.</summary>
     public bool LrcMuxEnabled { get; set; }
+
+    /// <summary>GitHub #265: whether Genius (genius.com, keyless) is searched automatically for plain
+    /// lyrics. Never synced, so it only fills songs no timed source has — often rarer artists —
+    /// and gives Lyrics Studio words to time. Two requests per lookup (search, song page).</summary>
+    public bool GeniusEnabled { get; set; } = true;
 
     /// <summary>Whether YouTube Music (line-synced) is searched automatically. Off on fresh
     /// installs: three round trips and ~1 MB of responses per lookup, on pinned client versions.</summary>
@@ -1802,6 +1833,11 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>The newer version the "saved by a newer Noctis" notice was last shown for,
     /// so it shows once per newer version rather than on every start.</summary>
     public string NewerVersionNoticeShownFor { get; set; } = "";
+
+    /// <summary>The last version whose What's new (Settings › About) was opened. Empty until the
+    /// first load sets it: to this version on a new profile (no dot), to the version that last
+    /// saved the settings after an update (the dot shows until What's new is opened).</summary>
+    public string WhatsNewSeenVersion { get; set; } = "";
 
     /// <summary>Set on load when <see cref="WrittenByVersion"/> is newer than this build:
     /// that version. Not saved.</summary>

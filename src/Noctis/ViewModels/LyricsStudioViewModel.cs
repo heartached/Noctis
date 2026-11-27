@@ -187,6 +187,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
     {
         LyricsStudioSource.ExistingLyrics => "From the song's lyrics",
         LyricsStudioSource.Lrclib => "From LRCLIB",
+        LyricsStudioSource.Genius => Loc("LyricsStudio.GeniusSource"),
         LyricsStudioSource.Transcription => "Transcribed · check the words",
         LyricsStudioSource.PastedLyrics => "From your lyrics",
         LyricsStudioSource.LrcRed => Loc("LyricsStudio.LrcRedSource"),
@@ -210,10 +211,10 @@ public partial class LyricsStudioViewModel : ViewModelBase
     // ── Compose: a song with no timed lyrics yet (paste / import / experimental transcript) ──
 
     /// <summary>The selected song has nothing to review: show the lyrics box instead.</summary>
-    public bool IsComposing => !HasReview && Selected is { Status: StudioStatus.Waiting or StudioStatus.NeedsLyrics or StudioStatus.Failed };
+    public bool IsComposing => !HasReview && Selected is { Status: StudioStatus.Waiting or StudioStatus.NeedsLyrics or StudioStatus.Failed, IsLoadingLyrics: false };
     /// <summary>The selected song is being run: the review pane shows its progress.</summary>
     public bool IsSelectedWorking => Selected is { Status: StudioStatus.Working };
-    public bool ShowReviewEmpty => !HasReview && !IsComposing && !IsSelectedWorking;
+    public bool ShowReviewEmpty => !HasReview && !IsComposing && !IsSelectedWorking && !IsSelectedLoading;
     public bool CanAlignDraft => !IsRunning && Selected is { } s && !string.IsNullOrWhiteSpace(s.DraftText);
     public bool CanTranscribeDraft => !IsRunning && IsModelInstalled && HasFfmpeg;
 
@@ -240,6 +241,10 @@ public partial class LyricsStudioViewModel : ViewModelBase
     public bool HasUnsavedLyricsBox => Queue.Any(i => i.HasUnsavedLyricsBox);
 
     public event EventHandler? Closed;
+
+    /// <summary>A song's lyrics were written (raised on the UI thread after the files are on disk):
+    /// the page updates that one song's format and its counts instead of rescanning the library.</summary>
+    public event EventHandler<Track>? LyricsSaved;
 
     /// <summary>
     /// Appends songs the user picked (Choose songs) to a Studio that is mid-run or mid-review,
@@ -389,6 +394,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
     }
     partial void OnIsRunningChanged(bool value)
     {
+        OnPropertyChanged(nameof(CanStop));
         RaiseStartState();
         RaiseLrcRedState();
         OnPropertyChanged(nameof(ReviewCanUpgrade));
@@ -419,15 +425,78 @@ public partial class LyricsStudioViewModel : ViewModelBase
     private void OnSelectedItemPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(StudioItem.DraftText)) OnPropertyChanged(nameof(CanAlignDraft));
-        else if (e.PropertyName == nameof(StudioItem.Status)) RaiseReviewChanged();
+        else if (e.PropertyName is nameof(StudioItem.Status) or nameof(StudioItem.IsLoadingLyrics)) RaiseReviewChanged();
     }
 
     partial void OnSelectedChanged(StudioItem? value)
     {
-        if (value is { Status: StudioStatus.Waiting, Result: null } fresh)
-            TryLoadExisting(fresh);
-        if (value is { Result: null } compose)
-            PrefillDraft(compose);
+        // The song's own lyrics are read off the UI thread (sidecars, the lyrics store, and for
+        // lyrics kept in the tags the audio file itself); the review fills in when they arrive.
+        if (value is { Result: null } unread)
+        {
+            SelectionLoad = LoadSongLyricsAsync(unread);
+            // Read inline (tests): the load has already shown the review.
+            if (SelectionLoad.IsCompleted && ReferenceEquals(Selected, unread)) return;
+        }
+        ShowSelectedReview(value);
+    }
+
+    /// <summary>The read started by the last selection of an unread song (tests await it).</summary>
+    internal Task SelectionLoad { get; private set; } = Task.CompletedTask;
+
+    /// <summary>Tests that check the review right after a selection read the song's lyrics on the
+    /// calling thread, as before 11-26; the app always reads them off the UI thread.</summary>
+    internal static bool LoadLyricsInlineDefault { get; set; }
+    internal bool LoadLyricsInline { get; set; } = LoadLyricsInlineDefault;
+
+    /// <summary>The selected song's own lyrics are being read: the review shows that instead of the lyrics box.</summary>
+    public bool IsSelectedLoading => Selected is { IsLoadingLyrics: true };
+
+    private async Task LoadSongLyricsAsync(StudioItem item)
+    {
+        ExistingLyrics? existing = null;
+        string? prefill = null;
+        var cleared = item.LyricsCleared;
+        var waiting = item.Status == StudioStatus.Waiting;
+        var track = item.Track;
+        (ExistingLyrics?, string?) Read()
+        {
+            // Lyrics the user cleared stay cleared until they save their own.
+            var found = waiting && !cleared ? LoadExistingOrNull(track) : null;
+            return (found, found is null && !cleared ? ReadPrefill(track) : null);
+        }
+        if (LoadLyricsInline) (existing, prefill) = Read();
+        else
+        {
+            item.IsLoadingLyrics = true;
+            try { (existing, prefill) = await Task.Run(Read); }
+            catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.Lyrics, "LyricsStudio.LoadExistingFailed", ex.Message); }
+            finally { item.IsLoadingLyrics = false; }
+        }
+        // Another song was picked meanwhile: nothing lands on screen, and the song is read again
+        // when it is selected again. Run, cleared or given lyrics since: the read is dropped.
+        if (!ReferenceEquals(Selected, item)) return;
+        if (item.Result is not null || item.LyricsCleared != cleared)
+        {
+            RaiseReviewChanged();
+            return;
+        }
+        if (existing is not null && item.Status == StudioStatus.Waiting)
+        {
+            item.Existing = existing;
+            item.Result = new LyricsStudioResult(item.Track, existing.Lines, LyricsStudioSource.ExistingFile, 1, string.Empty, 0);
+            item.Status = StudioStatus.Loaded;
+            // The pill and the review's source line already say what was loaded and from where.
+            item.StatusText = string.Empty;
+            RaiseStartState();
+        }
+        else if (prefill is not null && !item.LyricsCleared && string.IsNullOrWhiteSpace(item.DraftText))
+            item.DraftText = item.PrefilledText = prefill;
+        ShowSelectedReview(item);
+    }
+
+    private void ShowSelectedReview(StudioItem? value)
+    {
         ResetReviewSelection();
         ReviewLines.Clear();
         _reviewDirty = false;
@@ -490,24 +559,6 @@ public partial class LyricsStudioViewModel : ViewModelBase
         if (ReferenceEquals(Selected, item)) PersistDraft(item);
     }
 
-    /// <summary>
-    /// Selecting a song shows what it already has — .elrc, then .lrc, then embedded — with no
-    /// Start press. A restored draft (already Ready) wins over the file.
-    /// </summary>
-    private void TryLoadExisting(StudioItem item)
-    {
-        // Lyrics the user cleared stay cleared until they save their own.
-        if (item.LyricsCleared) return;
-        var existing = LoadExistingOrNull(item.Track);
-        if (existing is null) return;
-        item.Existing = existing;
-        item.Result = new LyricsStudioResult(item.Track, existing.Lines, LyricsStudioSource.ExistingFile, 1, string.Empty, 0);
-        item.Status = StudioStatus.Loaded;
-        // The pill and the review's source line already say what was loaded and from where.
-        item.StatusText = string.Empty;
-        RaiseStartState();
-    }
-
     /// <summary>The song's own timed lyrics (.elrc, .lrc, embedded), or null when it has none or they can't be read.</summary>
     private static ExistingLyrics? LoadExistingOrNull(Track track)
     {
@@ -520,25 +571,25 @@ public partial class LyricsStudioViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Fills an empty lyrics box with the song's own untimed lyrics: the plain lyrics tag, else a
-    /// .txt next to the audio file. Never overwrites what the user typed or a transcript.
+    /// The song's own untimed lyrics for an empty lyrics box: the plain lyrics tag, else a .txt
+    /// next to the audio file. Applied only to an empty box: never over what the user typed or a transcript.
     /// </summary>
-    private static void PrefillDraft(StudioItem item)
+    private static string? ReadPrefill(Track track)
     {
-        if (item.LyricsCleared || !string.IsNullOrWhiteSpace(item.DraftText)) return;
         try
         {
-            var text = LyricsStudioEngine.FirstText(item.Track.Lyrics);
-            if (text is null && !string.IsNullOrWhiteSpace(item.Track.FilePath))
+            var text = LyricsStudioEngine.FirstText(track.Lyrics);
+            if (text is null && !string.IsNullOrWhiteSpace(track.FilePath))
             {
-                var txt = Path.ChangeExtension(item.Track.FilePath, ".txt");
+                var txt = Path.ChangeExtension(track.FilePath, ".txt");
                 if (File.Exists(txt)) text = LyricsStudioEngine.FirstText(File.ReadAllText(txt));
             }
-            if (text is not null) item.DraftText = item.PrefilledText = string.Join('\n', text);
+            return text is null ? null : string.Join('\n', text);
         }
         catch (Exception ex)
         {
             DebugLogger.Warn(DebugLogger.Category.Lyrics, "LyricsStudio.PrefillFailed", ex.Message);
+            return null;
         }
     }
 
@@ -556,6 +607,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanSave));
         OnPropertyChanged(nameof(IsComposing));
         OnPropertyChanged(nameof(IsSelectedWorking));
+        OnPropertyChanged(nameof(IsSelectedLoading));
         OnPropertyChanged(nameof(ShowReviewEmpty));
         OnPropertyChanged(nameof(CanAlignDraft));
         RaiseLrcRedState();
@@ -858,15 +910,38 @@ public partial class LyricsStudioViewModel : ViewModelBase
     /// <summary>False in tests that call <see cref="Tick"/> themselves.</summary>
     internal bool AutoTick { get; set; } = true;
 
-    private void EnsureTicking()
+    internal void EnsureTicking()
     {
-        if (!AutoTick) return;
+        if (!AutoTick || _detached) return;
         if (_tick is null)
         {
             _tick = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(66) };
             _tick.Tick += (_, _) => Tick();
         }
         if (!_tick.IsEnabled) _tick.Start();
+    }
+
+    /// <summary>The progress tick is running (tests).</summary>
+    internal bool IsTicking => _tick?.IsEnabled == true;
+
+    private bool _detached;
+
+    /// <summary>
+    /// The page replaced this Studio with a new one: its timers stop now. A model download it
+    /// showed goes on in the shared model manager (the new Studio shows it), but this Studio's
+    /// 15 Hz tick ran on, keeping it alive, until the download ended.
+    /// </summary>
+    internal void Detach()
+    {
+        if (_detached) return;
+        if (Selected is { } current) PersistDraft(current);
+        _detached = true;
+        _tick?.Stop();
+        _tick = null;
+        _lrcRedCts?.Cancel();
+        _draftSaveCts?.Cancel();
+        _nudgeHintCts?.Cancel();
+        SuspendLivePreview();
     }
 
     /// <summary>
@@ -959,6 +1034,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
 
     partial void OnIsLrcRedSyncingChanged(bool value)
     {
+        OnPropertyChanged(nameof(CanStop));
         RaiseStartState();
         RaiseLrcRedState();
     }
@@ -1028,6 +1104,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
         var cts = new CancellationTokenSource();
         _lrcRedCts = cts;
         var before = item.StatusText;
+        var runBefore = RunStatusText;
         IsLrcRedSyncing = true;
         item.StatusText = RunStatusText = Loc("LyricsStudio.LrcRedSyncWorking");
         DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.LrcRedSync", $"{item.Title} | isrc={match.Isrc}");
@@ -1051,7 +1128,10 @@ public partial class LyricsStudioViewModel : ViewModelBase
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested)
         {
+            // Stopped (or the Studio closed): the song keeps what it had, nothing half-applied.
             item.StatusText = before;
+            RunStatusText = runBefore;
+            DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.LrcRedSyncStopped", item.Title);
         }
         catch (Exception ex)
         {
@@ -1165,7 +1245,11 @@ public partial class LyricsStudioViewModel : ViewModelBase
                 // them the engine re-reads only the text and every line start is lost (09-24: a
                 // batch run placed Cherry Blossom's 0:16–0:28 lines at 0:00).
                 if (!transcribe && pasted is null && item.Existing is null && !item.LyricsCleared)
-                    item.Existing = LoadExistingOrNull(item.Track);
+                {
+                    // Off the UI thread: lyrics kept in the tags mean reading the audio file.
+                    var track = item.Track;
+                    item.Existing = await Task.Run(() => LoadExistingOrNull(track));
+                }
                 // No timed lyrics: the lyrics box on screen is the text, Start and Re-sync alike. They
                 // ignored it and the engine went back to the song's own text or LRCLIB's match —
                 // the wrong lyrics a user had just replaced (Discord, Mistery 2026-10-10).
@@ -1331,7 +1415,12 @@ public partial class LyricsStudioViewModel : ViewModelBase
     {
         DebugLogger.Info(DebugLogger.Category.Lyrics, "LyricsStudio.StopRequested", RunStatusText);
         _runCts?.Cancel();
+        // lrc.red's model too: it ran on with Stop pressed and landed its timings afterwards.
+        _lrcRedCts?.Cancel();
     }
+
+    /// <summary>Stop is offered while anything per-song runs: a Lullaby run or lrc.red's model.</summary>
+    public bool CanStop => IsRunning || IsLrcRedSyncing;
 
     private LyricsSaveTarget SafeSaveTarget()
     {
@@ -1346,11 +1435,17 @@ public partial class LyricsStudioViewModel : ViewModelBase
         if (Selected is not { Status: StudioStatus.Ready or StudioStatus.Loaded, Result: not null } item || ReviewLines.Count == 0) return;
         // Never replace lyrics without asking: sidecar files, and with "write into the file's tags"
         // on, the lyrics already stored in the audio file's tags too.
-        var existing = ExistingLyricsFiles(item.Track);
         // Settings ▸ Lyrics ▸ Save lyrics to (GitHub #135) may put them inside the file too.
         var intoTags = EmbedTags || SafeSaveTarget().WritesTags();
-        if (intoTags && (!string.IsNullOrWhiteSpace(item.Track.Lyrics) || !string.IsNullOrWhiteSpace(item.Track.SyncedLyrics)))
-            existing.Add("lyrics in the audio file's tags");
+        // Off the UI thread: folder listings and the track's lyrics store (a disk read) on a slow drive.
+        var existing = await Task.Run(() =>
+        {
+            var found = ExistingLyricsFiles(item.Track);
+            if (intoTags && (!string.IsNullOrWhiteSpace(item.Track.Lyrics) || !string.IsNullOrWhiteSpace(item.Track.SyncedLyrics)))
+                found.Add("lyrics in the audio file's tags");
+            return found;
+        });
+        if (!ReferenceEquals(Selected, item)) return;
         // macOS/Linux say "Trash": there is no Recycle Bin there (the lyrics page's prompt does the same).
         var bin = OperatingSystem.IsWindows() ? "Recycle Bin" : "Trash";
         if (existing.Count > 0 && !await ConfirmAsync(
@@ -1369,7 +1464,9 @@ public partial class LyricsStudioViewModel : ViewModelBase
         try
         {
             // Off the UI thread: trashing the old file can wait on the OS (macOS asks Finder, up to 15 s).
-            var outcome = await Task.Run(() => _writer.SaveDetailed(item.Track, plain, synced, embed, replaceForeignSidecar: true, ttml, files: files));
+            // A tag write runs later (never while the song plays); only one that finally fails is told.
+            void TagWriteFailed() => Dispatcher.UIThread.Post(() => OnTagWriteFailed(item));
+            var outcome = await Task.Run(() => _writer.SaveDetailed(item.Track, plain, synced, embed, replaceForeignSidecar: true, ttml, files: files, tagWriteFailed: TagWriteFailed));
             // Lyrics made by hand: the song has lyrics after all (GitHub #162).
             if (outcome.Saved) ClearNoLyricsMark(item.Track);
             // What was written, edits included: reopening the saved song showed the result from
@@ -1391,6 +1488,8 @@ public partial class LyricsStudioViewModel : ViewModelBase
                 : $"Saved · {format}";
             _savedCount++;
             OnPropertyChanged(nameof(SummaryText));
+            try { LyricsSaved?.Invoke(this, item.Track); }
+            catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.Lyrics, "LyricsStudio.SavedNotifyFailed", ex.Message); }
             // A preview of this review would now hide the file just written.
             try { ClearLyricsPagePreview?.Invoke(); } catch { }
         }
@@ -1402,6 +1501,18 @@ public partial class LyricsStudioViewModel : ViewModelBase
         RefreshQueuePills();
         SelectNextReady(item);
         RaiseReviewChanged();
+    }
+
+    /// <summary>Set by the app: a short notice in the main window's notice pill. Null = the song's status line only.</summary>
+    public Action<string>? ShowNotice { get; set; }
+
+    /// <summary>The lyrics files were written, but writing them into the audio file's tags failed: say so on the song and in a notice.</summary>
+    private void OnTagWriteFailed(StudioItem item)
+    {
+        var text = Loc("LyricsStudio.TagWriteFailed", item.Title);
+        item.StatusText = text;
+        try { ShowNotice?.Invoke(text); }
+        catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.Lyrics, "LyricsStudio.NoticeFailed", ex.Message); }
     }
 
     /// <summary>Takes the "no lyrics" mark (GitHub #162) off the song and the library's instance of it, and saves.</summary>
@@ -2117,6 +2228,8 @@ public partial class LyricsStudioViewModel : ViewModelBase
         internal string? PrefilledText { get; set; }
         /// <summary>The user cleared the song's lyrics (Clear lyrics): its .lrc / tags are not loaded, prefilled or timed again until Save.</summary>
         public bool LyricsCleared { get; set; }
+        /// <summary>The song's own lyrics are being read (selected a moment ago); the review fills in when they arrive.</summary>
+        [ObservableProperty] private bool _isLoadingLyrics;
 
         /// <summary>
         /// The lyrics box holds work that lives nowhere else: text typed, pasted or imported, or a

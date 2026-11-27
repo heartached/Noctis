@@ -506,6 +506,8 @@ internal class Program
         services.AddSingleton<ArtistInfoService>();
         services.AddSingleton<SimilarArtistsService>();
         services.AddSingleton<ITunesArtworkService>();
+        // GitHub #267: one Discogs client for the app, so every genre lookup shares its pacing.
+        services.AddSingleton(sp => new DiscogsGenreService(sp.GetRequiredService<HttpClient>()));
         services.AddSingleton<UpdateService>();
         services.AddSingleton<ShortcutService>();
         services.AddSingleton<ILrcLibService, LrcLibService>();
@@ -517,6 +519,8 @@ internal class Program
             new LrcRedLyricsService(sp.GetRequiredService<HttpClient>(), LrcRedLyricsService.CreateModelHttpClient()));
         services.AddSingleton<IUnisonLyricsService, UnisonLyricsService>();
         services.AddSingleton<ILrcMuxLyricsService, LrcMuxLyricsService>();
+        services.AddSingleton<IGeniusLyricsService>(sp =>
+            new GeniusLyricsService(GeniusLyricsService.CreateHttpClient() ?? sp.GetRequiredService<HttpClient>()));
         services.AddSingleton<IYouTubeMusicLyricsService, YouTubeMusicLyricsService>();
         services.AddSingleton<IPlayHistoryService, PlayHistoryService>();
         services.AddSingleton<PhoneHandoffInbox>();
@@ -615,7 +619,8 @@ internal class Program
                     list.AddRange(Services.Lyrics.OnlineLyricsSource.BuiltIns(
                             sp.GetRequiredService<IMusixmatchService>(), sp.GetRequiredService<IKugouLyricsService>(),
                             sp.GetRequiredService<IYouTubeMusicLyricsService>(), sp.GetRequiredService<ILrcRedLyricsService>(),
-                            sp.GetRequiredService<IUnisonLyricsService>(), sp.GetRequiredService<ILrcMuxLyricsService>())
+                            sp.GetRequiredService<IUnisonLyricsService>(), sp.GetRequiredService<ILrcMuxLyricsService>(),
+                            sp.GetRequiredService<IGeniusLyricsService>())
                         .Select(x => new Services.Lyrics.LyricsBulkSource(x.Name, x.IsEnabled, x.SearchAsync) { MinInterval = x.MinInterval }));
                     return list;
                 },
@@ -632,7 +637,10 @@ internal class Program
             new Services.LyricsStudio.LyricsStudioEngine(
                 sp.GetRequiredService<IAudioConverterService>(),
                 sp.GetRequiredService<ILrcLibService>(),
-                sp.GetRequiredService<IPersistenceService>()));
+                sp.GetRequiredService<IPersistenceService>(),
+                // GitHub #265: Genius' plain lyrics when LRCLIB has none, while on in Settings.
+                sp.GetRequiredService<IGeniusLyricsService>(),
+                () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings().GeniusEnabled ?? true));
 
         // Send to Folder (MusicBee-style copy to a drive/folder). With the library and the
         // watcher, a Move relocates the tracks like Organize Files (GitHub #121).
@@ -645,7 +653,16 @@ internal class Program
             new Services.YouTube.YtDlpTool(
                 sp.GetRequiredService<HttpClient>(),
                 sp.GetRequiredService<IPersistenceService>().DataDirectory,
-                () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings().YtDlpPath ?? string.Empty));
+                () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings().YtDlpPath ?? string.Empty,
+                // Settings › Lyrics › Music videos › Use my browser's YouTube sign-in (11-25).
+                () => App.Services?.GetService<MainWindowViewModel>()?.Settings.MusicVideoCookiesFromBrowser));
+        // Discord #feedback 11-25: music videos streamed from YouTube behind the lyrics; the
+        // per-song choices live in music_video_choices.json.
+        services.AddSingleton<Services.YouTube.MusicVideoStreamService>(sp =>
+            new Services.YouTube.MusicVideoStreamService(
+                sp.GetRequiredService<Services.YouTube.YtDlpTool>(),
+                new Services.YouTube.MusicVideoChoiceStore(Path.Combine(
+                    sp.GetRequiredService<IPersistenceService>().DataDirectory, "music_video_choices.json"))));
 
         // Background BPM/key analysis pipeline. Decodes via ffmpeg out-of-process
         // (reusing AudioConverterService for ffmpeg discovery) and runs managed DSP;

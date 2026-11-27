@@ -657,6 +657,9 @@ public class PersistenceService : IPersistenceService
         // Programs on this computer's disks, and its graphics card.
         nameof(AppSettings.FfmpegPath),
         nameof(AppSettings.YtDlpPath),
+        // The browser whose YouTube sign-in yt-dlp reads is one installed on this computer.
+        nameof(AppSettings.MusicVideoUseBrowserCookies),
+        nameof(AppSettings.MusicVideoCookiesBrowser),
         nameof(AppSettings.ExternalOpenAppPath),
         nameof(AppSettings.LyricsStudioUseGpu),
         // The Convert dialog's last output folder: a folder on this computer's disks.

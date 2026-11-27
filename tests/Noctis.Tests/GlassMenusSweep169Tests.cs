@@ -660,6 +660,7 @@ public class GlassMenusSweep169Tests
             ["LyricsStudioPanel.axaml Flyout studio-options-pop"] = "option menu: presenter tracked, pill-popover card frosts",
             ["MetadataSearchPanel.axaml Flyout ms-pop"] = "option menus: presenter tracked, ms-pop-card frosts",
             ["MetadataWindow.axaml Flyout search-pop"] = "artwork search panels, not menus",
+            ["MetadataWindow.axaml Flyout search-pop library-pop"] = "the artist artwork library card, not a menu",
             ["SettingsView.axaml Flyout -"] = "EQ preset name box and the Web Remote QR code: panels, not menus",
             ["ColorPickerFlyout.axaml Flyout -"] = "the colour picker panel, not a menu",
         };

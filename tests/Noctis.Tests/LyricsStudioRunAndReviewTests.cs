@@ -131,8 +131,7 @@ public class LyricsStudioRunAndReviewTests : IDisposable
         Dispatcher.UIThread.RunJobs();
         Assert.Equal(start + TimeSpan.FromMilliseconds(100), vm.ReviewLines[0].Start);
 
-        var row = panel.GetVisualDescendants().OfType<TextBox>().First(t => t.Classes.Contains("line-edit"));
-        row.Focus();
+        var row = panel.GetVisualDescendants().OfType<Noctis.Controls.EditOnDemandText>().First().Edit();
         win.KeyPress(Key.OemOpenBrackets, RawInputModifiers.None, PhysicalKey.BracketLeft, "[");
         Dispatcher.UIThread.RunJobs();
         Assert.Equal(start + TimeSpan.FromMilliseconds(100), vm.ReviewLines[0].Start);
@@ -140,10 +139,10 @@ public class LyricsStudioRunAndReviewTests : IDisposable
     }
 
     [AvaloniaTheory]
-    [InlineData(820, true)]
-    [InlineData(1000, true)]
-    [InlineData(1700, false)]
-    public void ReviewHeader_ToolsAndActions_DropBelow_WhenNarrow_NeverOverTheTitleOrSource(double width, bool expectTwoRows)
+    [InlineData(820)]
+    [InlineData(1000)]
+    [InlineData(1700)]
+    public void ReviewHeader_ToolsAndActions_SitUnderTheTitle_NeverOverTheTitleOrSource(double width)
     {
         var (win, panel, _) = MountReview(width);
         Rect InGrid(Control c) => new(c.Bounds.Position, c.Bounds.Size);
@@ -155,7 +154,14 @@ public class LyricsStudioRunAndReviewTests : IDisposable
             var groupBox = InGrid(group);
             var otherBox = new Rect(other.Bounds.Position, new Size(Math.Min(other.DesiredSize.Width, other.Bounds.Width), other.Bounds.Height));
 
-            if (cls == "review-tools") Assert.Equal(expectTwoRows, groupBox.Top >= otherBox.Bottom - 0.5);
+            // 11-26 redesign: the shift tools are a group of the toolbar under the title and meta line
+            // (they sat beside the source line and dropped under it when narrow).
+            if (cls == "review-tools")
+            {
+                var meta = panel.GetVisualDescendants().OfType<WrapPanel>().First(w => w.Classes.Contains("review-meta"));
+                var metaBottom = meta.TranslatePoint(new Point(0, meta.Bounds.Height), panel)!.Value.Y;
+                Assert.True(group.TranslatePoint(default, panel)!.Value.Y >= metaBottom - 0.5, $"review-tools above the meta line at {width}px");
+            }
             Assert.False(groupBox.Intersects(otherBox), $"{cls} {groupBox} overlap {otherBox} at {width}px");
             // Every button stays inside the review pane.
             foreach (var b in group.Children.OfType<Button>().Where(b => b.IsVisible))

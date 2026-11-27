@@ -119,19 +119,25 @@ public sealed class SubsonicClient : IMediaServerClient
     }
 
     public async Task<IReadOnlyList<ServerAlbum>> GetAlbumsAsync(SourceConnection connection, int offset, int limit, CancellationToken ct = default)
+        => (await GetAlbumPageAsync(connection, offset, limit, ct)).Albums;
+
+    public async Task<ServerAlbumPage> GetAlbumPageAsync(SourceConnection connection, int offset, int limit, CancellationToken ct = default)
     {
         var url = BuildUrl(connection, "getAlbumList2",
             ("type", "alphabeticalByName"),
             ("size", Math.Clamp(limit, 1, 500).ToString()),
             ("offset", Math.Max(0, offset).ToString()));
-        if (url == null) return Array.Empty<ServerAlbum>();
+        if (url == null)
+            return new(Array.Empty<ServerAlbum>(), MediaServerConnectResult.Fail(MediaServerError.InvalidUrl, Loc.T("Settings.Server.InvalidUrl")));
 
         var envelope = await GetSubsonicRootAsync(url, ct);
-        if (envelope.Doc == null) return Array.Empty<ServerAlbum>();
+        if (envelope.Doc == null)
+            return new(Array.Empty<ServerAlbum>(), MediaServerConnectResult.Fail(envelope.Error, envelope.Message));
         using (envelope.Doc)
         {
             var albums = new List<ServerAlbum>();
-            if (Root(envelope.Doc).TryGetProperty("albumList2", out var list) &&
+            var root = Root(envelope.Doc);
+            if (root.TryGetProperty("albumList2", out var list) &&
                 list.TryGetProperty("album", out var array) &&
                 array.ValueKind == JsonValueKind.Array)
             {
@@ -141,7 +147,8 @@ public sealed class SubsonicClient : IMediaServerClient
                     if (mapped != null) albums.Add(mapped);
                 }
             }
-            return albums;
+            FillUnplayedCounts(albums, ReportsPlayCounts(root, albums));
+            return new(albums);
         }
     }
 
@@ -403,6 +410,28 @@ public sealed class SubsonicClient : IMediaServerClient
         return sb.ToString().Trim();
     }
 
+    /// <summary>
+    /// Whether this server counts album plays. Navidrome does, and leaves playCount out of an
+    /// album it never played (Go omitempty), as does any server once one album on the page
+    /// carries a count or a play date. A plain Subsonic server that never sends them stays
+    /// unknown, so its albums are not taken as never played.
+    /// </summary>
+    internal static bool ReportsPlayCounts(JsonElement root, IReadOnlyList<ServerAlbum> albums)
+    {
+        if (string.Equals(GetString(root, "type"), "navidrome", StringComparison.OrdinalIgnoreCase)) return true;
+        foreach (var album in albums)
+            if (album.HasPlayInfo) return true;
+        return false;
+    }
+
+    /// <summary>On a server that counts plays, an album without a count was played zero times.</summary>
+    internal static void FillUnplayedCounts(IEnumerable<ServerAlbum> albums, bool serverCountsPlays)
+    {
+        if (!serverCountsPlays) return;
+        foreach (var album in albums)
+            if (album.PlayCount == null && album.LastPlayed == null) album.PlayCount = 0;
+    }
+
     private static ServerAlbum? MapAlbum(JsonElement album)
     {
         var id = GetId(album, "id");
@@ -416,7 +445,12 @@ public sealed class SubsonicClient : IMediaServerClient
             Year = GetInt(album, "year"),
             SongCount = GetInt(album, "songCount"),
             Duration = TimeSpan.FromSeconds(Math.Max(0, GetInt(album, "duration"))),
-            CoverArtId = GetId(album, "coverArt")
+            CoverArtId = GetId(album, "coverArt"),
+            Genre = GetString(album, "genre") ?? string.Empty,
+            // Navidrome / OpenSubsonic: playCount and played (ISO date). Missing = unknown here;
+            // FillUnplayedCounts decides when a missing count means zero.
+            PlayCount = ServerPlayInfo.Count(album, "playCount"),
+            LastPlayed = ServerPlayInfo.Date(album, "played")
         };
     }
 
@@ -453,7 +487,8 @@ public sealed class SubsonicClient : IMediaServerClient
             DateAdded = DateTime.UtcNow,
             SourceType = SourceType.Navidrome,
             SourceTrackId = songId,
-            SourceConnectionId = connection.Id.ToString("N")
+            SourceConnectionId = connection.Id.ToString("N"),
+            SourceAlbumId = GetId(song, "albumId")
         };
 
         track.AlbumId = Track.ComputeAlbumId(track.AlbumArtist, track.Album);

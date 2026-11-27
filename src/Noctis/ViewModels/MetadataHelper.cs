@@ -33,6 +33,72 @@ public static class MetadataHelper
         }
     }
 
+    /// <summary>
+    /// "Music Video from YouTube" for one song (Discord #feedback 11-25): the lyrics page's
+    /// island ⋯ and "Wrong video?" button, and the song menu's Lyrics Background Video submenu.
+    /// </summary>
+    public static async Task OpenMusicVideoPicker(Track track)
+    {
+        if (track == null || track.IsRemoteStream) return;
+        var services = App.Services;
+        if (services?.GetService<Services.YouTube.MusicVideoStreamService>() is not { } streams) return;
+        var tool = services.GetService<Services.YouTube.YtDlpTool>();
+        var http = services.GetService<HttpClient>();
+        var settings = services.GetService<MainWindowViewModel>()?.Settings;
+        var ffmpeg = services.GetService<IAudioConverterService>();
+
+        Func<string, IProgress<double>?, CancellationToken, Task>? download = null;
+        if (tool != null && settings != null)
+        {
+            download = async (url, progress, ct) =>
+            {
+                // As the Lyrics Background Video picker: a run folder of its own, the clip
+                // copied under the data folder as this song's own background video.
+                var runDir = Path.Combine(Path.GetTempPath(), "noctis-backdrops", "run-" + Guid.NewGuid().ToString("N")[..8]);
+                try
+                {
+                    Directory.CreateDirectory(runDir);
+                    string? ffmpegPath = null;
+                    try { ffmpegPath = ffmpeg?.GetFfmpegPath(); } catch { }
+                    var produced = await tool.DownloadVideoAsync(url, runDir, ffmpegPath,
+                        Services.YouTube.YtDlpParsing.StreamMaxHeight, progress, ct);
+                    ct.ThrowIfCancellationRequested();
+                    await settings.SetLyricsBackgroundOverrideAsync(LyricsBackgroundOverrides.KeyForTrack(track), produced);
+                }
+                finally
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        // yt-dlp/ffmpeg may still hold a file for a moment after a cancel.
+                        for (var i = 0; i < 40; i++)
+                        {
+                            try { if (Directory.Exists(runDir)) Directory.Delete(runDir, true); return; }
+                            catch (IOException) { }
+                            catch (UnauthorizedAccessException) { }
+                            await Task.Delay(100);
+                        }
+                    });
+                }
+            };
+        }
+
+        var vm = new MusicVideoPickerViewModel(track, streams,
+            http == null ? null : (url, ct) => LoadVideoThumbnailAsync(http, url, ct),
+            download,
+            tool == null ? null : (progress, ct) => tool.InstallAsync(progress, ct));
+        await ShowDialogOwned(new MusicVideoPickerDialog(vm));
+    }
+
+    private static async Task<Avalonia.Media.Imaging.Bitmap?> LoadVideoThumbnailAsync(HttpClient http, string url, CancellationToken ct)
+    {
+        using var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+        if (!response.IsSuccessStatusCode) return null;
+        var bytes = await HttpSafety.ReadBytesBoundedAsync(response.Content, HttpSafety.MaxImageBytes, ct);
+        if (!HttpSafety.LooksLikeImage(bytes)) return null;
+        using var ms = new MemoryStream(bytes);
+        return Avalonia.Media.Imaging.Bitmap.DecodeToWidth(ms, 192);
+    }
+
     public static async Task OpenReplayGainScannerDialog(IReadOnlyList<Track> tracks)
     {
         if (tracks == null || tracks.Count == 0) return;
@@ -225,6 +291,25 @@ public static class MetadataHelper
         }
     }
 
+    private static ArtistVideoAutoFetcher? _artistVideoFetcher;
+
+    /// <summary>
+    /// Settings › Artwork › Artist videos: the one fetcher behind every artist page's video,
+    /// queued and paced with <see cref="AlbumArtworkFetcher"/>. Null without the app's services (tests).
+    /// </summary>
+    internal static ArtistVideoAutoFetcher? ArtistVideoFetcher
+    {
+        get
+        {
+            if (_artistVideoFetcher != null) return _artistVideoFetcher;
+            var services = App.Services;
+            if (services?.GetService<ITunesArtworkService>() is not { } itunes ||
+                services.GetService<IPersistenceService>() is not { } persistence)
+                return null;
+            return _artistVideoFetcher = ArtistVideoAutoFetcher.For(itunes, persistence, AlbumArtworkFetcher);
+        }
+    }
+
     /// <summary>
     /// Settings › Reset Everything: stops both whole-library runs and waits for them to end, so
     /// neither saves its ledger (or a cover / lyric file) after the data folder is emptied, and
@@ -235,11 +320,14 @@ public static class MetadataHelper
         var lyrics = _libraryLyricsRun;
         var artwork = _libraryArtworkRun;
         var selection = _selectionLyricsRun;
+        var genres = _libraryGenresRun;
+        _libraryGenresRun = null;
         _selectionLyricsRun = null;
         _libraryLyricsRun = null;
         _libraryArtworkRun = null;
         // Its block list and "no match" memory belong to the old data; the next page reloads them.
         _albumArtworkFetcher = null;
+        _artistVideoFetcher = null;
         // GitHub #195: the background lookup of new songs stops too.
         if (App.Services?.GetService<Services.Lyrics.LyricsAutoFindService>() is { } autoLyrics)
         {
@@ -261,6 +349,13 @@ public static class MetadataHelper
         {
             artwork.StopCommand.Execute(null);
             try { await (artwork.StartCommand.ExecutionTask ?? Task.CompletedTask); } catch { }
+        }
+        // GitHub #267: the library genre lookup writes nothing until Apply, but must not apply to the new library.
+        if (genres is not null)
+        {
+            genres.StopCommand.Execute(null);
+            try { await (genres.StartCommand.ExecutionTask ?? Task.CompletedTask); } catch { }
+            try { await (genres.ApplyCommand.ExecutionTask ?? Task.CompletedTask); } catch { }
         }
     }
 
@@ -302,6 +397,74 @@ public static class MetadataHelper
         await ShowDialogOwned(new BulkAnimatedArtworkDialog(_libraryArtworkRun));
     }
 
+    /// <summary>GitHub #267: the whole-library Get Genres from Discogs run, kept while hidden like the other library runs.</summary>
+    private static BulkDiscogsGenresViewModel? _libraryGenresRun;
+
+    /// <summary>
+    /// GitHub #267: Get Genres from Discogs for the songs' albums (an album menu, a selection of
+    /// albums or songs). Songs are grouped by album; only local songs of named albums take part.
+    /// </summary>
+    public static Task OpenDiscogsGenresDialog(IReadOnlyList<Track> tracks)
+    {
+        if (tracks == null || tracks.Count == 0) return Task.CompletedTask;
+        var albums = AnimatedArtworkBulkService.GroupAlbums(tracks.Distinct());
+        if (albums.Count == 0) return Task.CompletedTask;
+        return ShowDialogOwned(new BulkDiscogsGenresDialog(CreateDiscogsGenresViewModel(albums, library: false)));
+    }
+
+    /// <summary>GitHub #267: Settings ▸ Tools ▸ Get Genres from Discogs: every local album.</summary>
+    public static async Task OpenLibraryDiscogsGenresDialog()
+    {
+        // A running lookup, or finds not yet applied, come back instead of a new run.
+        if (_libraryGenresRun is not ({ IsRunning: true } or { HasUnsavedFinds: true }))
+        {
+            var albums = AnimatedArtworkBulkService.GroupAlbums(App.Services!.GetRequiredService<ILibraryService>().Tracks);
+            _libraryGenresRun = CreateDiscogsGenresViewModel(albums, library: true);
+        }
+        await ShowDialogOwned(new BulkDiscogsGenresDialog(_libraryGenresRun));
+    }
+
+    private static BulkDiscogsGenresViewModel CreateDiscogsGenresViewModel(IReadOnlyList<IReadOnlyList<Track>> albums, bool library)
+    {
+        var services = App.Services!;
+        return new BulkDiscogsGenresViewModel(albums,
+            services.GetRequiredService<DiscogsGenreService>(),
+            services.GetRequiredService<IMetadataService>(),
+            services.GetRequiredService<ILibraryService>(),
+            isLibraryRun: library,
+            prefs: DiscogsGenrePrefs(),
+            savePrefs: SaveDiscogsGenrePrefs);
+    }
+
+    /// <summary>GitHub #267: the dialog's options as last set.</summary>
+    internal static DiscogsGenreOptions? DiscogsGenrePrefs()
+    {
+        var s = App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings();
+        return s is null ? null : DiscogsGenrePrefsFrom(s);
+    }
+
+    internal static DiscogsGenreOptions DiscogsGenrePrefsFrom(AppSettings s) => new(
+        Enum.TryParse<DiscogsGenreSource>(s.DiscogsGenreSource, ignoreCase: true, out var source) ? source : DiscogsGenreSource.Styles,
+        Math.Max(0, s.DiscogsMaxGenres), s.DiscogsUseRelease, s.DiscogsAddToExisting);
+
+    internal static void ApplyDiscogsGenrePrefs(AppSettings s, DiscogsGenreOptions o)
+    {
+        s.DiscogsGenreSource = o.Source.ToString();
+        s.DiscogsMaxGenres = o.MaxGenres;
+        s.DiscogsUseRelease = o.UseRelease;
+        s.DiscogsAddToExisting = o.AddToExisting;
+    }
+
+    /// <summary>GitHub #267: keeps the options, in the live settings and on disk.</summary>
+    private static void SaveDiscogsGenrePrefs(DiscogsGenreOptions options)
+    {
+        if (App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings() is { } live) ApplyDiscogsGenrePrefs(live, options);
+        if (App.Services?.GetService<IPersistenceService>() is { } persistence)
+            _ = persistence.UpdateSettingsAsync(s => ApplyDiscogsGenrePrefs(s, options)).ContinueWith(
+                t => DebugLog.Write(DiscogsGenreService.LogSource, "saving options failed: " + (t.Exception?.GetBaseException().Message ?? string.Empty)),
+                TaskContinuationOptions.OnlyOnFaulted);
+    }
+
     /// <summary>Search Lyrics with a source picker (issue #113), for the lyrics page's track.</summary>
     public static Task OpenLyricsSearchDialog(LyricsSearchViewModel vm) =>
         ShowDialogOwned(new LyricsSearchDialog(vm));
@@ -334,6 +497,7 @@ public static class MetadataHelper
         {
             // "Sync with lrc.red's model" beside Lullaby (offered while lrc.red is on in Settings).
             LrcRed = App.Services!.GetService<ILrcRedLyricsService>(),
+            ShowNotice = text => main?.ShowNotice(text, TimeSpan.FromSeconds(8)),
         };
     }
 

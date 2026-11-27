@@ -150,139 +150,83 @@
         </Viewbox>
 
         <!-- ── Vinyl: sleeve on the left, record pulled out on the right ──────── -->
-        <!-- Sleeve and record are 132 units in a 200-unit canvas so the record can come
-             far enough out for its label to show past the sleeve's edge (a 152 sleeve
-             hid the label entirely). The record is tucked while paused and slides out
-             26 units on play (code-behind sets RenderTransform on VinylSlide; the
-             transition below eases it). -->
-        <Viewbox x:Name="VinylLayout" Stretch="Uniform" IsVisible="False">
-            <Canvas Width="200" Height="200">
-                <Panel x:Name="VinylSlide" Canvas.Left="42" Canvas.Top="34" Width="132" Height="132">
-                    <Panel.Transitions>
-                        <Transitions>
-                            <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.7">
-                                <TransformOperationsTransition.Easing>
-                                    <CubicEaseOut/>
-                                </TransformOperationsTransition.Easing>
-                            </TransformOperationsTransition>
-                        </Transitions>
-                    </Panel.Transitions>
+        <!-- The album carousel's Vinyl case (MediaCaseArt draws both), placed in pixels by
+             code-behind (LayoutCases) rather than scaled by a Viewbox, so hairline grooves
+             stay hairlines on a 780px cover. The record is tucked while paused and slides
+             out on play (code-behind sets RenderTransform on VinylSlide; the transition
+             below eases it). The record turns; the light on it does not. -->
+        <Canvas x:Name="VinylLayout" IsVisible="False">
+            <Panel x:Name="VinylSlide">
+                <Panel.Transitions>
+                    <Transitions>
+                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.7">
+                            <TransformOperationsTransition.Easing>
+                                <CubicEaseOut/>
+                            </TransformOperationsTransition.Easing>
+                        </TransformOperationsTransition>
+                    </Transitions>
+                </Panel.Transitions>
 
-                    <!-- The record. Grooves are faint rings; the label is the album art
-                         again, printed small — the one part of a turning record you can
-                         actually see turn. -->
-                    <Border x:Name="VinylSpin" CornerRadius="1000" ClipToBounds="True"
-                            RenderTransformOrigin="50%,50%"
-                            BoxShadow="0 8 24 0 #66000000">
-                        <Border.Background>
-                            <RadialGradientBrush Center="50%,50%" GradientOrigin="42%,42%" RadiusX="52%" RadiusY="52%">
-                                <GradientStop Offset="0" Color="#2C2C30"/>
-                                <GradientStop Offset="0.38" Color="#17171B"/>
-                                <GradientStop Offset="1" Color="#060607"/>
-                            </RadialGradientBrush>
-                        </Border.Background>
-                        <Panel>
-                            <Ellipse Margin="3" Stroke="#1EFFFFFF" StrokeThickness="0.8"/>
-                            <Ellipse Margin="8" Stroke="#18FFFFFF" StrokeThickness="0.8"/>
-                            <Ellipse Margin="13" Stroke="#1EFFFFFF" StrokeThickness="0.8"/>
-                            <Ellipse Margin="18" Stroke="#18FFFFFF" StrokeThickness="0.8"/>
-                            <Ellipse Margin="23" Stroke="#1EFFFFFF" StrokeThickness="0.8"/>
-                            <Ellipse Margin="28" Stroke="#18FFFFFF" StrokeThickness="0.8"/>
-                            <Ellipse Margin="33" Stroke="#1EFFFFFF" StrokeThickness="0.8"/>
-                            <Ellipse Margin="38" Stroke="#22FFFFFF" StrokeThickness="1"/>
-                            <!-- Label -->
-                            <Border Width="48" Height="48" CornerRadius="1000" ClipToBounds="True" Background="#333344">
-                                <Panel>
-                                    <Image Source="{Binding #Root.FallbackSource}"
-                                           Stretch="UniformToFill"
-                                           RenderOptions.BitmapInterpolationMode="HighQuality"
-                                           IsVisible="{Binding #Root.FallbackSource, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                                    <controls:CachedImage SourcePath="{Binding #Root.SourcePath}" ClearOnSourceChange="False" PixelExact="True"
-                                                          DecodeWidth="{Binding #Root.DecodeWidth}"
-                                                          Stretch="UniformToFill"
-                                                          RenderOptions.BitmapInterpolationMode="HighQuality"
-                                                          IsVisible="{Binding #Root.SourcePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                                </Panel>
-                            </Border>
-                            <Ellipse Width="48" Height="48" Stroke="#40000000" StrokeThickness="1" IsHitTestVisible="False"/>
-                            <!-- Spindle hole -->
-                            <Ellipse Width="5" Height="5" Fill="#0A0A0C"/>
-                        </Panel>
-                    </Border>
-
-                    <!-- Light sweeping across the grooves: fixed, so the grooves turn
-                         under it. -->
-                    <Ellipse IsHitTestVisible="False">
-                        <Ellipse.Fill>
-                            <LinearGradientBrush StartPoint="10%,0%" EndPoint="90%,100%">
-                                <GradientStop Offset="0" Color="#2CFFFFFF"/>
-                                <GradientStop Offset="0.35" Color="#00FFFFFF"/>
-                                <GradientStop Offset="0.65" Color="#00FFFFFF"/>
-                                <GradientStop Offset="1" Color="#16FFFFFF"/>
-                            </LinearGradientBrush>
-                        </Ellipse.Fill>
-                    </Ellipse>
-                </Panel>
-
-                <!-- The sleeve, in front. -->
-                <Border Canvas.Left="0" Canvas.Top="34" Width="132" Height="132"
-                        CornerRadius="3" ClipToBounds="True"
-                        BoxShadow="0 10 30 0 #70000000">
+                <!-- Transparent background: the whole disc is what a scratch grabs. -->
+                <Border x:Name="VinylSpin" CornerRadius="1000" Background="Transparent"
+                        RenderTransformOrigin="50%,50%"
+                        BoxShadow="0 12 36 0 #66000000">
                     <Panel>
-                        <Border Background="#333344">
-                            <TextBlock Text="&#x266A;" FontSize="48" Foreground="#555566"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <controls:MediaCaseLayer Part="Record"/>
+                        <!-- Label: the album art again, printed small. -->
+                        <Border x:Name="VinylLabel" CornerRadius="1000" ClipToBounds="True" Background="#E9E3D6"
+                                HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Panel>
+                                <Image Source="{Binding #Root.FallbackSource}"
+                                       Stretch="UniformToFill"
+                                       RenderOptions.BitmapInterpolationMode="HighQuality"
+                                       IsVisible="{Binding #Root.FallbackSource, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                <controls:CachedImage SourcePath="{Binding #Root.SourcePath}" ClearOnSourceChange="False" PixelExact="True"
+                                                      DecodeWidth="{Binding #Root.DecodeWidth}"
+                                                      Stretch="UniformToFill"
+                                                      RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                      IsVisible="{Binding #Root.SourcePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                            </Panel>
                         </Border>
-                        <Image Source="{Binding #Root.FallbackSource}"
-                               Stretch="UniformToFill"
-                               RenderOptions.BitmapInterpolationMode="HighQuality"
-                               IsVisible="{Binding #Root.FallbackSource, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                        <controls:CachedImage SourcePath="{Binding #Root.SourcePath}" ClearOnSourceChange="False" PixelExact="True"
-                                              DecodeWidth="{Binding #Root.DecodeWidth}"
-                                              Stretch="UniformToFill"
-                                              RenderOptions.BitmapInterpolationMode="HighQuality"
-                                              IsVisible="{Binding #Root.SourcePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                        <controls:AnimatedCoverImage x:Name="SleeveAnimated"
-                                                     Source="{Binding #Root.AnimatedSource}"/>
-                        <!-- Spine shading on the open edge so the sleeve reads as card,
-                             not a flat square. -->
-                        <Rectangle Width="10" HorizontalAlignment="Right" IsHitTestVisible="False">
-                            <Rectangle.Fill>
-                                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
-                                    <GradientStop Offset="0" Color="#00000000"/>
-                                    <GradientStop Offset="1" Color="#59000000"/>
-                                </LinearGradientBrush>
-                            </Rectangle.Fill>
-                        </Rectangle>
+                        <controls:MediaCaseLayer x:Name="VinylLabelFinish" Part="RecordLabelFinish"
+                                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Panel>
                 </Border>
-            </Canvas>
-        </Viewbox>
+                <controls:MediaCaseLayer Part="RecordLight"/>
+            </Panel>
+
+            <!-- The sleeve, in front. -->
+            <Border x:Name="VinylSleeve" ClipToBounds="True" BoxShadow="0 14 40 0 #70000000">
+                <Panel>
+                    <Border Background="#333344">
+                        <TextBlock Text="&#x266A;" FontSize="48" Foreground="#555566"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <Image Source="{Binding #Root.FallbackSource}"
+                           Stretch="UniformToFill"
+                           RenderOptions.BitmapInterpolationMode="HighQuality"
+                           IsVisible="{Binding #Root.FallbackSource, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <controls:CachedImage SourcePath="{Binding #Root.SourcePath}" ClearOnSourceChange="False" PixelExact="True"
+                                          DecodeWidth="{Binding #Root.DecodeWidth}"
+                                          Stretch="UniformToFill"
+                                          RenderOptions.BitmapInterpolationMode="HighQuality"
+                                          IsVisible="{Binding #Root.SourcePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    <controls:AnimatedCoverImage x:Name="SleeveAnimated"
+                                                 Source="{Binding #Root.AnimatedSource}"/>
+                    <controls:MediaCaseLayer Part="SleeveFinish"/>
+                </Panel>
+            </Border>
+        </Canvas>
 
         <!-- ── Cassette: the art becomes the label ────────────────────────────── -->
-        <!-- Shell is 200×128, the real 100×64 mm proportion. The window is kept to 40%
-             of the width so the label keeps enough of the cover to recognise. -->
-        <Viewbox x:Name="CassetteLayout" Stretch="Uniform" IsVisible="False">
-            <Canvas Width="200" Height="200">
-                <!-- Shell -->
-                <Border Canvas.Left="0" Canvas.Top="36" Width="200" Height="128"
-                        CornerRadius="12" BorderBrush="#40000000" BorderThickness="1"
-                        BoxShadow="0 10 28 0 #66000000">
-                    <Border.Background>
-                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-                            <GradientStop Offset="0" Color="#4A4A52"/>
-                            <GradientStop Offset="1" Color="#28282E"/>
-                        </LinearGradientBrush>
-                    </Border.Background>
-                </Border>
-                <Border Canvas.Left="5" Canvas.Top="41" Width="190" Height="118"
-                        CornerRadius="9" BorderBrush="#1AFFFFFF" BorderThickness="1"/>
-
-                <!-- Label with the art. UniformToFill crops the cover to the label's
-                     wide aspect. -->
-                <Border Canvas.Left="12" Canvas.Top="46" Width="176" Height="74"
-                        CornerRadius="5" ClipToBounds="True"
-                        BorderBrush="#33FFFFFF" BorderThickness="1">
+        <!-- The album carousel's Cassette case (MediaCaseArt draws both), placed in pixels by
+             code-behind (LayoutCases). Layers in shell space, back to front: shell, label art,
+             window with tape packs, the two turning hubs, the window's glass. -->
+        <Canvas x:Name="CassetteLayout" IsVisible="False">
+            <Canvas x:Name="CassetteShell">
+                <Border x:Name="CassetteBody" Background="#2B2B31" BoxShadow="0 12 32 0 #66000000"/>
+                <controls:MediaCaseLayer x:Name="CassetteShellLayer" Part="CassetteShell"/>
+                <Border x:Name="CassetteLabel" ClipToBounds="True">
                     <Panel>
                         <Border Background="#333344">
                             <TextBlock Text="&#x266A;" FontSize="30" Foreground="#555566"
@@ -301,77 +245,11 @@
                                                      Source="{Binding #Root.AnimatedSource}"/>
                     </Panel>
                 </Border>
-
-                <!-- Window: tape packs behind two toothed hubs, centred at (20,17) and
-                     (60,17) in window space. -->
-                <Border Canvas.Left="60" Canvas.Top="78" Width="80" Height="34"
-                        CornerRadius="6" ClipToBounds="True"
-                        Background="#0B0B0D" BorderBrush="#99000000" BorderThickness="1.5">
-                    <Canvas Width="80" Height="34">
-                        <!-- Tape packs: equal, and 2.5 units clear of the window edge so nothing clips. -->
-                        <Ellipse Canvas.Left="5.5" Canvas.Top="2.5" Width="29" Height="29" Fill="#3D2D22" Stroke="#26FFFFFF" StrokeThickness="0.6"/>
-                        <Ellipse Canvas.Left="45.5" Canvas.Top="2.5" Width="29" Height="29" Fill="#3D2D22" Stroke="#26FFFFFF" StrokeThickness="0.6"/>
-                        <!-- Tape running along the bottom between the packs -->
-                        <Rectangle Canvas.Left="20" Canvas.Top="31" Width="40" Height="2" Fill="#1B140F"/>
-
-                        <!-- Hubs: a pale ring with six teeth pointing inward. Each tooth
-                             pair is one bar whose middle is transparent. -->
-                        <Panel x:Name="ReelLeftSpin" Canvas.Left="10" Canvas.Top="7" Width="20" Height="20"
-                               RenderTransformOrigin="50%,50%">
-                            <Ellipse Fill="#141418"/>
-                            <Ellipse Margin="0.5" Stroke="#D8D8DE" StrokeThickness="2.5"/>
-                            <Rectangle Width="2" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       Fill="{StaticResource CassetteHubTeeth}"/>
-                            <Rectangle Width="2" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       Fill="{StaticResource CassetteHubTeeth}" RenderTransform="rotate(60deg)"/>
-                            <Rectangle Width="2" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       Fill="{StaticResource CassetteHubTeeth}" RenderTransform="rotate(120deg)"/>
-                            <Ellipse Margin="7" Fill="#0B0B0D" Stroke="#30FFFFFF" StrokeThickness="0.6"/>
-                        </Panel>
-                        <Panel x:Name="ReelRightSpin" Canvas.Left="50" Canvas.Top="7" Width="20" Height="20"
-                               RenderTransformOrigin="50%,50%">
-                            <Ellipse Fill="#141418"/>
-                            <Ellipse Margin="0.5" Stroke="#D8D8DE" StrokeThickness="2.5"/>
-                            <Rectangle Width="2" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       Fill="{StaticResource CassetteHubTeeth}"/>
-                            <Rectangle Width="2" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       Fill="{StaticResource CassetteHubTeeth}" RenderTransform="rotate(60deg)"/>
-                            <Rectangle Width="2" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       Fill="{StaticResource CassetteHubTeeth}" RenderTransform="rotate(120deg)"/>
-                            <Ellipse Margin="7" Fill="#0B0B0D" Stroke="#30FFFFFF" StrokeThickness="0.6"/>
-                        </Panel>
-                    </Canvas>
-                </Border>
-
-                <!-- Foot: the pressure-pad plate with its capstan and guide holes. -->
-                <Path Fill="#202025" Stroke="#40000000" StrokeThickness="1"
-                      Data="M 44,124 L 156,124 L 168,158 L 32,158 Z"/>
-                <Ellipse Canvas.Left="53" Canvas.Top="134" Width="7" Height="7" Fill="#0A0A0C"/>
-                <Ellipse Canvas.Left="140" Canvas.Top="134" Width="7" Height="7" Fill="#0A0A0C"/>
-                <Ellipse Canvas.Left="75" Canvas.Top="144" Width="5" Height="5" Fill="#0A0A0C"/>
-                <Ellipse Canvas.Left="120" Canvas.Top="144" Width="5" Height="5" Fill="#0A0A0C"/>
-                <Ellipse Canvas.Left="97" Canvas.Top="133" Width="6" Height="6" Fill="#0A0A0C"/>
-
-                <!-- Screws -->
-                <Ellipse Canvas.Left="9" Canvas.Top="43" Width="5" Height="5" Fill="#18181C" Stroke="#55707078" StrokeThickness="0.8"/>
-                <Ellipse Canvas.Left="186" Canvas.Top="43" Width="5" Height="5" Fill="#18181C" Stroke="#55707078" StrokeThickness="0.8"/>
-                <Ellipse Canvas.Left="9" Canvas.Top="152" Width="5" Height="5" Fill="#18181C" Stroke="#55707078" StrokeThickness="0.8"/>
-                <Ellipse Canvas.Left="186" Canvas.Top="152" Width="5" Height="5" Fill="#18181C" Stroke="#55707078" StrokeThickness="0.8"/>
-                <Ellipse Canvas.Left="97.5" Canvas.Top="153" Width="5" Height="5" Fill="#18181C" Stroke="#55707078" StrokeThickness="0.8"/>
+                <controls:MediaCaseLayer x:Name="CassetteWindowLayer" Part="CassetteWindow"/>
+                <controls:MediaCaseLayer x:Name="ReelLeftSpin" Part="CassetteReel" RenderTransformOrigin="50%,50%"/>
+                <controls:MediaCaseLayer x:Name="ReelRightSpin" Part="CassetteReel" RenderTransformOrigin="50%,50%"/>
+                <controls:MediaCaseLayer x:Name="CassetteGlassLayer" Part="CassetteGlass"/>
             </Canvas>
-        </Viewbox>
+        </Canvas>
     </Panel>
-
-    <UserControl.Resources>
-        <!-- One bar = two opposite hub teeth: opaque at both ends, clear through the
-             middle so the hub's open centre stays open. -->
-        <LinearGradientBrush x:Key="CassetteHubTeeth" StartPoint="0%,0%" EndPoint="0%,100%">
-            <GradientStop Offset="0" Color="#D8D8DE"/>
-            <GradientStop Offset="0.24" Color="#D8D8DE"/>
-            <GradientStop Offset="0.25" Color="#00D8D8DE"/>
-            <GradientStop Offset="0.75" Color="#00D8D8DE"/>
-            <GradientStop Offset="0.76" Color="#D8D8DE"/>
-            <GradientStop Offset="1" Color="#D8D8DE"/>
-        </LinearGradientBrush>
-    </UserControl.Resources>
 </UserControl>

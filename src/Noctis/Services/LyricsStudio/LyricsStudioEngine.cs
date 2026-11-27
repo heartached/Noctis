@@ -17,6 +17,8 @@ public enum LyricsStudioSource
     PastedLyrics,
     /// <summary>Not a run here: lrc.red's in-house model word-synced lrc.red's own lyrics of the song.</summary>
     LrcRed,
+    /// <summary>Plain lyrics came from Genius (LRCLIB had none) and were timed against the audio (GitHub #265).</summary>
+    Genius,
 }
 
 /// <summary>
@@ -76,6 +78,8 @@ public sealed class LyricsStudioEngine : ILyricsStudioEngine
 {
     private readonly IAudioConverterService _ffmpeg;
     private readonly ILrcLibService _lrcLib;
+    private readonly IGeniusLyricsService? _genius;
+    private readonly Func<bool> _geniusEnabled;
     private WhisperTranscriber.Session? _session;
     /// <summary>Which file <see cref="_session"/> holds: path, length and write time (a re-download reloads).</summary>
     private string? _sessionKey;
@@ -91,10 +95,13 @@ public sealed class LyricsStudioEngine : ILyricsStudioEngine
 
     public WhisperModelManager Models { get; }
 
-    public LyricsStudioEngine(IAudioConverterService ffmpeg, ILrcLibService lrcLib, IPersistenceService persistence)
+    public LyricsStudioEngine(IAudioConverterService ffmpeg, ILrcLibService lrcLib, IPersistenceService persistence,
+        IGeniusLyricsService? genius = null, Func<bool>? geniusEnabled = null)
     {
         _ffmpeg = ffmpeg;
         _lrcLib = lrcLib;
+        _genius = genius;
+        _geniusEnabled = geniusEnabled ?? (() => true);
         Models = new WhisperModelManager(persistence.DataDirectory);
         WhisperGpu.SetMarkerFolder(Models.Directory);
     }
@@ -269,6 +276,22 @@ public sealed class LyricsStudioEngine : ILyricsStudioEngine
             catch (Exception ex)
             {
                 DebugLogger.Warn(DebugLogger.Category.Lyrics, "LyricsStudio.LrclibFailed", ex.Message);
+            }
+
+            // GitHub #265: rarer songs LRCLIB lacks often have their words on Genius.
+            if (_genius is not null && _geniusEnabled())
+            {
+                try
+                {
+                    var result = await _genius.SearchLyricsAsync(track.Artist ?? string.Empty, track.Title ?? string.Empty, track.Duration.TotalSeconds, ct).ConfigureAwait(false);
+                    var online = FirstText(result?.PlainLyrics);
+                    if (online is not null) return (online, LyricsStudioSource.Genius);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
+                {
+                    DebugLogger.Warn(DebugLogger.Category.Lyrics, "LyricsStudio.GeniusFailed", ex.Message);
+                }
             }
         }
         return (null, LyricsStudioSource.Transcription);

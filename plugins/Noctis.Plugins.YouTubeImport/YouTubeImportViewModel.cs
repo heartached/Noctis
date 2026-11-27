@@ -19,6 +19,7 @@ public partial class YouTubeImportViewModel : ObservableObject
     private readonly HttpClient _http;
     private readonly ImportState _state;
     private readonly CancellationToken _lifetime;
+    private readonly Func<string, bool>? _showAlbum;
     private CancellationTokenSource? _searchCts;
 
     [ObservableProperty] private string _query = string.Empty;
@@ -79,8 +80,11 @@ public partial class YouTubeImportViewModel : ObservableObject
     public Func<Task<string?>>? PickFolder { get; set; }
 
     /// <param name="lifetime">Cancelled when the plugin stops: downloads still running end then.</param>
-    public YouTubeImportViewModel(IYouTubeImporter service, HttpClient http, ImportState state, CancellationToken lifetime = default, string? initialQuery = null)
+    /// <param name="showAlbum">Shows a library album in Noctis (<see cref="IPluginHost.ShowAlbum"/>); null = no Show button.</param>
+    public YouTubeImportViewModel(IYouTubeImporter service, HttpClient http, ImportState state, CancellationToken lifetime = default, string? initialQuery = null,
+        Func<string, bool>? showAlbum = null)
     {
+        _showAlbum = showAlbum;
         _service = service;
         _http = http;
         _state = state;
@@ -253,7 +257,12 @@ public partial class YouTubeImportViewModel : ObservableObject
 
             Results.Clear();
             foreach (var info in found)
-                Results.Add(new ResultRow(info, this));
+            {
+                var row = new ResultRow(info, this);
+                // Downloaded before: say so instead of offering it again.
+                if (_state.FindDownloaded(info.Id) is { } earlier) MarkAlreadyThere(row, earlier);
+                Results.Add(row);
+            }
             StatusMessage = found.Count == 0 ? "Nothing found." : string.Empty;
             foreach (var row in Results.ToList())
                 _ = LoadThumbnailAsync(row, cts.Token);
@@ -285,10 +294,39 @@ public partial class YouTubeImportViewModel : ObservableObject
         catch { /* a missing thumbnail is cosmetic */ }
     }
 
+    private static void MarkAlreadyThere(ResultRow row, DownloadedVideo earlier)
+    {
+        row.IsDone = true;
+        row.Failed = false;
+        row.AlbumId = earlier.AlbumId;
+        row.StatusText = earlier.InLibrary ? "Already in your library" : "Already downloaded";
+    }
+
+    internal bool ShowAlbum(string albumId)
+    {
+        if (_showAlbum is null || string.IsNullOrEmpty(albumId)) return false;
+        try { return _showAlbum(albumId); }
+        catch (Exception ex) { StatusMessage = "Couldn't show it — " + ex.Message; return false; }
+    }
+
+    internal bool CanShowAlbums => _showAlbum is not null;
+
     internal async Task DownloadAsync(ResultRow row)
     {
         if (row.IsBusy || row.IsDone) return;
         if (!HasDestination) { StatusMessage = NoFolderMessage; return; }
+        var id = row.Info.Id ?? string.Empty;
+        if (_state.FindDownloaded(id) is { } earlier)
+        {
+            MarkAlreadyThere(row, earlier);
+            return;
+        }
+        // The same video downloading in this window or another one: never twice at once.
+        if (id.Length > 0 && !_state.TryStartDownload(id))
+        {
+            StatusMessage = "This video is already downloading.";
+            return;
+        }
         row.IsBusy = true;
         row.Failed = false;
         row.Progress = 0;
@@ -302,10 +340,17 @@ public partial class YouTubeImportViewModel : ObservableObject
         {
             var result = await _service.ImportAsync(row.Info, SelectedFormat ?? AudioFormat.Default, progress, _lifetime);
             row.IsDone = true;
-            row.StatusText = result.AddedToLibrary ? "In your library" : "Saved to folder";
+            row.AlbumId = result.AlbumId;
             row.Title = result.Title;
             row.Subtitle = result.Artist;
-            _state.AddRecent(new RecentDownload(result.Title, result.Artist, result.FilePath, DateTimeOffset.Now, result.AddedToLibrary));
+            if (id.Length > 0) _state.AddDownloaded(new DownloadedVideo(id, result.FilePath, result.AlbumId, result.AddedToLibrary));
+            if (result.AlreadyDownloaded)
+                row.StatusText = result.AddedToLibrary ? "Already in your library" : "Already downloaded";
+            else
+            {
+                row.StatusText = result.AddedToLibrary ? "In your library" : "Saved to folder";
+                _state.AddRecent(new RecentDownload(result.Title, result.Artist, result.FilePath, DateTimeOffset.Now, result.AddedToLibrary));
+            }
         }
         catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
         {
@@ -321,6 +366,7 @@ public partial class YouTubeImportViewModel : ObservableObject
         }
         finally
         {
+            if (id.Length > 0) _state.EndDownload(id);
             row.IsBusy = false;
             _ = RefreshVersionAsync(); // a blocked download may have updated yt-dlp
         }
@@ -341,7 +387,18 @@ public partial class YouTubeImportViewModel : ObservableObject
             if (info.DurationText.Length > 0) parts.Add(info.DurationText);
             Subtitle = string.Join(" · ", parts);
             DownloadCommand = new AsyncRelayCommand(() => _owner.DownloadAsync(this));
+            ShowCommand = new RelayCommand(() => _owner.ShowAlbum(AlbumId));
         }
+
+        /// <summary>Shows the album it is in (Noctis's album page).</summary>
+        public IRelayCommand ShowCommand { get; }
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(CanShow))]
+        private string _albumId = string.Empty;
+
+        /// <summary>Done (or downloaded before) and its album is known.</summary>
+        public bool CanShow => IsDone && AlbumId.Length > 0 && _owner.CanShowAlbums;
 
         public YouTubeTrackInfo Info { get; }
         public IAsyncRelayCommand DownloadCommand { get; }
@@ -355,7 +412,7 @@ public partial class YouTubeImportViewModel : ObservableObject
         [NotifyPropertyChangedFor(nameof(ShowDownload))]
         private bool _isBusy;
         [ObservableProperty]
-        [NotifyPropertyChangedFor(nameof(ShowDownload))]
+        [NotifyPropertyChangedFor(nameof(ShowDownload), nameof(CanShow))]
         private bool _isDone;
         [ObservableProperty] private bool _failed;
         [ObservableProperty]

@@ -7,9 +7,11 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Noctis.Controls;
 using Noctis.Helpers;
 using Noctis.Localization;
 using Noctis.Models;
@@ -33,7 +35,139 @@ public partial class ArtistDetailView : UserControl
         // Closing Edit Info / Find Lyrics gave focus back to the clicked tab and the page
         // scrolled up to it (GitHub #223); only keyboard focus moves the page now.
         KeyboardFocusScroll.Apply(PageScrollViewer);
+        // Settings › Artwork › Artist videos: cross-fade on the first frame; pause while the
+        // hero is scrolled away.
+        HeroVideo.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == VideoBackdrop.HasFrameProperty) ApplyHeroVideoFrame(HeroVideo.HasFrame);
+            // An old 1080p file: the page fetches the hero-size one in the background.
+            else if (e.Property == VideoBackdrop.ClipPixelSizeProperty && HeroVideo.ClipPixelSize is { Width: > 0 } clip)
+                (DataContext as ArtistDetailViewModel)?.OnArtistVideoClipSize(clip.Width, clip.Height);
+        };
+        PageScrollViewer.ScrollChanged += (_, _) => UpdateHeroVideoPause();
+        // Follows a theme or accent tint swapping the page colour.
+        HeroPageFade.Bind(Border.BackgroundProperty,
+            this.GetResourceObservable("AppMainBackground", o => HeroFadeBrush(o as IBrush)));
+        HeroAfterFade.Bind(Border.BackgroundProperty,
+            this.GetResourceObservable("AppMainBackground", o => HeroAfterFadeBrush(o as IBrush)));
     }
+
+    // ── Artist video in the hero ──
+
+    private WindowBase? _heroWindow;
+    private bool _heroWindowActive = true;
+
+    /// <summary>The video's first frame is up (true) or it went away (false): the still art
+    /// fades out over the playing video, and back in without it (both ~250 ms transitions).</summary>
+    internal void ApplyHeroVideoFrame(bool hasFrame)
+    {
+        HeroVideo.Opacity = hasFrame ? 1 : 0;
+        HeroStills.Opacity = hasFrame ? 0 : 1;
+        // The portrait held back for this video stays so while it plays, and returns once it goes.
+        (DataContext as ArtistDetailViewModel)?.OnArtistVideoFrame(hasFrame);
+    }
+
+    /// <summary>The host window came to the front (true) or went to the background (false).</summary>
+    internal void OnHeroWindowActiveChanged(bool active)
+    {
+        _heroWindowActive = active;
+        UpdateHeroVideoPause();
+    }
+
+    /// <summary>Share of the hero that must still be on screen for its video to play.</summary>
+    internal const double HeroVisibleToPlay = 0.3;
+
+    /// <summary>The video holds its frame while the window is in the background, the Settings
+    /// sheet covers the page, or less than <see cref="HeroVisibleToPlay"/> of the hero is
+    /// scrolled into view (VideoBackdrop parks it while the window is minimized on its own).</summary>
+    internal void UpdateHeroVideoPause()
+    {
+        var heroHeight = Math.Max(1, Hero.Bounds.Height);
+        var heroOnScreen = PageScrollViewer.Offset.Y < heroHeight * (1 - HeroVisibleToPlay);
+        var covered = _trackedVm?.IsCovered == true;
+        HeroVideo.IsPaused = !(_heroWindowActive && heroOnScreen && !covered);
+    }
+
+    private void OnTrackedVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ArtistDetailViewModel.IsCovered)) UpdateHeroVideoPause();
+    }
+
+    /// <summary>
+    /// The hero's fade into the page: the page colour as a vertical gradient, transparent at the
+    /// top. It was a page-coloured Border under a gradient OpacityMask, which is an offscreen
+    /// layer the size of the hero redrawn with every video frame (probe, real Skia at 1600x900:
+    /// 20.5-25.6 ms a frame with it, 13.8 without). Each stop's alpha is the old mask's.
+    /// Always the opaque page colour at the bottom: a see-through page (Liquid Glass paints it
+    /// at 35%, Smoke at #99) left the hero's bottom edge showing as a hard cut across the page
+    /// (owner 11-27, most visible under an artist video). <see cref="HeroAfterFadeBrush"/>
+    /// takes the opaque colour back out below the hero.
+    /// </summary>
+    internal static IBrush? HeroFadeBrush(IBrush? page)
+    {
+        if (page is not ISolidColorBrush solid) return page;
+        var c = solid.Color;
+        Color At(double mask) => Color.FromArgb((byte)Math.Round(255 * mask), c.R, c.G, c.B);
+        return new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
+            GradientStops =
+            {
+                new GradientStop(At(0), 0.4),
+                new GradientStop(At(0xB0 / 255.0), 0.82),
+                new GradientStop(At(1), 1),
+            },
+        };
+    }
+
+    /// <summary>
+    /// Under the hero on a see-through page: the opaque page colour the hero ends in, fading
+    /// out downwards into the page's own (translucent) surface, so there is no edge where the
+    /// hero stops. Null (nothing drawn) on an opaque page, where the hero's fade already ends
+    /// in the page's exact colour.
+    /// </summary>
+    internal static IBrush? HeroAfterFadeBrush(IBrush? page)
+    {
+        if (page is not ISolidColorBrush solid) return null;
+        var c = solid.Color;
+        if (c.A == 255 && solid.Opacity >= 1) return null;
+        return new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
+            GradientStops =
+            {
+                new GradientStop(Color.FromArgb(255, c.R, c.G, c.B), 0),
+                new GradientStop(Color.FromArgb(0x50, c.R, c.G, c.B), 0.5),
+                new GradientStop(Color.FromArgb(0, c.R, c.G, c.B), 1),
+            },
+        };
+    }
+
+    private void HookHeroWindow()
+    {
+        UnhookHeroWindow();
+        _heroWindow = TopLevel.GetTopLevel(this) as WindowBase;
+        if (_heroWindow != null)
+        {
+            _heroWindow.Activated += OnHeroWindowActivated;
+            _heroWindow.Deactivated += OnHeroWindowDeactivated;
+            _heroWindowActive = _heroWindow.IsActive;
+        }
+        UpdateHeroVideoPause();
+    }
+
+    private void UnhookHeroWindow()
+    {
+        if (_heroWindow == null) return;
+        _heroWindow.Activated -= OnHeroWindowActivated;
+        _heroWindow.Deactivated -= OnHeroWindowDeactivated;
+        _heroWindow = null;
+    }
+
+    private void OnHeroWindowActivated(object? sender, EventArgs e) => OnHeroWindowActiveChanged(true);
+    private void OnHeroWindowDeactivated(object? sender, EventArgs e) => OnHeroWindowActiveChanged(false);
 
     /// <summary>The header "…" menu: plugin entries (API 1.7) for this artist go at the end.</summary>
     private void OnOptionsMenuOpening(object? sender, EventArgs e)
@@ -56,6 +190,7 @@ public partial class ArtistDetailView : UserControl
         base.OnAttachedToVisualTree(e);
         TrackViewModel(DataContext as ArtistDetailViewModel);
         TryRestoreScroll();
+        HookHeroWindow();
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
@@ -64,6 +199,7 @@ public partial class ArtistDetailView : UserControl
         if (_trackedVm != null)
             _trackedVm.SavedScrollOffset = PageScrollViewer.Offset.Y;
         TrackViewModel(null);
+        UnhookHeroWindow();
         base.OnDetachedFromVisualTree(e);
     }
 
@@ -84,9 +220,18 @@ public partial class ArtistDetailView : UserControl
     private void TrackViewModel(ArtistDetailViewModel? vm)
     {
         if (ReferenceEquals(_trackedVm, vm)) return;
-        if (_trackedVm != null) _trackedVm.TabChanged -= OnTabChanged;
+        if (_trackedVm != null)
+        {
+            _trackedVm.TabChanged -= OnTabChanged;
+            _trackedVm.PropertyChanged -= OnTrackedVmPropertyChanged;
+        }
         _trackedVm = vm;
-        if (_trackedVm != null) _trackedVm.TabChanged += OnTabChanged;
+        if (_trackedVm != null)
+        {
+            _trackedVm.TabChanged += OnTabChanged;
+            _trackedVm.PropertyChanged += OnTrackedVmPropertyChanged;
+        }
+        UpdateHeroVideoPause();
     }
 
     /// <summary>A tab switch lands at the top of the tab strip: the hero stays above,
@@ -232,6 +377,7 @@ public partial class ArtistDetailView : UserControl
             snoozeCommand: albumsVm.SnoozeAlbumForMonthCommand);
         _albumMenuBuilder.BindSendToFolder(album, albumsVm.SendAlbumToFolderCommand); // GitHub #121
         _albumMenuBuilder.BindFindLyrics(album, albumsVm.FindLyricsAlbumCommand); // GitHub #195
+        _albumMenuBuilder.BindDiscogsGenres(album, albumsVm.DiscogsGenresAlbumCommand); // GitHub #267
 
         OpenMenu(_albumMenuBuilder.Menu, tile, PlacementMode.Pointer);
         return true;

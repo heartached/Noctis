@@ -108,12 +108,14 @@ public partial class SettingsViewModel
             foreach (var item in OfficialPlugins)
             {
                 var copy = Plugins.FindById(item.Entry.Id);
-                // An official listing only takes a copy that was checked against it at install time
-                // (PluginHost.IsVerifiedOfficial): a zip that merely reuses Mixxx's id and author
-                // stays a community plugin and never borrows the verified mark.
+                // One card per id: the listing takes whatever copy has its id. Only a copy checked
+                // against the list at install time (PluginHost.IsVerifiedOfficial) is the official
+                // one; any other (installed from a file, a hand-copied build, a zip rebuilt since)
+                // shows on this card as a local copy: no verified mark, Replace with official, and
+                // it still needs the Community switch to run (PluginHost.IsTrustedOfficial).
                 var verified = copy is not null && (!item.IsOfficial || Plugins.IsVerifiedOfficial(copy, item.Entry));
-                item.Installed = verified ? copy : null;
                 item.HasUnverifiedCopy = copy is not null && !verified;
+                item.Installed = copy;
                 var state = PluginCatalog.GetState(item.Entry, copy?.Version,
                     Plugins.AppVersion, PluginManifest.CurrentPlatform);
                 // Replace installs the listed zip: only when this Noctis can run it (an unverified
@@ -255,7 +257,8 @@ public sealed partial class OfficialPluginItem : ObservableObject
     public string AuthorLine => Loc.T("Plugins.Get.By", Entry.Author);
     public bool HasAuthor => Entry.Author.Length > 0;
 
-    /// <summary>The installed copy, or null: its switch, settings and Remove show on this row.</summary>
+    /// <summary>The installed copy with this listing's id (verified or not, see
+    /// <see cref="HasUnverifiedCopy"/>), or null: its switch, settings and Remove show on this row.</summary>
     [ObservableProperty, NotifyPropertyChangedFor(nameof(IsInstalled), nameof(ShowButton), nameof(Version))]
     private LoadedPlugin? _installed;
 
@@ -306,8 +309,9 @@ public sealed partial class OfficialPluginItem : ObservableObject
     public bool CanClick => IsBusy || CanInstall;
     /// <summary>Install, Update and Replace are the accent button; everything else is a quiet one.</summary>
     public bool IsPrimary => !IsBusy && CanInstall;
-    /// <summary>A plain "Installed" label is dropped once the card has its own on/off switch.</summary>
-    public bool ShowButton => IsBusy || !(IsInstalled && State == OfficialPluginState.Installed);
+    /// <summary>A plain "Installed" label is dropped once the card has its own on/off switch
+    /// (a local copy keeps its Replace with official).</summary>
+    public bool ShowButton => IsBusy || !(IsInstalled && State == OfficialPluginState.Installed && !HasUnverifiedCopy);
 
     internal void BeginDownload(CancellationTokenSource cts)
     {

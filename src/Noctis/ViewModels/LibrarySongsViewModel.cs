@@ -513,6 +513,15 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
         await MetadataHelper.OpenLyricsStudio(tracks);
     }
 
+    /// <summary>GitHub #267: the song's album (or the selection's albums) → Get Genres from Discogs.</summary>
+    [RelayCommand]
+    private async Task DiscogsGenres(Track track)
+    {
+        var tracks = SelectionOr(track);
+        CtrlSelectedTracks.Clear();
+        await MetadataHelper.OpenDiscogsGenresDialog(tracks);
+    }
+
     [RelayCommand]
     private async Task SendToFolder(Track track)
     {

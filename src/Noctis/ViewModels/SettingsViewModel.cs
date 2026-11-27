@@ -517,7 +517,7 @@ public partial class SettingsViewModel : ViewModelBase
         }
         // Albums opened since the last look filled the animated artwork cache; the usage
         // line was read once at launch and kept saying "0 B".
-        else if (tab == TabAppearance && AnimatedArtworkAutoFetch)
+        else if (tab == TabAppearance && (AnimatedArtworkAutoFetch || ArtistVideos))
         {
             _ = RefreshAnimatedArtworkCacheUsageAsync();
         }
@@ -2109,16 +2109,32 @@ public partial class SettingsViewModel : ViewModelBase
 
     private void RefreshServerUsers(bool phonesInBackground = false)
     {
-        try
-        {
-            ServerUsersList.Clear();
-            foreach (var u in ServerUsers.List()) ServerUsersList.Add(u);
-            RaiseAccountDerivedProperties();
-        }
+        try { ReadServerUsersList(); }
         catch (Exception ex) { ShowServerUserError(ex.Message); }
         // Deleting an account or changing its password signs its devices out.
         if (phonesInBackground) RefreshPhoneDevicesInBackground();
         else RefreshPhoneDevices();
+    }
+
+    private void ReadServerUsersList()
+    {
+        ServerUsersList.Clear();
+        foreach (var u in ServerUsers.List()) ServerUsersList.Add(u);
+        RaiseAccountDerivedProperties();
+    }
+
+    /// <summary>
+    /// At settings load: the accounts, so the Account card knows which half to show before its
+    /// page is first built. They used to be read only when the phone server started or the tab
+    /// opened; with the phone app off, a page the warm-up had built while Settings sat open came
+    /// up with the create form, and the tab's open then glided it away (owner 11-26). One local
+    /// read; no users.db yet means no account, and none is created here.
+    /// </summary>
+    private void LoadServerUsersAtStartup()
+    {
+        if (ServerUsersList.Count > 0 || !File.Exists(Path.Combine(ServerDataDirectory, "users.db"))) return;
+        try { ReadServerUsersList(); }
+        catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.State, "Account.LoadFailed", ex.Message); }
     }
 
     /// <summary>Account errors ("Use a password of at least 8 characters.") leave on their own like
@@ -2847,6 +2863,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _lrcRedEnabled = true;
     [ObservableProperty] private bool _unisonEnabled = true;
     [ObservableProperty] private bool _lrcMuxEnabled;
+    [ObservableProperty] private bool _geniusEnabled = true;
     [ObservableProperty] private bool _youTubeMusicLyricsEnabled;
 
     // ── Metadata Providers ──
@@ -3204,34 +3221,47 @@ public partial class SettingsViewModel : ViewModelBase
     // Named presets rather than a protocol pair: Navidrome/Airsonic/Gonic users
     // shouldn't have to know they are "a Subsonic". Everything except Jellyfin
     // speaks the Subsonic protocol underneath (SourceType.Navidrome).
+    // "Subsonic (other)" stays last: connections saved before presets existed fall back to it.
     public string[] MediaServerTypeOptions { get; } =
-        { "Jellyfin", "Navidrome", "Airsonic", "Gonic", "Subsonic (other)" };
-    [ObservableProperty] private string _mediaServerType = "Jellyfin";
+        { "Jellyfin", "Navidrome", "Ampache", "Airsonic", "Gonic", "Subsonic (other)" };
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsAmpacheSelected))] private string _mediaServerType = "Jellyfin";
     [ObservableProperty] private string _mediaServerUrl = "";
     [ObservableProperty] private string _mediaServerUsername = "";
     [ObservableProperty] private string _mediaServerPassword = "";
-    [ObservableProperty] private bool _isMediaServerConnected;
+    /// <summary>Optional name for the server being added ("Home", "Friend's Ampache").</summary>
+    [ObservableProperty] private string _mediaServerName = "";
+    /// <summary>True while at least one server is connected (GitHub #268: there can be several).</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsMediaServerFormOpen))] private bool _isMediaServerConnected;
+    /// <summary>"Add server" was clicked while servers are connected: the form shows under the list.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsMediaServerFormOpen))] private bool _isAddingMediaServer;
     [ObservableProperty] private bool _isMediaServerBusy;
     [ObservableProperty] private string _mediaServerStatusText = Loc.T("Settings.NotConnected");
     /// <summary>True while the status line shows a failure — drives the red status styling.</summary>
     [ObservableProperty] private bool _hasMediaServerError;
 
+    /// <summary>The connection form shows with no server yet, or after "Add server".</summary>
+    public bool IsMediaServerFormOpen => !IsMediaServerConnected || IsAddingMediaServer;
+
+    /// <summary>Ampache's Subsonic API does not take the login password (Ampache stores it
+    /// hashed); the form says which password to use.</summary>
+    public bool IsAmpacheSelected => MediaServerType == "Ampache";
+
     /// <summary>Switching preset starts a fresh form: stale credentials for another
     /// server would only produce a confusing failed connect.</summary>
     partial void OnMediaServerTypeChanged(string value)
     {
-        if (!_settingsLoaded || IsMediaServerConnected) return;
+        if (!_settingsLoaded || IsMediaServerBusy) return;
         MediaServerUrl = string.Empty;
         MediaServerUsername = string.Empty;
         MediaServerPassword = string.Empty;
-        MediaServerStatusText = Loc.T("Settings.NotConnected");
+        if (!IsMediaServerConnected) MediaServerStatusText = Loc.T("Settings.NotConnected");
         HasMediaServerError = false;
     }
 
-    /// <summary>The persisted server connection while connected; null otherwise.</summary>
-    private SourceConnection? _mediaServerConnection;
+    /// <summary>The connected servers, in priority order (an album on several plays from the first).</summary>
+    public ObservableCollection<MediaServerEntryViewModel> MediaServers { get; } = new();
 
-    /// <summary>Raised after Connect/Disconnect so the shell can show/hide the Server section.</summary>
+    /// <summary>Raised after Connect/Remove/Enable so the shell can show/hide the Server section.</summary>
     public event EventHandler? MediaServerConnectionChanged;
 
     // ── Preferences ──
@@ -3420,7 +3450,8 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowPostponeButton))]
     private bool _isAutoInstallPostponed;
-    /// <summary>Shows the "What's new" pill after an automatic update installed.</summary>
+    /// <summary>The small "new" dot on About's What's new button: this version's notes haven't
+    /// been opened since an update (SettingsViewModel.WhatsNew.cs keeps it).</summary>
     [ObservableProperty] private bool _showWhatsNew;
 
     /// <summary>False for Scoop / portable / read-only copies and Debug builds: the toggle is hidden.</summary>
@@ -3724,6 +3755,7 @@ public partial class SettingsViewModel : ViewModelBase
         try
         {
             _settings = await _persistence.LoadSettingsAsync();
+            InitWhatsNewSeen();
             ShortcutService.Load(_settings);
             // Content packs (pure JSON) are read now, ahead of the full plugin load, so a pack
             // theme or language chosen last session applies from the first frame.
@@ -3905,6 +3937,9 @@ public partial class SettingsViewModel : ViewModelBase
             MusicVideoRoundedCorners = _settings.MusicVideoRoundedCorners;
             MusicVideoUseVideoAudio = _settings.MusicVideoUseVideoAudio;
             MusicVideoAsBackground = _settings.MusicVideoAsBackground;
+            MusicVideoAutoFind = _settings.MusicVideoAutoFind;
+            MusicVideoUseBrowserCookies = _settings.MusicVideoUseBrowserCookies;
+            MusicVideoCookieBrowserName = CookieBrowserNameFor(_settings.MusicVideoCookiesBrowser);
             LyricsFullScreenFocusEnabled = _settings.LyricsFullScreenFocusEnabled;
             LyricsFullScreenHideIsland = _settings.LyricsFullScreenHideIsland;
             LyricsMinLineOpacity = Math.Clamp(_settings.LyricsMinLineOpacity, 0, 60);
@@ -3935,6 +3970,7 @@ public partial class SettingsViewModel : ViewModelBase
             LocalApiEnabled = _settings.LocalApiEnabled;
             NoctisServerPort = _settings.NoctisServerPort;
             NoctisServerEnabled = AccountFeatures.Enabled && _settings.NoctisServerEnabled;
+            LoadServerUsersAtStartup();
             ShowArtworkColumn = _settings.ShowArtworkColumn;
             ShowGenreColumn = _settings.ShowGenreColumn;
             ShowRatingColumn = _settings.ShowRatingColumn;
@@ -4076,6 +4112,7 @@ public partial class SettingsViewModel : ViewModelBase
             LrcRedEnabled = _settings.LrcRedEnabled;
             UnisonEnabled = _settings.UnisonEnabled;
             LrcMuxEnabled = _settings.LrcMuxEnabled;
+            GeniusEnabled = _settings.GeniusEnabled;
             YouTubeMusicLyricsEnabled = _settings.YouTubeMusicLyricsEnabled;
             LoadFeatureSettings();
             LoadBuiltInFeatureSettings();
@@ -4154,28 +4191,21 @@ public partial class SettingsViewModel : ViewModelBase
             }
             RefreshScrobbleNotes();
 
-            // Media server (v1: a single Subsonic/Jellyfin connection)
-            var serverConnection = _settings.SourceConnections
-                .FirstOrDefault(c => c.Type is SourceType.Navidrome or SourceType.Jellyfin);
-            if (serverConnection != null)
+            // Media servers (GitHub #268: every stored Subsonic/Jellyfin connection, in
+            // order). A settings file from a build with one server holds one such
+            // connection, so it loads unchanged as the only entry. The credential
+            // (Subsonic password / Jellyfin token) stays in the connection object only —
+            // never surfaced back into the password box.
+            MediaServers.Clear();
+            foreach (var serverConnection in _settings.SourceConnections
+                         .Where(c => c.Type is SourceType.Navidrome or SourceType.Jellyfin))
+                MediaServers.Add(CreateMediaServerEntry(serverConnection));
+            if (MediaServers.Count > 0)
             {
-                _mediaServerConnection = serverConnection;
-                // Prefer the stored flavor ("Gonic", "Airsonic", …); connections saved
-                // before flavors existed carry the client's generic protocol name, so
-                // fall back to the protocol's default preset.
-                MediaServerType = MediaServerTypeOptions.Contains(serverConnection.Name)
-                    ? serverConnection.Name
-                    : serverConnection.Type == SourceType.Jellyfin
-                        ? MediaServerTypeOptions[0]
-                        : MediaServerTypeOptions[^1];
-                MediaServerUrl = serverConnection.BaseUriOrPath;
-                MediaServerUsername = serverConnection.Username;
-                // The credential (Subsonic password / Jellyfin token) stays in the
-                // connection object only — never surfaced back into the password box.
-                IsMediaServerConnected = true;
-                MediaServerStatusText = Loc.T("Settings.ConnectedTo", serverConnection.BaseUriOrPath);
-                _mediaServer?.SetActiveConnection(serverConnection);
-                MediaServerConnectionChanged?.Invoke(this, EventArgs.Empty);
+                MediaServerStatusText = MediaServers.Count == 1
+                    ? Loc.T("Settings.ConnectedTo", MediaServers[0].Url)
+                    : Loc.T("Settings.Server.Connected");
+                ApplyMediaServers();
             }
 
             if (_discord != null)
@@ -4535,6 +4565,9 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.MusicVideoRoundedCorners = MusicVideoRoundedCorners;
         _settings.MusicVideoUseVideoAudio = MusicVideoUseVideoAudio;
         _settings.MusicVideoAsBackground = MusicVideoAsBackground;
+        _settings.MusicVideoAutoFind = MusicVideoAutoFind;
+        _settings.MusicVideoUseBrowserCookies = MusicVideoUseBrowserCookies;
+        _settings.MusicVideoCookiesBrowser = MusicVideoCookieBrowserId;
         _settings.LyricsFullScreenFocusEnabled = LyricsFullScreenFocusEnabled;
         _settings.LyricsFullScreenHideIsland = LyricsFullScreenHideIsland;
         _settings.LyricsMinLineOpacity = LyricsMinLineOpacity;
@@ -4693,6 +4726,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.LrcRedEnabled = LrcRedEnabled;
         _settings.UnisonEnabled = UnisonEnabled;
         _settings.LrcMuxEnabled = LrcMuxEnabled;
+        _settings.GeniusEnabled = GeniusEnabled;
         _settings.YouTubeMusicLyricsEnabled = YouTubeMusicLyricsEnabled;
         _settings.EqualizerEnabled = EqualizerEnabled;
         _settings.EqPreampDb = EqPreampDb;
@@ -4730,15 +4764,14 @@ public partial class SettingsViewModel : ViewModelBase
         // Not a secret, so it is kept even while disconnected (logout leaves the server in place).
         _settings.ListenBrainzApiUrl = ListenBrainzApiUrl?.Trim() ?? string.Empty;
 
-        // Media server: this VM owns the single Subsonic/Jellyfin connection, so the
-        // stored list is rebuilt from the connected state on every save (the on-disk
-        // merge above would otherwise revert a connect/disconnect). Connector types
+        // Media servers: this VM owns the Subsonic/Jellyfin connections, so the
+        // stored list is rebuilt from the connected servers on every save (the on-disk
+        // merge above would otherwise revert a connect/remove). Connector types
         // this UI doesn't manage (Local/Smb/WebDav) are passed through untouched.
         var preservedConnections = _settings.SourceConnections
             .Where(c => c.Type is not (SourceType.Navidrome or SourceType.Jellyfin))
             .ToList();
-        if (_mediaServerConnection != null)
-            preservedConnections.Add(_mediaServerConnection);
+        preservedConnections.AddRange(MediaServers.Select(e => e.Connection));
         _settings.SourceConnections = preservedConnections;
 
         // Volume rides the same save: the shutdown path calls SetVolume right before
@@ -4960,6 +4993,7 @@ public partial class SettingsViewModel : ViewModelBase
         _player.MusicVideoCornerRadius = MusicVideoRoundedCorners ? 18 : 0;
         _player.MusicVideoAudioEnabled = MusicVideoUseVideoAudio;
         _player.MusicVideoAsBackground = MusicVideoAsBackground;
+        _player.MusicVideoAutoFindEnabled = MusicVideoAutoFind;
         _player.LyricsFullScreenFocusEnabled = LyricsFullScreenFocusEnabled;
         _player.LyricsFullScreenHideIsland = LyricsFullScreenHideIsland;
         _player.LyricsMinLineOpacity = LyricsMinLineOpacity;
@@ -5751,6 +5785,19 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnSidebarAutoHideChanged(bool value)
     {
         if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    /// <summary>
+    /// Discord (Luwi 11-25): Ctrl/⌘+B and dragging the sidebar's edge flip "Keep sidebar
+    /// expanded" without opening Settings. The same property the switch binds, so it lays out
+    /// and saves the same way. Not while "Hide sidebar until hover" is on, where Settings greys
+    /// the switch out too (GitHub #233). Returns whether it changed.
+    /// </summary>
+    public bool TrySetSidebarPinned(bool pinned)
+    {
+        if (SidebarAutoHide || SidebarAlwaysExpanded == pinned) return false;
+        SidebarAlwaysExpanded = pinned;
+        return true;
     }
 
     partial void OnSidebarAlwaysExpandedChanged(bool value)
@@ -7085,6 +7132,12 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
     }
 
+    partial void OnGeniusEnabledChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
     partial void OnYouTubeMusicLyricsEnabledChanged(bool value)
     {
         if (_suspendSettingPersistence) return;
@@ -7409,7 +7462,7 @@ public partial class SettingsViewModel : ViewModelBase
                 // Loon first so the artwork URL resolves for the republish below.
                 await ConnectLoonAsync();
                 // Republish current playback state so the track appears immediately.
-                await RepublishDiscordPresenceAsync();
+                await RepublishDiscordPresenceAsync(clearWhenIdle: true);
             }
         }
         else
@@ -7458,18 +7511,21 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Pushes the current playback state to Discord after a reconnect,
-    /// so the user doesn't have to wait for the next track/state event.
+    /// Pushes the current playback state to Discord after a reconnect (<paramref name="clearWhenIdle"/>)
+    /// or an option change, so the user doesn't have to wait for the next track/state event.
+    /// Only a playing song is shown: a pause or stop clears the presence (MainWindowViewModel's
+    /// state handler), so an option changed then sends nothing. It used to send the paused song,
+    /// which put the card back on Discord while nothing played.
     /// </summary>
-    private async Task RepublishDiscordPresenceAsync()
+    private async Task RepublishDiscordPresenceAsync(bool clearWhenIdle = false)
     {
         if (_discord == null || !_discord.IsConnected || _player == null)
             return;
 
         var track = _player.CurrentTrack;
-        if (track == null || _player.State == PlaybackState.Stopped)
+        if (track == null || _player.State != PlaybackState.Playing)
         {
-            await _discord.ClearAsync();
+            if (clearWhenIdle) await _discord.ClearAsync();
             return;
         }
 
@@ -7482,8 +7538,10 @@ public partial class SettingsViewModel : ViewModelBase
             ShowAlbum: DiscordShowAlbum,
             StatusDisplay: DiscordPresenceOptions.ParseStatusDisplay(DiscordStatusDisplay));
 
-        var isPlaying = _player.State == PlaybackState.Playing;
-        await _discord.UpdateAsync(dto, _player.Position, _player.Duration, isPlaying);
+        // The length the window's own publish uses (MainWindowViewModel.UpdateDiscordPresenceAsync),
+        // so the re-sent bar ends where the shown one does.
+        var duration = _player.IsPlayingMusicVideoAudio ? _player.Duration : track.Duration;
+        await _discord.UpdateAsync(dto, _player.Position, duration, isPlaying: true);
     }
 
     partial void OnDiscordShowAlbumChanged(bool value)
@@ -7729,8 +7787,11 @@ public partial class SettingsViewModel : ViewModelBase
         _serverErrorDismissTimer?.Stop();
         if (!HasMediaServerError) return;
         HasMediaServerError = false;
-        if (!IsMediaServerConnected && !IsMediaServerBusy)
-            MediaServerStatusText = Loc.T("Settings.NotConnected");
+        if (IsMediaServerBusy) return;
+        // A failed "Add server" under connected servers falls back to their status.
+        MediaServerStatusText = IsMediaServerConnected
+            ? Loc.T("Settings.Server.Connected")
+            : Loc.T("Settings.NotConnected");
     }
 
     /// <summary>
@@ -7743,7 +7804,80 @@ public partial class SettingsViewModel : ViewModelBase
     internal static SourceType MediaServerOptionToSourceType(string? option) =>
         option is null or "Jellyfin" ? SourceType.Jellyfin : SourceType.Navidrome;
 
-    /// <summary>Validates the typed server details and, on success, persists the connection.</summary>
+    /// <summary>The picker preset for a stored connection: its stored flavor ("Gonic",
+    /// "Airsonic", …); connections saved before flavors existed carry the client's generic
+    /// protocol name, so they fall back to the protocol's default preset.</summary>
+    internal string MediaServerFlavorOf(SourceConnection connection) =>
+        MediaServerTypeOptions.Contains(connection.Name)
+            ? connection.Name
+            : connection.Type == SourceType.Jellyfin
+                ? MediaServerTypeOptions[0]
+                : MediaServerTypeOptions[^1];
+
+    private MediaServerEntryViewModel CreateMediaServerEntry(SourceConnection connection) =>
+        new(connection, MediaServerFlavorOf(connection), _ =>
+        {
+            ApplyMediaServers();
+            QueueSettingsSave();
+        });
+
+    /// <summary>Hands the enabled servers to the service and refreshes the connected state.</summary>
+    private void ApplyMediaServers()
+    {
+        IsMediaServerConnected = MediaServers.Count > 0;
+        if (!IsMediaServerConnected) IsAddingMediaServer = false;
+        _mediaServer?.SetConnections(MediaServers.Select(e => e.Connection).ToArray());
+        MediaServerConnectionChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>The same server again (type, address and account): reconnecting it replaces
+    /// the entry and keeps its id (stable Jellyfin DeviceId and track ids).</summary>
+    private MediaServerEntryViewModel? FindSameMediaServer(SourceType type, string url, string username)
+    {
+        var normalized = NormalizeServerUrl(url);
+        return MediaServers.FirstOrDefault(e =>
+            e.Connection.Type == type
+            && string.Equals(NormalizeServerUrl(e.Url), normalized, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(e.Username, username.Trim(), StringComparison.OrdinalIgnoreCase));
+
+        static string NormalizeServerUrl(string value) =>
+            Noctis.Services.MediaServer.MediaServerUrl.TryNormalizeBase(value, out _, out _) ?? value.Trim().TrimEnd('/');
+    }
+
+    /// <summary>"Add server": opens the empty form under the connected servers.</summary>
+    [RelayCommand]
+    private void AddMediaServer()
+    {
+        MediaServerUrl = string.Empty;
+        MediaServerUsername = string.Empty;
+        MediaServerPassword = string.Empty;
+        MediaServerName = string.Empty;
+        HasMediaServerError = false;
+        IsAddingMediaServer = true;
+    }
+
+    [RelayCommand]
+    private void CancelAddMediaServer()
+    {
+        MediaServerPassword = string.Empty;
+        IsAddingMediaServer = false;
+        ClearTransientServerError();
+    }
+
+    /// <summary>Removes one server (its albums leave the Server section) and saves.</summary>
+    [RelayCommand]
+    private async Task RemoveMediaServer(MediaServerEntryViewModel? entry)
+    {
+        if (entry == null || !MediaServers.Remove(entry)) return;
+        HasMediaServerError = false;
+        MediaServerStatusText = MediaServers.Count == 0
+            ? Loc.T("Settings.NotConnected")
+            : Loc.T("Settings.Server.Connected");
+        ApplyMediaServers();
+        await SaveAsync();
+    }
+
+    /// <summary>Validates the typed server details and, on success, adds (or updates) the server and persists it.</summary>
     [RelayCommand]
     private async Task ConnectMediaServer()
     {
@@ -7766,8 +7900,9 @@ public partial class SettingsViewModel : ViewModelBase
         MediaServerStatusText = Loc.T("Settings.Connecting");
         try
         {
+            var existing = FindSameMediaServer(type, MediaServerUrl, MediaServerUsername);
             var (result, connection) = await _mediaServer.ConnectAsync(
-                type, MediaServerUrl, MediaServerUsername, MediaServerPassword, _mediaServerConnection?.Id);
+                type, MediaServerUrl, MediaServerUsername, MediaServerPassword, existing?.Connection.Id);
             if (!result.Success)
             {
                 ShowTransientServerError(result.Message);
@@ -7777,13 +7912,20 @@ public partial class SettingsViewModel : ViewModelBase
             // Keep the picked flavor ("Navidrome", "Gonic", …) rather than the client's
             // generic protocol name, so the connected summary echoes what the user chose.
             connection.Name = MediaServerType ?? connection.Name;
-            _mediaServerConnection = connection;
-            MediaServerUrl = connection.BaseUriOrPath; // normalized by the client
-            MediaServerPassword = string.Empty;        // never keep the password in a bound field
-            IsMediaServerConnected = true;
+            connection.Label = MediaServerName?.Trim() ?? string.Empty;
+            var entry = CreateMediaServerEntry(connection);
+            var index = existing != null ? MediaServers.IndexOf(existing) : -1;
+            if (index >= 0) MediaServers[index] = entry;
+            else MediaServers.Add(entry);
+
+            // The form empties for the next server; never keep the password in a bound field.
+            MediaServerUrl = string.Empty;
+            MediaServerUsername = string.Empty;
+            MediaServerPassword = string.Empty;
+            MediaServerName = string.Empty;
+            IsAddingMediaServer = false;
             MediaServerStatusText = result.Message;
-            _mediaServer.SetActiveConnection(connection);
-            MediaServerConnectionChanged?.Invoke(this, EventArgs.Empty);
+            ApplyMediaServers();
             await SaveAsync();
         }
         finally
@@ -7792,16 +7934,15 @@ public partial class SettingsViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Removes every server (Reset and older callers).</summary>
     [RelayCommand]
     private async Task DisconnectMediaServer()
     {
-        _mediaServerConnection = null;
-        IsMediaServerConnected = false;
+        MediaServers.Clear();
         MediaServerPassword = string.Empty;
         MediaServerStatusText = Loc.T("Settings.NotConnected");
         HasMediaServerError = false;
-        _mediaServer?.SetActiveConnection(null);
-        MediaServerConnectionChanged?.Invoke(this, EventArgs.Empty);
+        ApplyMediaServers();
         await SaveAsync();
     }
 
@@ -8722,6 +8863,10 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand]
     private Task OpenLibraryAnimatedArtwork() => MetadataHelper.OpenLibraryAnimatedArtworkDialog();
 
+    /// <summary>GitHub #267: Tools ▸ Get Genres from Discogs: every album, reviewed before saving.</summary>
+    [RelayCommand]
+    private Task OpenLibraryDiscogsGenres() => MetadataHelper.OpenLibraryDiscogsGenresDialog();
+
     [RelayCommand]
     private async Task OpenMetadataFinder()
         => await MetadataHelper.OpenMetadataFinderDialog();
@@ -8957,6 +9102,8 @@ public partial class SettingsViewModel : ViewModelBase
             var json = System.Text.Json.JsonSerializer.Serialize(prop.GetValue(_settings), prop.PropertyType);
             prop.SetValue(defaults, System.Text.Json.JsonSerializer.Deserialize(json, prop.PropertyType));
         }
+        // As a fresh install's first load sets it (SettingsViewModel.WhatsNew.cs): no "new" dot.
+        defaults.WhatsNewSeenVersion = RunningVersion;
         return defaults;
     }
 
@@ -9000,6 +9147,7 @@ public partial class SettingsViewModel : ViewModelBase
             // host's own switch is a no-op and the community plugins kept running until a restart.
             Plugins?.SetCommunityPluginsEnabled(false);
             _settings = defaultSettings;
+            ShowWhatsNew = IsNewer(RunningVersion, _settings.WhatsNewSeenVersion);
             // Each plugin's own settings back to its plugin.json defaults, telling the plugin.
             Plugins?.ResetSettingValues();
             SyncCommunityPluginsSwitch();
@@ -9128,6 +9276,9 @@ public partial class SettingsViewModel : ViewModelBase
             MusicVideoRoundedCorners = defaultSettings.MusicVideoRoundedCorners;
             MusicVideoUseVideoAudio = defaultSettings.MusicVideoUseVideoAudio;
             MusicVideoAsBackground = defaultSettings.MusicVideoAsBackground;
+            MusicVideoAutoFind = defaultSettings.MusicVideoAutoFind;
+            MusicVideoUseBrowserCookies = defaultSettings.MusicVideoUseBrowserCookies;
+            MusicVideoCookieBrowserName = CookieBrowserNameFor(defaultSettings.MusicVideoCookiesBrowser);
             LyricsFullScreenFocusEnabled = defaultSettings.LyricsFullScreenFocusEnabled;
             LyricsFullScreenHideIsland = defaultSettings.LyricsFullScreenHideIsland;
             LyricsMinLineOpacity = defaultSettings.LyricsMinLineOpacity;
@@ -9303,6 +9454,7 @@ public partial class SettingsViewModel : ViewModelBase
             LrcRedEnabled = defaultSettings.LrcRedEnabled;
             UnisonEnabled = defaultSettings.UnisonEnabled;
             LrcMuxEnabled = defaultSettings.LrcMuxEnabled;
+            GeniusEnabled = defaultSettings.GeniusEnabled;
             YouTubeMusicLyricsEnabled = defaultSettings.YouTubeMusicLyricsEnabled;
 
             // Metadata providers
@@ -9351,18 +9503,18 @@ public partial class SettingsViewModel : ViewModelBase
             _listenBrainz?.Logout();
             _listenBrainz?.SetApiUrl(null);
 
-            // Media server — drop the connection (SyncToSettings would otherwise
-            // re-persist the stale one over the freshly defaulted file).
-            _mediaServerConnection = null;
+            // Media servers — drop them all (SyncToSettings would otherwise
+            // re-persist the stale ones over the freshly defaulted file).
+            MediaServers.Clear();
             MediaServerType = MediaServerTypeOptions[0];
             MediaServerUrl = "";
             MediaServerUsername = "";
             MediaServerPassword = "";
-            IsMediaServerConnected = false;
+            MediaServerName = "";
+            IsAddingMediaServer = false;
             MediaServerStatusText = Loc.T("Settings.NotConnected");
             HasMediaServerError = false;
-            _mediaServer?.SetActiveConnection(null);
-            MediaServerConnectionChanged?.Invoke(this, EventArgs.Empty);
+            ApplyMediaServers();
 
             // Disconnect Discord if connected (Loon rides its lifecycle)
             if (_discord != null)
@@ -9404,30 +9556,8 @@ public partial class SettingsViewModel : ViewModelBase
     {
         try
         {
-            var artworkDir = Path.Combine(_persistence.DataDirectory, "artwork");
-            // Task.Run: the recursive delete scales with library size (one file per
-            // album) and blocked the UI thread for its whole duration on large
-            // libraries or slow disks.
-            await Task.Run(() =>
-            {
-                if (Directory.Exists(artworkDir))
-                {
-                    Directory.Delete(artworkDir, true);
-                    Directory.CreateDirectory(artworkDir);
-                    // ArtistImageService creates artwork/artists once, in its constructor, so
-                    // recreating only the parent left every later artist-photo write throwing
-                    // DirectoryNotFoundException into a swallowing catch — artist images
-                    // silently stopped caching until the app was restarted. ConfirmResetLibrary
-                    // already got this right.
-                    Directory.CreateDirectory(Path.Combine(artworkDir, "artists"));
-                    // SimilarArtistsService likewise (artwork/similar): its pictures stopped saving.
-                    Directory.CreateDirectory(Path.Combine(artworkDir, "similar"));
-                }
-                // The downscaled copies of those covers (cache/artwork_thumbs) stayed behind,
-                // up to 512 MB of thumbnails of files that no longer exist.
-                ArtworkThumbnailCache.Clear();
-            });
-            _dirSizeCache.TryRemove(artworkDir, out _);
+            // What it deletes and what follows: SettingsViewModel.Reset.cs (ClearArtworkCacheAsync).
+            await ClearArtworkCacheAsync();
             RefreshStorageInfo();
             SetStorageStatus(Loc.T("Settings.ArtworkCacheCleared"));
         }
@@ -9916,7 +10046,6 @@ public partial class SettingsViewModel : ViewModelBase
         if (UpdateService.CompletedAutoUpdate is { } done && AutoUpdatePolicy.IsSafeTag(done.Tag))
         {
             LatestVersionTag = done.Tag;
-            ShowWhatsNew = true;
             UpdateStatusText = Loc.T("Settings.UpdatedTo", UpdateService.CurrentVersion.ToString(3));
         }
         if (UpdateService.LaunchInstallNote is { } note)
@@ -9940,7 +10069,7 @@ public partial class SettingsViewModel : ViewModelBase
 
         var owned = UpdateService.IsOwnedInstallerFile(pending.InstallerPath);
         var action = AutoUpdatePolicy.DecideLaunchAction(pending, UpdateService.CurrentVersion,
-            UpdateService.AutoMode, hasFilesToOpen: false, owned, DateTimeOffset.UtcNow, out var reason);
+            UpdateService.AutoMode, AutoUpdateActive, hasFilesToOpen: false, owned, DateTimeOffset.UtcNow, out var reason);
         if (action == LaunchAction.Completed) return; // settled by the next launch's Program.Main
         if (action == LaunchAction.Discard)
         {
@@ -9985,8 +10114,10 @@ public partial class SettingsViewModel : ViewModelBase
                     return;
                 }
 
-                // A check or download may have started meanwhile; leave its state alone.
+                // A check or download may have started meanwhile; leave its state alone. Nor may a
+                // queue discarded meanwhile (switch or pre-releases turned off) come back on screen.
                 if (IsDownloadingUpdate || IsReadyToInstall) return;
+                if (!AutoUpdateActive || AutoStore.Load()?.Pending?.InstallerPath != pending.InstallerPath) return;
 
                 _downloadedInstallerPath = pending.InstallerPath;
                 LatestVersionTag = pending.Tag;

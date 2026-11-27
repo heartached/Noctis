@@ -41,6 +41,41 @@ public partial class FavoritesView : UserControl, ITrackSelectionSource
         // Forward Ctrl+A from the window so it works without first clicking a tile.
         _ = new WindowKeyForwarder(this, OnViewKeyDown);
         MultiSelectHelper.KeepRowsUnselected(FavoritesList);
+        FavoritesDock.PropertyChanged += (_, e) => { if (e.Property == MarginProperty) UpdateFirstRowRoom(); };
+        DataContextChanged += (_, _) =>
+        {
+            if (_roomVm != null) _roomVm.PropertyChanged -= OnVmPropertyChanged;
+            _roomVm = DataContext as FavoritesViewModel;
+            if (_roomVm != null) _roomVm.PropertyChanged += OnVmPropertyChanged;
+            UpdateFirstRowRoom();
+        };
+        UpdateFirstRowRoom();
+    }
+
+    private FavoritesViewModel? _roomVm;
+
+    /// <summary>
+    /// Room above the first row for Album Hover Zoom, as on the Albums page (Discord 11-25): the
+    /// dock's top margin moves inside the scroller (a negative top margin on the list, as much
+    /// top padding inside), so the first row rests where it did and a first-row cover grows
+    /// round its centre instead of down over its title; a cover big enough to need more gets
+    /// the rest, which moves the grid down by it.
+    /// </summary>
+    private void UpdateFirstRowRoom()
+    {
+        var dockTop = FavoritesDock.Margin.Top;
+        // A first-row cover's top inside the scroller content: the row's 1px margin + the tile's
+        // top margin and padding (0 + 4, wide 2 + 6).
+        var coverTop = _roomVm?.IsWideAlbumSpacing == true ? 9 : 5;
+        var pad = Math.Max(dockTop, TileHoverZoom.FirstRowTopRoom(_roomVm?.TileArtworkSize ?? 0, this) - coverTop);
+        FavoritesList.Margin = new Thickness(0, -dockTop, 0, 0);
+        FavoritesList.Padding = new Thickness(0, pad, 0, 115);
+    }
+
+    private void OnVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(FavoritesViewModel.TileArtworkSize) or nameof(FavoritesViewModel.IsWideAlbumSpacing))
+            UpdateFirstRowRoom();
     }
 
     private void OnTilePointerPressed(object? sender, PointerPressedEventArgs e)

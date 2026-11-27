@@ -274,6 +274,12 @@
             <Setter Property="MaxWidth" Value="680"/>
             <Setter Property="MaxHeight" Value="680"/>
         </Style>
+        <!-- Owner 11-26: the Artwork chooser's library card (756 wide) centred on the editor card
+             (852 x 740), so it fits inside it: the card plus the room for its shadow. -->
+        <Style Selector="FlyoutPresenter.library-pop">
+            <Setter Property="MaxWidth" Value="852"/>
+            <Setter Property="MaxHeight" Value="740"/>
+        </Style>
 
     </Window.Styles>
 
@@ -555,7 +561,7 @@
                                             <TextBox Classes="pill-field" AutomationProperties.Name="{loc:T Metadata.Movement}" Text="{Binding MovementNumber, UpdateSourceTrigger=PropertyChanged}" Width="80" />
                                         </StackPanel>
                                         <StackPanel Grid.Column="2" Spacing="4">
-                                            <TextBlock Text="of" FontSize="12" Opacity="0.5" />
+                                            <TextBlock Text="{loc:T Metadata.Of}" FontSize="12" Opacity="0.5" />
                                             <TextBox Classes="pill-field" AutomationProperties.Name="{loc:T Metadata.MovementCount}" Text="{Binding MovementCount, UpdateSourceTrigger=PropertyChanged}" Width="80" />
                                         </StackPanel>
                                         <StackPanel Grid.Column="4" Spacing="4">
@@ -639,7 +645,7 @@
                                 <TextBlock Text="{loc:T Metadata.Track}" FontSize="12" Opacity="0.5" />
                                 <Grid ColumnDefinitions="*,Auto,*">
                                     <TextBox Grid.Column="0" Classes="pill-field" AutomationProperties.Name="{loc:T Metadata.Track}" Text="{Binding TrackNumber, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding TrackNumberWatermark}" />
-                                    <TextBlock Grid.Column="1" Text="of" FontSize="12" Opacity="0.5" VerticalAlignment="Center" Margin="10,0" />
+                                    <TextBlock Grid.Column="1" Text="{loc:T Metadata.Of}" FontSize="12" Opacity="0.5" VerticalAlignment="Center" Margin="10,0" />
                                     <TextBox Grid.Column="2" Classes="pill-field" AutomationProperties.Name="{loc:T MetadataSearch.F.TrackCount}" Text="{Binding TrackCount, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding TrackCountWatermark}" />
                                 </Grid>
                             </StackPanel>
@@ -647,7 +653,7 @@
                                 <TextBlock Text="{loc:T Metadata.Disc}" FontSize="12" Opacity="0.5" />
                                 <Grid ColumnDefinitions="*,Auto,*">
                                     <TextBox Grid.Column="0" Classes="pill-field" AutomationProperties.Name="{loc:T Metadata.Disc}" Text="{Binding DiscNumber, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding DiscNumberWatermark}" />
-                                    <TextBlock Grid.Column="1" Text="of" FontSize="12" Opacity="0.5" VerticalAlignment="Center" Margin="10,0" />
+                                    <TextBlock Grid.Column="1" Text="{loc:T Metadata.Of}" FontSize="12" Opacity="0.5" VerticalAlignment="Center" Margin="10,0" />
                                     <TextBox Grid.Column="2" Classes="pill-field" AutomationProperties.Name="{loc:T MetadataSearch.F.DiscCount}" Text="{Binding DiscCount, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding DiscCountWatermark}" />
                                 </Grid>
                             </StackPanel>
@@ -688,7 +694,8 @@
                                                           StarSize="18"
                                                           StarSpacing="4"
                                                           Cursor="Hand"
-                                                          Foreground="{DynamicResource AccentColorBrush}"
+                                                          Foreground="{DynamicResource StarGoldBrush}"
+                                                          EmptyForeground="{DynamicResource SystemControlForegroundBaseHighBrush}"
                                                           VerticalAlignment="Center" />
                                     <CheckBox Classes="metadata-pill-checkbox"
                                               Content="{loc:T Metadata.NotLiked}"
@@ -987,9 +994,14 @@
                              artwork preview so it reads as part of the tab. -->
                         <FlyoutBase.AttachedFlyout>
                             <Flyout Placement="Center" ShowMode="Standard"
-                                    FlyoutPresenterClasses="search-pop">
-                                <!-- One card for both search pop-ups (owner 11-04): Controls/ArtworkChooserCard. -->
+                                    FlyoutPresenterClasses="search-pop library-pop">
+                                <!-- One card for both search pop-ups (owner 11-04): Controls/ArtworkChooserCard.
+                                     Owner 11-26: this one is an artist's artwork library (wide, sectioned). -->
                                 <controls:ArtworkChooserCard x:Name="ArtworkSearchCard"
+                                                             IsWide="True"
+                                                             Sections="{Binding ArtworkSearchSections}"
+                                                             LibraryTitle="{Binding ArtworkLibraryArtist}"
+                                                             LibraryDetail="{Binding ArtworkLibraryDetail}"
                                                              Title="{loc:T Metadata.ChooseArtwork}"
                                                              Subtitle="{loc:T Metadata.FromAppleMusic}"
                                                              SearchBoxHint="{loc:T Metadata.ArtSearchBoxHint}"

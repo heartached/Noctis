@@ -18,7 +18,7 @@ public sealed class ChordsView : UserControl
     public const double WindowWidth = 520;
     public const double WindowHeight = 400;
     public const double MinWindowWidth = 380;
-    public const double MinWindowHeight = 320;
+    public const double MinWindowHeight = 340;
     public const string EstimateNote = "Estimated from the song's audio on this computer, so it can be wrong (voices, effects and unusual chords make it harder).";
 
     private readonly ChordsSession _session;
@@ -77,11 +77,12 @@ public sealed class ChordsView : UserControl
         _lane.SeekRequested += (_, at) => _session.Seek(at);
         ToolTip.SetTip(_lane, "Click a chord to play from there");
 
-        _key = new TextBlock { FontSize = 13, Margin = new Thickness(0, 10, 0, 0) };
+        _key = new TextBlock { FontSize = 13, VerticalAlignment = VerticalAlignment.Center };
         (_again, _againLabel) = Pill("Analyze again", () => _session.Find(force: true));
         _again.HorizontalAlignment = HorizontalAlignment.Right;
-        _again.VerticalAlignment = VerticalAlignment.Bottom;
-        var keyRow = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        _again.VerticalAlignment = VerticalAlignment.Center;
+        // The gap is the row's own: "Analyze again" used to sit flush against the lane.
+        var keyRow = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Margin = new Thickness(0, 10, 0, 0) };
         Grid.SetColumn(_again, 1);
         keyRow.Children.Add(_key);
         keyRow.Children.Add(_again);
@@ -132,6 +133,7 @@ public sealed class ChordsView : UserControl
     public bool ChordsShown => _chordsPanel.IsVisible;
     public bool ProgressShown => _progress.IsVisible;
     public ChordLane Lane => _lane;
+    public Button AgainButton => _again;
     public string BadgeText => _badge.Text ?? "";
     public void ClickAction() => OnAction();
 

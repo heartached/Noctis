@@ -36,6 +36,10 @@
                     <SolidColorBrush x:Key="AccentTextBrush" Color="{StaticResource SystemAccentColor}" />
                     <SolidColorBrush x:Key="AccentTextExactBrush" Color="{StaticResource SystemAccentColor}" />
                     <SolidColorBrush x:Key="NowPlayingRowBrush" Color="{StaticResource SystemAccentColor}" />
+                    <!-- Every lit star in the app (ratings, favourite artists, starred playlists): gold,
+                         not the accent (owner 11-27). A deeper gold on the light themes, where the
+                         bright one washed out on white. -->
+                    <SolidColorBrush x:Key="StarGoldBrush" Color="#F5C518" />
                     <SolidColorBrush x:Key="NowPlayingRowForegroundBrush" Color="White" />
 
                     <!-- Custom App Background Colors -->
@@ -169,8 +173,11 @@
                          an accent-tinted plate with an accent outline. App.SetAccent re-derives both. -->
                     <SolidColorBrush x:Key="SelectionFillBrush" Color="{StaticResource SystemAccentColor}" Opacity="0.2" />
                     <SolidColorBrush x:Key="SelectionStrokeBrush" Color="{StaticResource SystemAccentColor}" Opacity="0.9" />
-                    <!-- GitHub #218: the soft glow behind a hovered album (Album Hover Zoom). -->
-                    <BoxShadows x:Key="AlbumHoverGlow">0 0 24 1 #3DFFFFFF</BoxShadows>
+                    <!-- GitHub #218: the soft shadow under a hovered album (Album Hover Zoom). Dark and
+                         tight (Discord 11-25): the old 24px white glow was a light plate behind the
+                         white title text and spilled past a selected tile's outline; this one fits in
+                         the grid's 4-5px edge room, so edge tiles get it too (TileHoverZoom). -->
+                    <BoxShadows x:Key="AlbumHoverGlow">0 1 3 0 #B3000000</BoxShadows>
                     <SolidColorBrush x:Key="ToggleTrackOffBrush" Color="#484C54" />
                     <SolidColorBrush x:Key="ToggleKnobOffBrush" Color="White" />
                     <SolidColorBrush x:Key="ArtworkPlaceholderBackground" Color="#2E2E2E" />
@@ -199,6 +206,7 @@
                     <SolidColorBrush x:Key="AccentTextBrush" Color="{StaticResource SystemAccentColor}" />
                     <SolidColorBrush x:Key="AccentTextExactBrush" Color="{StaticResource SystemAccentColor}" />
                     <SolidColorBrush x:Key="NowPlayingRowBrush" Color="{StaticResource SystemAccentColor}" />
+                    <SolidColorBrush x:Key="StarGoldBrush" Color="#E0A200" />
                     <!-- Light theme: black row text. App.SetAccent overrides with the same rule. -->
                     <SolidColorBrush x:Key="NowPlayingRowForegroundBrush" Color="Black" />
 
@@ -334,7 +342,7 @@
                          an accent-tinted plate with an accent outline. App.SetAccent re-derives both. -->
                     <SolidColorBrush x:Key="SelectionFillBrush" Color="{StaticResource SystemAccentColor}" Opacity="0.2" />
                     <SolidColorBrush x:Key="SelectionStrokeBrush" Color="{StaticResource SystemAccentColor}" Opacity="0.9" />
-                    <BoxShadows x:Key="AlbumHoverGlow">0 8 24 0 #40000000</BoxShadows>
+                    <BoxShadows x:Key="AlbumHoverGlow">0 1 3 0 #40000000</BoxShadows>
                     <SolidColorBrush x:Key="ToggleTrackOffBrush" Color="#484C54" />
                     <SolidColorBrush x:Key="ToggleKnobOffBrush" Color="White" />
                     <SolidColorBrush x:Key="ArtworkPlaceholderBackground" Color="#2E2E2E" />
@@ -975,6 +983,17 @@
     <Style Selector="MenuItem.accent-rows:pointerover /template/ ContentPresenter#PART_HeaderPresenter, MenuItem.accent-rows:selected /template/ ContentPresenter#PART_HeaderPresenter">
         <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
     </Style>
+    <!-- current: the option in use in a pick-one menu (Home's Show pill) is a solid accent pill,
+         like the chosen row of a Settings drop-down; hover deepens it. -->
+    <Style Selector="MenuItem.current /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+    </Style>
+    <Style Selector="MenuItem.current:pointerover /template/ Border#PART_LayoutRoot, MenuItem.current:selected /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource AccentColorBrushDark1}" />
+    </Style>
+    <Style Selector="MenuItem.current /template/ ContentPresenter#PART_HeaderPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+    </Style>
     <Style Selector="MenuItem /template/ ContentControl#PART_IconPresenter">
         <Setter Property="Margin" Value="0,0,11,0" />
     </Style>
@@ -1043,11 +1062,11 @@
         <Setter Property="Stroke" Value="#E74856" />
         <Setter Property="Fill" Value="#E74856" />
     </Style>
-    <!-- "Unstar from Sidebar": the star filled in the accent, like the playlist page's starred
+    <!-- "Unstar from Sidebar": the star filled in gold, like the playlist page's starred
          star (owner 10-09: a pinned playlist's star reads as on). -->
     <Style Selector="Path.mv2-icon.mv2-pinned">
-        <Setter Property="Stroke" Value="{DynamicResource AccentColorBrush}" />
-        <Setter Property="Fill" Value="{DynamicResource AccentColorBrush}" />
+        <Setter Property="Stroke" Value="{DynamicResource StarGoldBrush}" />
+        <Setter Property="Fill" Value="{DynamicResource StarGoldBrush}" />
     </Style>
     <!-- Quick-action tiles (Play / Shuffle / Play Next / Queue). -->
     <Style Selector="Button.mv2-tile">
@@ -1100,8 +1119,8 @@
         <Setter Property="Background" Value="Transparent" />
     </Style>
     <Style Selector="Button.mv2-star.lit Path.mv2-icon">
-        <Setter Property="Stroke" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-        <Setter Property="Fill" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+        <Setter Property="Stroke" Value="{DynamicResource StarGoldBrush}" />
+        <Setter Property="Fill" Value="{DynamicResource StarGoldBrush}" />
     </Style>
 
     <!-- Sidebar styling -->
@@ -1230,7 +1249,8 @@
         <Setter Property="Foreground" Value="{DynamicResource AccentTextExactBrush}" />
     </Style>
     <Style Selector="ListBox.track-list controls|RatingStars">
-        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource StarGoldBrush}" />
+        <Setter Property="EmptyForeground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
     </Style>
 
     <!-- Now-playing row: Apple-Music-style box on the current track
@@ -1251,8 +1271,11 @@
     <Style Selector="Border.now-playing PathIcon.row-dots-icon">
         <Setter Property="Foreground" Value="{DynamicResource NowPlayingRowForegroundBrush}" />
     </Style>
+    <!-- The playing row is filled with the accent: gold stars on it could not be read on a
+         yellow or orange accent, so they take the row's own text colour here. -->
     <Style Selector="Border.now-playing controls|RatingStars">
         <Setter Property="Foreground" Value="{DynamicResource NowPlayingRowForegroundBrush}" />
+        <Setter Property="EmptyForeground" Value="{DynamicResource NowPlayingRowForegroundBrush}" />
     </Style>
     <!-- The row's playing indicator (EqVisualizer, desktop-only) takes the row foreground
          via a style in src/Noctis/Controls/EqVisualizer.axaml; it cannot be named here. -->
@@ -1310,6 +1333,14 @@
     </Style>
 
     <Style Selector="ListBox:not(.track-list):not(.sidebar) ListBoxItem:selected:focus /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <!-- :pressed too (Discord 11-26, "it highlights that whole row"): a left press on a tile
+         sets :pressed on its row (PressedMixin, tunnel) and Fluent painted the whole row grey
+         for as long as it was held. The row only clears it on a release routed through it, so
+         a release that went elsewhere (a light-dismissed menu, a file drag) left the band up. -->
+    <Style Selector="ListBox:not(.track-list):not(.sidebar) ListBoxItem:pressed /template/ ContentPresenter">
         <Setter Property="Background" Value="Transparent" />
     </Style>
 
@@ -1643,9 +1674,13 @@
          cover and its glow) grows to 104% round the cover's own centre; the title lines stay
          put (Discord 11-21: the whole tile grew, so the cover grew downward and the text
          moved). Every other tile stays as it is (GitHub #250: the neighbours used to step back
-         to 97%, which read as the whole grid moving). LibraryAlbumsView lifts the hovered tile
+         to 97%, which read as the whole grid moving). TileHoverZoom lifts the hovered tile
          above its neighbours, anchors the cover at the grid's edges so it is not clipped there
-         and drops the glow (.glow-cut) where the scroller's edge would cut it.
+         and tags the tile .glow-fits when its shadow is drawn whole; only then is it shown
+         (Discord 11-25: a .glow-cut tag set after :pointerover flashed an edge tile's glow on
+         its first hover, then hid it on every later one). A Ctrl-selected tile neither grows
+         nor casts the shadow: its selection plate is the hover surface, and a grown cover or
+         its shadow would run over the plate's outline (Discord 11-25).
          The Button is unclipped: an Avalonia 12 TemplatedControl clips to its bounds, which
          cut the glow (then on the Button's template) down to a faint hard-edged box round the
          whole tile (Discord 11-21). Render transforms and opacity only, nothing re-lays out. -->
@@ -1683,8 +1718,11 @@
     <Style Selector=".hover-zoom Button.album-tile:pointerover Panel.tile-art">
         <Setter Property="RenderTransform" Value="scale(1.04)" />
     </Style>
-    <Style Selector=".hover-zoom Button.album-tile:pointerover:not(.glow-cut) Border.tile-glow">
+    <Style Selector=".hover-zoom Button.album-tile:pointerover.glow-fits:not(.ctrl-selected) Border.tile-glow">
         <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector=".hover-zoom Button.album-tile.ctrl-selected:pointerover Panel.tile-art">
+        <Setter Property="RenderTransform" Value="scale(1)" />
     </Style>
 
     <Style Selector="Button.browse-item:pointerover">
@@ -1697,6 +1735,23 @@
 
     <Style Selector="Button:pressed">
         <Setter Property="RenderTransform" Value="scale(0.96)"/>
+    </Style>
+    <!-- Cover tiles do not shrink on press (Discord 11-26, "the artwork flickers for a split
+         second"): the whole tile snapped to 96% on the press and back on the release, every
+         time a cover was opened. Home's and the album page's tiles already opted out; after
+         Button:pressed so it wins. -->
+    <Style Selector="Button.album-tile:pressed">
+        <Setter Property="RenderTransform" Value="scale(1)"/>
+    </Style>
+    <!-- Artist portraits (Artists page) neither (owner 11-26, "blinks on click"). They keep their
+         hover grow, Button:pointerover's scale(1.045) on the Button itself, so a press under the
+         pointer holds that size (no jump at press or release); a press dragged off the disc
+         rests at full size. After Button:pressed so both win. -->
+    <Style Selector="Button.artist-tile:pressed">
+        <Setter Property="RenderTransform" Value="scale(1)"/>
+    </Style>
+    <Style Selector="Button.artist-tile:pressed:pointerover">
+        <Setter Property="RenderTransform" Value="scale(1.045)"/>
     </Style>
 
     <!-- Artist credit links (ArtistCreditLink): the hover/press box sits behind the one name
@@ -1795,7 +1850,9 @@
 
     <!-- Round circle checkbox with check mark. Fluent's CheckBox theme clips to bounds: where
          the box is only as tall as the 22 px circle (a row tick with no label), the hover's
-         scale(1.06) cut the ring's top and bottom off (owner 11-14). -->
+         scale(1.06) cut the ring's top and bottom off (owner 11-14).
+         The Grid's Transparent background makes the label (and the gaps between its letters)
+         take the click too; without it only the circle and the glyphs did (owner 11-26). -->
     <Style Selector="CheckBox.metadata-pill-checkbox">
         <Setter Property="ClipToBounds" Value="False" />
         <Setter Property="Cursor" Value="Hand" />
@@ -1803,6 +1860,7 @@
         <Setter Property="Template">
             <ControlTemplate>
                 <Grid ColumnDefinitions="28,*"
+                      Background="Transparent"
                       VerticalAlignment="Center">
                     <Border x:Name="IndicatorBorder"
                             Margin="3,0"

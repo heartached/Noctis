@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Noctis.Models;
@@ -23,6 +25,7 @@ public partial class LyricsStudioPageViewModel : ViewModelBase
     private readonly ILibraryService _library;
     private readonly Func<bool> _wordTimings;
     private readonly Func<IReadOnlyList<Track>, LyricsStudioViewModel> _createStudio;
+    private readonly DetectFormatsFunc _detectFormats;
     private int _generation;
 
     // The format scan reads every .lrc/.elrc in the library (thousands of files), so its result
@@ -30,6 +33,10 @@ public partial class LyricsStudioPageViewModel : ViewModelBase
     private List<Track>? _scannedLocal;
     private IReadOnlyList<LyricsFormat>? _scannedFormats;
     private bool _scanDirty = true;
+    // Bumped with every _scanDirty: a scan started at an older version is stale, a running one
+    // at the current version is joined (a second visit mid-scan read every sidecar again).
+    private int _libraryVersion;
+    private FormatScan? _scan;
 
     [ObservableProperty] private LyricsStudioViewModel? _studio;
     [ObservableProperty] private bool _isLoading;
@@ -44,20 +51,79 @@ public partial class LyricsStudioPageViewModel : ViewModelBase
     /// </summary>
     [ObservableProperty] private bool _showBackdrops;
 
+    /// <summary>The library-wide format pass: ExistingLyricsLoader.DetectFormats with a per-song report (tests slow it down).</summary>
+    public delegate IReadOnlyList<LyricsFormat> DetectFormatsFunc(IReadOnlyList<Track> tracks, CancellationToken ct, Action<int, LyricsFormat>? detected);
+
     public bool ShowEmpty => !IsLoading && Studio is null;
     public bool HasCounts => Counts.Count > 0;
 
     public LyricsStudioPageViewModel(ILibraryService library, Func<bool> wordTimings,
-        Func<IReadOnlyList<Track>, LyricsStudioViewModel> createStudio)
+        Func<IReadOnlyList<Track>, LyricsStudioViewModel> createStudio, DetectFormatsFunc? detectFormats = null)
     {
         _library = library;
         _wordTimings = wordTimings;
         _createStudio = createStudio;
-        _library.LibraryUpdated += (_, _) => _scanDirty = true;
+        _detectFormats = detectFormats ?? ExistingLyricsLoader.DetectFormats;
+        _library.LibraryUpdated += (_, _) => MarkScanDirty();
+    }
+
+    private void MarkScanDirty()
+    {
+        _scanDirty = true;
+        Interlocked.Increment(ref _libraryVersion);
     }
 
     partial void OnIsLoadingChanged(bool value) => OnPropertyChanged(nameof(ShowEmpty));
     partial void OnStudioChanged(LyricsStudioViewModel? value) => OnPropertyChanged(nameof(ShowEmpty));
+
+    partial void OnStudioChanged(LyricsStudioViewModel? oldValue, LyricsStudioViewModel? newValue)
+    {
+        if (oldValue is not null)
+        {
+            oldValue.LyricsSaved -= OnStudioLyricsSaved;
+            // Its timers stop with it (a model download kept its tick running).
+            oldValue.Detach();
+        }
+        if (newValue is not null) newValue.LyricsSaved += OnStudioLyricsSaved;
+    }
+
+    private void OnStudioLyricsSaved(object? sender, Track track) => _ = UpdateSavedFormatAsync(track);
+
+    /// <summary>
+    /// A save changes one song's format: that entry of the cached scan and the counts are updated
+    /// from the song's files alone. Every save used to mark the whole scan stale, so the next visit
+    /// re-checked every song's lyrics files (7,213 songs: 35-55 s cold on a hard drive).
+    /// A scan still running, or a library changed since, falls back to the full rescan.
+    /// </summary>
+    private async Task UpdateSavedFormatAsync(Track track)
+    {
+        var version = Volatile.Read(ref _libraryVersion);
+        LyricsFormat format;
+        try { format = await Task.Run(() => _detectFormats(new[] { track }, CancellationToken.None, null)[0]); }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Lyrics", $"Lyrics Studio: format check after a save failed: {ex.Message}");
+            MarkScanDirty();
+            return;
+        }
+        if (_scanDirty || _scan is { Full.IsCompleted: false } || version != Volatile.Read(ref _libraryVersion)
+            || _scannedLocal is not { } local || _scannedFormats is not { } formats)
+        {
+            MarkScanDirty();
+            return;
+        }
+        var index = local.FindIndex(t => ReferenceEquals(t, track) || t.Id == track.Id);
+        if (index < 0 || index >= formats.Count)
+        {
+            MarkScanDirty();
+            return;
+        }
+        if (formats[index] == format) return;
+        var updated = formats.ToArray();
+        updated[index] = format;
+        _scannedFormats = updated;
+        Counts = SettingsViewModel.BuildLyricsStudioCounts(updated);
+    }
     partial void OnCountsChanged(IReadOnlyList<LyricsStudioCount> value) => OnPropertyChanged(nameof(HasCounts));
 
     /// <summary>True when the open Studio must not be replaced by a rescan: a run, a review on screen,
@@ -101,13 +167,7 @@ public partial class LyricsStudioPageViewModel : ViewModelBase
     {
         var local = _library.Tracks.Where(t => t.SourceType == SourceType.Local).ToList();
         if (_scanDirty || _scannedLocal is null || _scannedFormats is null || _scannedLocal.Count != local.Count)
-        {
-            var formats = await Task.Run(() => ExistingLyricsLoader.DetectFormats(local));
-            _scannedLocal = local;
-            _scannedFormats = formats;
-            _scanDirty = false;
-            Counts = SettingsViewModel.BuildLyricsStudioCounts(formats);
-        }
+            return await PickFirstMissingAsync(StartOrJoinScan(local), wordTimings, max);
         return PickMissing(_scannedLocal, _scannedFormats, wordTimings, max);
     }
 
@@ -127,7 +187,6 @@ public partial class LyricsStudioPageViewModel : ViewModelBase
         if (IsBusy || KeepsCustomQueue()) return;
         var generation = ++_generation;
         var wordTimings = _wordTimings();
-        if (Studio is { SavedCount: > 0 }) _scanDirty = true;
 
         // Cached scan: re-pick without touching disk, and keep the open Studio when it already
         // holds exactly that queue (selection and drafts survive the round trip).
@@ -146,19 +205,19 @@ public partial class LyricsStudioPageViewModel : ViewModelBase
         try
         {
             var local = _library.Tracks.Where(t => t.SourceType == SourceType.Local).ToList();
-            // Format detection reads disk per track — keep the library-wide pass off the UI thread.
-            var formats = await Task.Run(() => ExistingLyricsLoader.DetectFormats(local));
+            // Format detection reads disk per track (off the UI thread). On a hard drive a cold pass
+            // took 35-55 s for 7,212 songs, so the queue opens as soon as the scan has met its songs;
+            // the counts, which need every song, follow when the scan finishes.
+            var scan = StartOrJoinScan(local);
+            var picked = await PickFirstMissingAsync(scan, wordTimings, MaxQueue);
             if (generation != _generation) return;
-            _scannedLocal = local;
-            _scannedFormats = formats;
-            _scanDirty = false;
-
-            Counts = SettingsViewModel.BuildLyricsStudioCounts(formats);
-            var picked = PickMissing(local, formats, wordTimings, MaxQueue);
             Studio = picked.Count > 0 ? _createStudio(picked) : null;
             StatusText = picked.Count == 0
                 ? "Every local song already has the chosen format."
                 : string.Empty;
+            IsLoading = false;
+
+            await (_scan ?? scan).Committed;
         }
         catch (Exception ex)
         {
@@ -170,6 +229,136 @@ public partial class LyricsStudioPageViewModel : ViewModelBase
         {
             if (generation == _generation) IsLoading = false;
         }
+    }
+
+    /// <summary>The running scan when it is still current for this library, else a new one (the stale one is cancelled).</summary>
+    private FormatScan StartOrJoinScan(List<Track> local)
+    {
+        var version = Volatile.Read(ref _libraryVersion);
+        if (_scan is { } running && !running.Full.IsCompleted && running.Version == version && running.Local.Count == local.Count)
+            return running;
+        _scan?.Cancel();
+        var scan = new FormatScan(local, version, _detectFormats);
+        _scan = scan;
+        scan.Committed = CommitWhenDoneAsync(scan);
+        return scan;
+    }
+
+    /// <summary>A finished scan becomes the page's cached scan and its counts (unless a newer scan replaced it).</summary>
+    private async Task CommitWhenDoneAsync(FormatScan scan)
+    {
+        IReadOnlyList<LyricsFormat> formats;
+        try { formats = await scan.Full; }
+        catch { return; } // cancelled by a newer scan, or failed: the caller awaiting the pick reports it
+        if (_scan != scan) return;
+        _scannedLocal = scan.Local;
+        _scannedFormats = formats;
+        if (scan.Version == Volatile.Read(ref _libraryVersion)) _scanDirty = false;
+        Counts = SettingsViewModel.BuildLyricsStudioCounts(formats);
+    }
+
+    /// <summary>
+    /// <see cref="PickMissing"/> as soon as the scan has met <paramref name="max"/> songs lacking the
+    /// format: the same songs a pick from the finished scan gives, since both take the first ones in
+    /// library order. A scan cancelled for a newer one (the library changed) hands over to that one.
+    /// </summary>
+    private async Task<List<Track>> PickFirstMissingAsync(FormatScan scan, bool wordTimings, int max)
+    {
+        while (true)
+        {
+            try
+            {
+                var early = scan.PrefixWithMissing(wordTimings, max);
+                var formats = await Task.WhenAny(early, scan.Full) == early ? await early : await scan.Full;
+                return PickMissing(scan.Local, formats, wordTimings, max);
+            }
+            catch (OperationCanceledException) when (_scan is { } newer && newer != scan)
+            {
+                scan = newer;
+            }
+        }
+    }
+
+    /// <summary>
+    /// One library-wide format scan on the thread pool. It reports each song's format as it goes,
+    /// so <see cref="PrefixWithMissing"/> can answer the queue before the last song is read.
+    /// </summary>
+    private sealed class FormatScan
+    {
+        private readonly CancellationTokenSource _cts = new();
+        private readonly object _gate = new();
+        private readonly LyricsFormat[] _formats;
+        private readonly List<(bool WordTimings, int Max, TaskCompletionSource<IReadOnlyList<LyricsFormat>> Done)> _waiters = new();
+        private int _scanned, _missingWords, _missingLines;
+
+        public List<Track> Local { get; }
+        public int Version { get; }
+        public Task<IReadOnlyList<LyricsFormat>> Full { get; }
+        public Task Committed { get; set; } = Task.CompletedTask;
+
+        public FormatScan(List<Track> local, int version, DetectFormatsFunc detect)
+        {
+            Local = local;
+            Version = version;
+            _formats = new LyricsFormat[local.Count];
+            Full = Task.Run(() => Run(detect));
+        }
+
+        public void Cancel() => _cts.Cancel();
+
+        private IReadOnlyList<LyricsFormat> Run(DetectFormatsFunc detect)
+        {
+            var watch = Stopwatch.StartNew();
+            try
+            {
+                var formats = detect(Local, _cts.Token, Detected);
+                DebugLog.Write("Lyrics", $"Lyrics Studio: format scan of {Local.Count} song(s) took {watch.ElapsedMilliseconds} ms");
+                return formats;
+            }
+            catch (OperationCanceledException)
+            {
+                DebugLog.Write("Lyrics", $"Lyrics Studio: format scan stopped for a newer one after {_scanned} of {Local.Count} song(s), {watch.ElapsedMilliseconds} ms");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                DebugLog.Write("Lyrics", $"Lyrics Studio: format scan failed after {_scanned} of {Local.Count} song(s): {ex.Message}");
+                throw;
+            }
+        }
+
+        private void Detected(int index, LyricsFormat format)
+        {
+            lock (_gate)
+            {
+                _formats[index] = format;
+                _scanned = index + 1;
+                if (!LyricsFormatDetector.AlreadyHas(format, wordTimings: true)) _missingWords++;
+                if (!LyricsFormatDetector.AlreadyHas(format, wordTimings: false)) _missingLines++;
+                for (var i = _waiters.Count - 1; i >= 0; i--)
+                {
+                    if (Missing(_waiters[i].WordTimings) < _waiters[i].Max) continue;
+                    _waiters[i].Done.TrySetResult(_formats[.._scanned]);
+                    _waiters.RemoveAt(i);
+                }
+            }
+        }
+
+        /// <summary>The formats scanned so far once they hold <paramref name="max"/> songs lacking the format;
+        /// never completes when the library holds fewer (await <see cref="Full"/> beside it).</summary>
+        public Task<IReadOnlyList<LyricsFormat>> PrefixWithMissing(bool wordTimings, int max)
+        {
+            lock (_gate)
+            {
+                if (max > 0 && Missing(wordTimings) >= max)
+                    return Task.FromResult<IReadOnlyList<LyricsFormat>>(_formats[.._scanned]);
+                var done = new TaskCompletionSource<IReadOnlyList<LyricsFormat>>(TaskCreationOptions.RunContinuationsAsynchronously);
+                if (max > 0) _waiters.Add((wordTimings, max, done));
+                return done.Task;
+            }
+        }
+
+        private int Missing(bool wordTimings) => wordTimings ? _missingWords : _missingLines;
     }
 
     private static bool SameQueue(LyricsStudioViewModel? studio, List<Track> picked)

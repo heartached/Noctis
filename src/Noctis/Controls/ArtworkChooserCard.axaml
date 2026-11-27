@@ -4,12 +4,127 @@
              xmlns:vm="using:Noctis.ViewModels"
              xmlns:loc="using:Noctis.Localization"
              x:Class="Noctis.Controls.ArtworkChooserCard"
-             x:Name="Root">
+             x:Name="Root"
+             ClipToBounds="False">
+
+    <UserControl.Resources>
+        <!-- One album tile (both choosers, the flat grid and the library sections). -->
+        <DataTemplate x:Key="ChooserTile" x:DataType="vm:IArtworkChooserItem">
+            <StackPanel Spacing="7" Width="124" Margin="0,0,14,14">
+                <!-- Poster: the cover (the loop's still); where it previews, a
+                     click plays the loop in place. -->
+                <Button Classes="chooser-poster"
+                        Classes.previews="{Binding CanPreview}"
+                        Width="124" Height="124"
+                        IsHitTestVisible="{Binding CanPreview}"
+                        ToolTip.Tip="{Binding PosterTip}"
+                        AutomationProperties.Name="{Binding CollectionName}"
+                        Command="{Binding $parent[controls:ArtworkChooserCard].PreviewCommand}"
+                        CommandParameter="{Binding}">
+                    <!-- One rounded clip for everything in the tile. The grey well is only
+                         there while the cover loads: under a loaded cover its anti-aliased
+                         rounded edge bled grey through the cover's edge pixels. -->
+                    <Border CornerRadius="10" ClipToBounds="True">
+                        <Panel>
+                            <Border Background="#1AFFFFFF"
+                                    IsVisible="{Binding Poster, Converter={x:Static ObjectConverters.IsNull}}"/>
+                            <Image Source="{Binding Poster}"
+                                   Stretch="UniformToFill"
+                                   RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                            <controls:AnimatedCoverImage
+                                Source="{Binding PreviewPath}"
+                                IsActive="{Binding IsPreviewing}"
+                                IsVisible="{Binding IsPreviewing}"/>
+                            <Ellipse Classes="loading-spinner"
+                                     Width="16" Height="16"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     IsVisible="{Binding IsPreviewLoading}"/>
+                            <Border Classes="play-badge"
+                                    Width="26" Height="26"
+                                    CornerRadius="13"
+                                    Background="#99000000"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Bottom"
+                                    Margin="7">
+                                <Border.IsVisible>
+                                    <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
+                                        <Binding Path="CanPreview" />
+                                        <Binding Path="!IsPreviewing" />
+                                        <Binding Path="!IsPreviewLoading" />
+                                    </MultiBinding>
+                                </Border.IsVisible>
+                                <Viewbox Width="10" Height="10" Margin="1,0,0,0"
+                                         HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Path Data="{StaticResource PlayIcon}" Fill="White" />
+                                </Viewbox>
+                            </Border>
+                        </Panel>
+                    </Border>
+                </Button>
+                <!-- The full title on the text only (not the whole tile: over a
+                     pill it hung off the card). -->
+                <StackPanel Spacing="1" ToolTip.Tip="{Binding CollectionName}">
+                    <TextBlock Text="{Binding CollectionName}"
+                               FontSize="11.5" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis"
+                               MaxLines="1"/>
+                    <TextBlock Text="{Binding ArtistName}"
+                               FontSize="10.5" Opacity="0.55"
+                               TextTrimming="CharacterEllipsis"
+                               MaxLines="1"/>
+                    <TextBlock Text="{Binding Detail}"
+                               FontSize="10" Opacity="0.45"
+                               TextTrimming="CharacterEllipsis"
+                               MaxLines="1"
+                               IsVisible="{Binding HasDetail}"/>
+                </StackPanel>
+                <!-- One pill per quality; the largest is the accent one. -->
+                <ItemsControl ItemsSource="{Binding Choices}" Margin="-3,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Rows="1" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:IArtworkChooserChoice">
+                            <Button Classes="chooser-pill"
+                                    Classes.pill-primary="{Binding IsPrimary}"
+                                    Classes.pill-secondary="{Binding IsSecondary}"
+                                    Content="{Binding Label}"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"
+                                    Margin="3,0"
+                                    MinHeight="0"
+                                    Padding="0,5"
+                                    FontSize="10.5"
+                                    Command="{Binding $parent[controls:ArtworkChooserCard].PickCommand}"
+                                    CommandParameter="{Binding}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </DataTemplate>
+    </UserControl.Resources>
 
     <!-- One card for both Edit Info search pop-ups (Artwork and Animated Artwork, owner 11-04).
          Shown in the window's search-pop flyout, which only leaves room for the shadow. -->
-    <Border Classes="pill-popover" Padding="22,18,22,20" Width="600">
+    <Border Classes="pill-popover chooser-card" Classes.wide="{Binding #Root.IsWide}" Padding="22,18,22,20">
         <Border.Styles>
+            <!-- Owner 11-26: the Artwork chooser is an artist's artwork library, so it is wider
+                 (five tiles a row) and taller than the animated one (four). -->
+            <Style Selector="Border.chooser-card">
+                <Setter Property="Width" Value="600" />
+            </Style>
+            <Style Selector="Border.chooser-card.wide">
+                <Setter Property="Width" Value="756" />
+            </Style>
+            <Style Selector="ScrollViewer.chooser-scroll">
+                <Setter Property="MaxHeight" Value="372" />
+            </Style>
+            <Style Selector="Border.chooser-card.wide ScrollViewer.chooser-scroll">
+                <Setter Property="MaxHeight" Value="430" />
+            </Style>
             <!-- No hover/press zoom anywhere in the card: a zoomed tile grew past the grid's
                  clip (its top edge slid under the scroller, owner 11-04 "it goes inside of the
                  back"), and a zoomed pill past the card. Hover reads through colour instead. -->
@@ -31,6 +146,12 @@
                 <Setter Property="Background" Value="Transparent" />
             </Style>
             <Style Selector="Button.chooser-poster:pressed /template/ ContentPresenter#PART_ContentPresenter">
+                <Setter Property="Background" Value="Transparent" />
+            </Style>
+            <!-- A cover that does not preview has no command to run, so the poster is disabled,
+                 and Fluent's disabled fill (#33FFFFFF, 3px corners) sat under the 10px-rounded
+                 cover: a grey spot at each corner (owner 11-26). -->
+            <Style Selector="Button.chooser-poster:disabled /template/ ContentPresenter#PART_ContentPresenter">
                 <Setter Property="Background" Value="Transparent" />
             </Style>
             <Style Selector="Button.chooser-poster Border.play-badge">
@@ -103,108 +224,60 @@
                            IsVisible="{Binding #Root.StatusDetail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
             </StackPanel>
 
+            <!-- Owner 11-26: the artist the search named, over their library. -->
+            <StackPanel x:Name="ChooserLibraryHeader"
+                        Spacing="1"
+                        Margin="2,2,0,0"
+                        IsVisible="{Binding #Root.ShowsLibraryHeader}">
+                <TextBlock Text="{Binding #Root.LibraryTitle}"
+                           FontSize="18" FontWeight="Bold"
+                           TextTrimming="CharacterEllipsis" MaxLines="1"/>
+                <TextBlock Text="{Binding #Root.LibraryDetail}"
+                           FontSize="11.5" Opacity="0.55"
+                           IsVisible="{Binding #Root.LibraryDetail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+            </StackPanel>
+
             <!-- Results grid, best match first (four tiles a row) -->
-            <ScrollViewer MaxHeight="372"
+            <ScrollViewer Classes="chooser-scroll"
                           HorizontalScrollBarVisibility="Disabled"
-                          IsVisible="{Binding #Root.HasResults}">
+                          IsVisible="{Binding #Root.ShowsFlatResults}">
                 <ItemsControl x:Name="ChooserResults"
                               ItemsSource="{Binding #Root.Items}"
+                              ItemTemplate="{StaticResource ChooserTile}"
                               Margin="0,0,-14,-14">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <WrapPanel Orientation="Horizontal"/>
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <!-- The same tiles in sections (Albums, Singles & EPs, Appears On; or Best Matches,
+                 More by …), each titled with its count. -->
+            <ScrollViewer x:Name="ChooserSectionsScroll"
+                          Classes="chooser-scroll"
+                          HorizontalScrollBarVisibility="Disabled"
+                          IsVisible="{Binding #Root.ShowsSections}">
+                <ItemsControl x:Name="ChooserSections" ItemsSource="{Binding #Root.Sections}">
                     <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:IArtworkChooserItem">
-                            <StackPanel Spacing="7" Width="124" Margin="0,0,14,14">
-                                <!-- Poster: the cover (the loop's still); where it previews, a
-                                     click plays the loop in place. -->
-                                <Button Classes="chooser-poster"
-                                        Classes.previews="{Binding CanPreview}"
-                                        Width="124" Height="124"
-                                        IsHitTestVisible="{Binding CanPreview}"
-                                        ToolTip.Tip="{Binding PosterTip}"
-                                        AutomationProperties.Name="{Binding CollectionName}"
-                                        Command="{Binding $parent[controls:ArtworkChooserCard].PreviewCommand}"
-                                        CommandParameter="{Binding}">
-                                    <Border CornerRadius="10" ClipToBounds="True"
-                                            Background="#1AFFFFFF">
-                                        <Panel>
-                                            <Image Source="{Binding Poster}"
-                                                   Stretch="UniformToFill"
-                                                   RenderOptions.BitmapInterpolationMode="HighQuality"/>
-                                            <controls:AnimatedCoverImage
-                                                Source="{Binding PreviewPath}"
-                                                IsActive="{Binding IsPreviewing}"
-                                                IsVisible="{Binding IsPreviewing}"/>
-                                            <Ellipse Classes="loading-spinner"
-                                                     Width="16" Height="16"
-                                                     HorizontalAlignment="Center"
-                                                     VerticalAlignment="Center"
-                                                     IsVisible="{Binding IsPreviewLoading}"/>
-                                            <Border Classes="play-badge"
-                                                    Width="26" Height="26"
-                                                    CornerRadius="13"
-                                                    Background="#99000000"
-                                                    HorizontalAlignment="Left"
-                                                    VerticalAlignment="Bottom"
-                                                    Margin="7">
-                                                <Border.IsVisible>
-                                                    <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
-                                                        <Binding Path="CanPreview" />
-                                                        <Binding Path="!IsPreviewing" />
-                                                        <Binding Path="!IsPreviewLoading" />
-                                                    </MultiBinding>
-                                                </Border.IsVisible>
-                                                <Viewbox Width="10" Height="10" Margin="1,0,0,0"
-                                                         HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                    <Path Data="{StaticResource PlayIcon}" Fill="White" />
-                                                </Viewbox>
-                                            </Border>
-                                        </Panel>
-                                    </Border>
-                                </Button>
-                                <!-- The full title on the text only (not the whole tile: over a
-                                     pill it hung off the card). -->
-                                <StackPanel Spacing="1" ToolTip.Tip="{Binding CollectionName}">
-                                    <TextBlock Text="{Binding CollectionName}"
-                                               FontSize="11.5" FontWeight="SemiBold"
-                                               TextTrimming="CharacterEllipsis"
-                                               MaxLines="1"/>
-                                    <TextBlock Text="{Binding ArtistName}"
-                                               FontSize="10.5" Opacity="0.55"
-                                               TextTrimming="CharacterEllipsis"
-                                               MaxLines="1"/>
-                                    <TextBlock Text="{Binding Detail}"
-                                               FontSize="10" Opacity="0.45"
-                                               TextTrimming="CharacterEllipsis"
-                                               MaxLines="1"
-                                               IsVisible="{Binding HasDetail}"/>
+                        <DataTemplate x:DataType="vm:ArtworkResultSection">
+                            <StackPanel Spacing="10" Margin="0,0,0,8">
+                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="2,4,0,0"
+                                            IsVisible="{Binding HasTitle}">
+                                    <TextBlock Text="{Binding Title}" FontSize="13.5" FontWeight="Bold"
+                                               VerticalAlignment="Bottom"/>
+                                    <TextBlock Text="{Binding CountText}" FontSize="11.5" Opacity="0.45"
+                                               VerticalAlignment="Bottom" Margin="0,0,0,1"/>
                                 </StackPanel>
-                                <!-- One pill per quality; the largest is the accent one. -->
-                                <ItemsControl ItemsSource="{Binding Choices}" Margin="-3,0">
+                                <ItemsControl ItemsSource="{Binding Items}"
+                                              ItemTemplate="{StaticResource ChooserTile}"
+                                              Margin="0,0,-14,-14">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
-                                            <UniformGrid Rows="1" />
+                                            <WrapPanel Orientation="Horizontal"/>
                                         </ItemsPanelTemplate>
                                     </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="vm:IArtworkChooserChoice">
-                                            <Button Classes="chooser-pill"
-                                                    Classes.pill-primary="{Binding IsPrimary}"
-                                                    Classes.pill-secondary="{Binding IsSecondary}"
-                                                    Content="{Binding Label}"
-                                                    HorizontalAlignment="Stretch"
-                                                    HorizontalContentAlignment="Center"
-                                                    Margin="3,0"
-                                                    MinHeight="0"
-                                                    Padding="0,5"
-                                                    FontSize="10.5"
-                                                    Command="{Binding $parent[controls:ArtworkChooserCard].PickCommand}"
-                                                    CommandParameter="{Binding}" />
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                             </StackPanel>
                         </DataTemplate>

@@ -63,7 +63,7 @@
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="m:ArtistRow">
                         <!-- A row re-used for other artists keeps its tiles (TileRow, 11-14). -->
-                        <ctrl:TileRow Items="{Binding Artists}"
+                        <ctrl:TileRow RebindSameItems="True" Items="{Binding Artists}"
                                       Columns="{Binding $parent[UserControl].((vm:LibraryArtistsViewModel)DataContext).GridColumns, FallbackValue=7}" Rows="1">
                             <ctrl:TileRow.ItemTemplate>
                                 <DataTemplate DataType="{x:Type m:Artist}">
@@ -127,7 +127,7 @@
                                             Margin="0,0,6,6"
                                             IsHitTestVisible="False"
                                             IsVisible="{Binding IsFavorite}">
-                                        <Path Data="{StaticResource StarIcon}" Stretch="Uniform" Width="15" Height="15" Fill="{DynamicResource AccentColorBrush}"
+                                        <Path Data="{StaticResource StarIcon}" Stretch="Uniform" Width="15" Height="15" Fill="{DynamicResource StarGoldBrush}"
                                               HorizontalAlignment="Center"
                                               VerticalAlignment="Center" />
                                     </Border>
@@ -291,7 +291,7 @@
                                                     Margin="0,0,-3,-3"
                                                     IsHitTestVisible="False"
                                                     IsVisible="{Binding IsFavorite}">
-                                                <Path Data="{StaticResource StarIcon}" Stretch="Uniform" Width="9" Height="9" Fill="{DynamicResource AccentColorBrush}"
+                                                <Path Data="{StaticResource StarIcon}" Stretch="Uniform" Width="9" Height="9" Fill="{DynamicResource StarGoldBrush}"
                                                       HorizontalAlignment="Center"
                                                       VerticalAlignment="Center" />
                                             </Border>

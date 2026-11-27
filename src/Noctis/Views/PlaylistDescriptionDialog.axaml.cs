@@ -12,7 +12,8 @@ namespace Noctis.Views;
 /// <summary>
 /// The playlist's description pop-up: the same design as <see cref="AlbumDescriptionDialog"/>
 /// (rounded pill pop-up, blurred app behind, cover + name + fact chips, one filled editor).
-/// Save closes it (the view model's DescriptionSaved); Cancel, Esc and Alt+F4 drop the edit.
+/// Save closes it (the view model's DescriptionSaved); Cancel, Esc and Alt+F4 drop the edit; a
+/// click outside the card closes it only while the text is unchanged.
 /// </summary>
 public partial class PlaylistDescriptionDialog : Window
 {
@@ -26,6 +27,9 @@ public partial class PlaylistDescriptionDialog : Window
         // PillDialogHost while the close plays).
         CardRoot.AddHandler(KeyDownEvent, OnCardKeyDown, RoutingStrategies.Tunnel);
         DescriptionEditor.TextChanged += (_, _) => UpdateFooter();
+        DescriptionDialogs.CloseOnOutsidePress(this, CardRoot, DescriptionEditor,
+            () => _vm?.SaveDescriptionEditCommand.IsRunning == true,
+            () => _vm?.HasDescriptionChanges == true);
     }
 
     public PlaylistDescriptionDialog(PlaylistViewModel vm) : this()

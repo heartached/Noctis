@@ -380,24 +380,58 @@ public partial class WrapViewModel : ViewModelBase, IDisposable
     private readonly HashSet<ShareCardFormat> _rendering = new();
     private int _cardEpoch;
 
+    // Cards dropped from the cache that may still be on screen: the preview the dialog shows
+    // (Preview) and the one it is cross-fading away from (the previous Preview). Owner 11-26:
+    // the card flickered on Full year / This month because a stats change nulled Preview and
+    // disposed both cards at once, so the well showed "No data" until the new card landed.
+    private readonly List<Bitmap> _retired = new();
+    private Bitmap? _fadingOut;
+
+    /// <summary>Card renders started (tests: one per shape per stats change).</summary>
+    internal int CardRenderCount { get; private set; }
+
+    /// <summary>No card render in flight (tests).</summary>
+    internal bool CardsSettled => _rendering.Count == 0;
+
     private ShareCardFormat SelectedFormat => IsStory ? ShareCardFormat.Story : ShareCardFormat.Square;
 
-    /// <summary>Drops both cached cards (the stats changed); in-flight renders are ignored.</summary>
-    private void InvalidateCards()
+    /// <summary>Drops both cached cards (the stats changed); in-flight renders are ignored.
+    /// The card on screen stays until its replacement is ready (or clearPreview).</summary>
+    private void InvalidateCards(bool clearPreview = false)
     {
         _cardEpoch++;
         _rendering.Clear();
-        Preview = null;
         CurrentPng = null;
-        foreach (var card in _cards.Values) card.Bitmap.Dispose();
+        foreach (var card in _cards.Values) _retired.Add(card.Bitmap);
         _cards.Clear();
+        if (clearPreview) Preview = null;
+        DisposeRetired();
+    }
+
+    // Only noted here: this runs before the view hears of the change, and the view still
+    // draws the outgoing card until then. Every setter calls DisposeRetired afterwards.
+    partial void OnPreviewChanged(Bitmap? oldValue, Bitmap? newValue) => _fadingOut = oldValue;
+
+    /// <summary>True once the dialog closed and the cards were released.</summary>
+    internal bool IsDisposed => _disposed;
+
+    /// <summary>Disposes retired cards that are neither shown nor fading out.</summary>
+    private void DisposeRetired()
+    {
+        for (var i = _retired.Count - 1; i >= 0; i--)
+        {
+            var b = _retired[i];
+            if (!_disposed && (ReferenceEquals(b, Preview) || ReferenceEquals(b, _fadingOut))) continue;
+            _retired.RemoveAt(i);
+            b.Dispose();
+        }
     }
 
     private void RefreshPreview()
     {
         if (!HasData)
         {
-            InvalidateCards();
+            InvalidateCards(clearPreview: true);
             return;
         }
 
@@ -406,6 +440,7 @@ public partial class WrapViewModel : ViewModelBase, IDisposable
         {
             CurrentPng = card.Png;
             Preview = card.Bitmap;
+            DisposeRetired();
         }
         else
         {
@@ -421,6 +456,7 @@ public partial class WrapViewModel : ViewModelBase, IDisposable
         if (_cards.ContainsKey(format) || !_rendering.Add(format)) return;
         var epoch = _cardEpoch;
         var spec = BuildCardSpec(format);
+        CardRenderCount++;
         Task.Run(() =>
         {
             try
@@ -443,6 +479,7 @@ public partial class WrapViewModel : ViewModelBase, IDisposable
                     {
                         CurrentPng = png;
                         Preview = bitmap;
+                        DisposeRetired();
                     }
                 });
             }
@@ -467,6 +504,6 @@ public partial class WrapViewModel : ViewModelBase, IDisposable
         _disposed = true;
         // In-flight renders see a new card epoch (InvalidateCards) and drop their bitmap.
         _loadGeneration++;
-        InvalidateCards();
+        InvalidateCards(clearPreview: true);
     }
 }

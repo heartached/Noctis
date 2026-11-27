@@ -7,6 +7,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Noctis.Helpers;
+using Noctis.Localization;
 using Noctis.Models;
 using Noctis.Services;
 
@@ -762,7 +763,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         {
             var all = g.ToList();
             var visible = new ObservableCollection<Track>(all.Take(TrackRealizeChunk));
-            DiscGroups.Add(new DiscGroup(g.Key, $"Disc {g.Key}", visible));
+            DiscGroups.Add(new DiscGroup(g.Key, Loc.T("AlbumDetail.Disc", g.Key), visible));
             if (all.Count > visible.Count)
                 pending.Add((visible, all.GetRange(visible.Count, all.Count - visible.Count)));
         }
@@ -829,6 +830,33 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         DebugLogger.Info(DebugLogger.Category.Queue, "Album.PlayFrom", $"tracks={tracks.Count}, startIdx={idx}, track={track.Title}");
         _player.WithSource(PlaySource.ForAlbum(Album)).ReplaceQueueAndPlay(tracks, idx);
     }
+
+    /// <summary>GitHub #264: Play Disc N on a multi-disc album's disc header — that disc's
+    /// songs only, in album order, still "Playing from" this album.</summary>
+    [RelayCommand]
+    private void PlayDisc(DiscGroup? disc)
+    {
+        var tracks = DiscTracks(disc);
+        if (tracks.Count == 0) return;
+        DebugLogger.Info(DebugLogger.Category.Queue, "Album.PlayDisc", $"disc={disc!.DiscNumber}, tracks={tracks.Count}");
+        _player.WithSource(PlaySource.ForAlbum(Album)).PlayAll(tracks);
+    }
+
+    /// <summary>GitHub #264: Shuffle Disc N — the album Shuffle button's path with that disc's songs.</summary>
+    [RelayCommand]
+    private void ShuffleDisc(DiscGroup? disc)
+    {
+        var tracks = DiscTracks(disc);
+        if (tracks.Count == 0) return;
+        _player.WithSource(PlaySource.ForAlbum(Album)).PlayShuffled(tracks);
+    }
+
+    // From Tracks, not the group's list: a large disc's rows are still streaming in.
+    // Disc 0 (untagged) counts as disc 1, as in BuildDiscGroups.
+    private List<Track> DiscTracks(DiscGroup? disc) =>
+        disc == null
+            ? new List<Track>()
+            : InAlbumOrder(Tracks.Where(t => (t.DiscNumber <= 0 ? 1 : t.DiscNumber) == disc.DiscNumber));
 
     /// <summary>Navigates to a related album shown in Other Versions / More By Artist.</summary>
     [RelayCommand]
@@ -1094,6 +1122,14 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     {
         if (Album.Tracks.Count == 0) return;
         await MetadataHelper.OpenAudioConverterDialog(Album.Tracks.ToList());
+    }
+
+    /// <summary>GitHub #267: this album → Get Genres from Discogs.</summary>
+    [RelayCommand]
+    private async Task DiscogsGenresAlbum()
+    {
+        if (Album.Tracks.Count == 0) return;
+        await MetadataHelper.OpenDiscogsGenresDialog(Album.Tracks.ToList());
     }
 
     [RelayCommand]
@@ -1408,4 +1444,9 @@ public record ArtistTokenItem(string Name, bool IsLast, string Separator = ", ")
 
 /// <summary>A group of tracks belonging to a single disc within an album.
 /// Observable so large albums can stream rows in after first paint.</summary>
-public record DiscGroup(int DiscNumber, string Header, ObservableCollection<Track> Tracks);
+public record DiscGroup(int DiscNumber, string Header, ObservableCollection<Track> Tracks)
+{
+    /// <summary>GitHub #264: the disc header's menu rows ("Play Disc 2", "Shuffle Disc 2").</summary>
+    public string PlayLabel => Loc.T("AlbumDetail.PlayDisc", DiscNumber);
+    public string ShuffleLabel => Loc.T("AlbumDetail.ShuffleDisc", DiscNumber);
+}

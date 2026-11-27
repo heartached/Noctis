@@ -16,6 +16,9 @@ public partial class SettingsViewModel
     /// <summary>Look up the album's loop when its page opens (clear matches only).</summary>
     [ObservableProperty] private bool _animatedArtworkAutoFetch;
 
+    /// <summary>Settings › Artwork › Artist videos: the artist's Apple Music video behind their page.</summary>
+    [ObservableProperty] private bool _artistVideos;
+
     /// <summary>The cache cap in MB, one of <see cref="AppSettings.AnimatedArtworkCacheSizeChoices"/>.</summary>
     [ObservableProperty] private int _animatedArtworkCacheMb = 1024;
 
@@ -112,8 +115,19 @@ public partial class SettingsViewModel
     /// <summary>The cache's files; the block list is not needed here.</summary>
     private AnimatedArtworkCache AnimatedArtworkCacheFiles => _animatedArtworkCache ??= new AnimatedArtworkCache(_persistence, null);
 
+    /// <summary>The cache options (quality, size, usage, Clear) show while either fetcher is on:
+    /// album loops and artist videos share the one size-capped cache.</summary>
+    public bool ShowAnimatedArtworkCacheOptions => AnimatedArtworkAutoFetch || ArtistVideos;
+
     partial void OnAnimatedArtworkAutoFetchChanged(bool value)
     {
+        OnPropertyChanged(nameof(ShowAnimatedArtworkCacheOptions));
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnArtistVideosChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowAnimatedArtworkCacheOptions));
         if (_settingsLoaded) _ = SaveAsync();
     }
 
@@ -158,6 +172,7 @@ public partial class SettingsViewModel
     private void LoadAnimatedArtworkCacheSettings()
     {
         AnimatedArtworkAutoFetch = _settings.AnimatedArtworkAutoFetch;
+        ArtistVideos = _settings.ArtistVideos;
         AnimatedArtworkCacheMb = AppSettings.SnapAnimatedArtworkCacheMb(_settings.AnimatedArtworkCacheMb);
         AnimatedArtworkQuality = AnimatedArtworkQualities.Normalize(_settings.AnimatedArtworkQuality);
         _ = RefreshAnimatedArtworkCacheUsageAsync();
@@ -166,6 +181,7 @@ public partial class SettingsViewModel
     private void SaveAnimatedArtworkCacheSettings()
     {
         _settings.AnimatedArtworkAutoFetch = AnimatedArtworkAutoFetch;
+        _settings.ArtistVideos = ArtistVideos;
         _settings.AnimatedArtworkCacheMb = AppSettings.SnapAnimatedArtworkCacheMb(AnimatedArtworkCacheMb);
         _settings.AnimatedArtworkQuality = AnimatedArtworkQualities.Normalize(AnimatedArtworkQuality);
     }

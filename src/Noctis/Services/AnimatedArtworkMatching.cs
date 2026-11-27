@@ -411,7 +411,7 @@ internal sealed record MotionArtworkPage(
     }
 
     /// <summary>Reads <c>{"previewFrame":{…"url":…},"video":"…"}</c> starting at the brace.</summary>
-    private static (string? Video, string? Poster) ReadMotionObject(string html, int braceIndex)
+    internal static (string? Video, string? Poster) ReadMotionObject(string html, int braceIndex)
     {
         try
         {

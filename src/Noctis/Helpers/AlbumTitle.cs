@@ -23,11 +23,19 @@ public static class AlbumTitle
     // user has no reason to open). Same for "(Disc 1)", "(Part 2)", "(Live at Wembley)".
     private const string EditionMarkers =
         @"deluxe|remaster(ed)?|reissue|anniversar(y|ies)|expanded|explicit|clean|" +
-        @"edition|version|single|ep|bonus|special|collector'?s|limited|" +
+        @"edition|version|ver|single|ep|bonus|special|collector'?s|limited|" +
         @"mono|stereo|remix(ed)?|instrumental|acoustic|demo";
 
+    // Full-width brackets count too: "Album（Deluxe Edition）" (GitHub #263).
     private static readonly Regex s_trailingParensRegex =
-        new($@"\s*[\(\[][^\)\]]*\b(?:{EditionMarkers})\b[^\)\]]*[\)\]]\s*$",
+        new($@"\s*[\(\[（［【][^\)\]）］】]*\b(?:{EditionMarkers})\b[^\)\]）］】]*[\)\]）］】]\s*$",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    // An edition wrapped in dashes or wave dashes, as Japanese releases write it:
+    // "Album -Japanese Ver.-", "Album ～Deluxe Edition～" (GitHub #263). A dash needs a
+    // space before it so a hyphenated word is never read as one.
+    private static readonly Regex s_trailingWrappedRegex =
+        new($@"(?:\s+(?<d>[-–—])|\s*(?<d>[~～〜]))[^-–—~～〜]*\b(?:{EditionMarkers})\b[^-–—~～〜]*\k<d>\s*$",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private static readonly Regex s_trailingDashSuffixRegex =
@@ -55,6 +63,7 @@ public static class AlbumTitle
         {
             var prev = s;
             s = s_trailingParensRegex.Replace(s, string.Empty).Trim();
+            s = s_trailingWrappedRegex.Replace(s, string.Empty).Trim();
             s = s_trailingDashSuffixRegex.Replace(s, string.Empty).Trim();
             s = s_trailingVersionRegex.Replace(s, string.Empty).Trim();
             s = s.TrimEnd('-', '–', '—').Trim();

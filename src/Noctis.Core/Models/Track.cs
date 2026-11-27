@@ -229,6 +229,14 @@ public partial class Track : ObservableObject
     public string SourceConnectionId { get; set; } = string.Empty;
 
     /// <summary>
+    /// The media server's id for the album this song belongs to (Subsonic <c>albumId</c>,
+    /// Jellyfin <c>AlbumId</c>); null for library songs. The play log keeps it with a server
+    /// song's play, so Album Roulette knows the album was played in Noctis (GitHub #268).
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? SourceAlbumId { get; set; }
+
+    /// <summary>
     /// True for tracks whose FilePath is not a local file: media-server streams
     /// (http(s) URL), audio-CD tracks (cdda:// MRL) and the phone's desktop songs
     /// (noctis-remote://). File-only paths — tag writes, sidecars, file operations — must

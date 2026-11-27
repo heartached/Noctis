@@ -1,0 +1,14 @@
+
+
+
+{
+ "resultCount":5,
+ "results": [
+{"wrapperType":"artist", "artistType":"Artist", "artistName":"Chase Atlantic", "artistLinkUrl":"https://music.apple.com/us/artist/chase-atlantic/879496517?uo=4", "artistId":879496517, "amgArtistId":3179545, "primaryGenreName":"Alternative", "primaryGenreId":20}, 
+{"wrapperType":"artist", "artistType":"Artist", "artistName":"The Neighbourhood", "artistLinkUrl":"https://music.apple.com/us/artist/the-neighbourhood/219350813?uo=4", "artistId":219350813, "amgArtistId":2393652, "primaryGenreName":"Alternative", "primaryGenreId":20}, 
+{"wrapperType":"artist", "artistType":"Artist", "artistName":"Conan Gray", "artistLinkUrl":"https://music.apple.com/us/artist/conan-gray/1168567308?uo=4", "artistId":1168567308, "amgArtistId":3482058, "primaryGenreName":"Pop", "primaryGenreId":14}, 
+{"wrapperType":"artist", "artistType":"Artist", "artistName":"Skrillex", "artistLinkUrl":"https://music.apple.com/us/artist/skrillex/356545647?uo=4", "artistId":356545647, "amgArtistId":2068631, "primaryGenreName":"Dance", "primaryGenreId":17}, 
+{"wrapperType":"artist", "artistType":"Artist", "artistName":"Melanie Martinez", "artistLinkUrl":"https://music.apple.com/us/artist/melanie-martinez/993014053?uo=4", "artistId":993014053, "amgArtistId":2741481, "primaryGenreName":"Alternative", "primaryGenreId":20}]
+}
+
+

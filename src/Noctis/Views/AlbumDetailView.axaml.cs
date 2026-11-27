@@ -424,6 +424,45 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
         e.Handled = true;
     }
 
+    // ── Disc header (GitHub #264): Play Disc N / Shuffle Disc N ──
+
+    private ContextMenu? _discMenu;
+    private MenuItem? _discPlay;
+    private MenuItem? _discShuffle;
+    private Control? _discMenuOwner;
+
+    private void OnDiscHeaderContextRequested(object? sender, ContextRequestedEventArgs e)
+    {
+        if (sender is not Control header || header.DataContext is not DiscGroup disc) return;
+        if (DataContext is not AlbumDetailViewModel vm || !vm.HasMultipleDiscs) return;
+
+        if (_discMenu == null)
+        {
+            _discMenu = new ContextMenu();
+            _discMenu.Classes.Add(MenuV2.MenuClass);
+            _discMenu.Items.Add(_discPlay = MenuV2.Row(this, string.Empty, "MenuLinePlay"));
+            _discMenu.Items.Add(_discShuffle = MenuV2.Row(this, string.Empty, "MenuLineShuffle"));
+        }
+        // Labels read on every open, so a live language switch is followed.
+        _discPlay!.Header = disc.PlayLabel;
+        _discShuffle!.Header = disc.ShuffleLabel;
+        _discPlay.Command = vm.PlayDiscCommand;
+        _discShuffle.Command = vm.ShuffleDiscCommand;
+        _discPlay.CommandParameter = _discShuffle.CommandParameter = disc;
+
+        ContextMenuCoordinator.NotifyOpening(_discMenu);
+        MenuOpenAnimation.CloseNow(_discMenu);
+        // Detach from the previous header so Open() doesn't throw
+        // "Cannot show ContextMenu on a different control".
+        if (_discMenuOwner != null && !ReferenceEquals(_discMenuOwner, header))
+            _discMenuOwner.ContextMenu = null;
+        _discMenuOwner = header;
+        header.ContextMenu = _discMenu;
+        _discMenu.Placement = PlacementMode.Pointer;
+        _discMenu.Open(header);
+        e.Handled = true;
+    }
+
     // ── Related albums (Other Versions / More By): one shared v2 album menu ──
     // Replaces the per-tile XAML ContextMenu: same Related* commands and parameters.
 

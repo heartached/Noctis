@@ -39,7 +39,7 @@
     <Window.Styles>
 
         <!-- Top-right corner (09-13): round 34px icon buttons for filter / sort / view
-             options / view mode, an accent dot on one that is away from its default, and
+             options / view mode, an accent icon on one that is away from its default, and
              the section's one primary action as a red pill with its word. -->
         <Style Selector="Button.corner-icon">
             <Setter Property="Width" Value="34"/>
@@ -68,17 +68,11 @@
         <Style Selector="Button.corner-icon:pressed /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource ChipHoverBackground}"/>
         </Style>
-        <Style Selector="Border.corner-dot">
-            <Setter Property="Width" Value="9"/>
-            <Setter Property="Height" Value="9"/>
-            <Setter Property="CornerRadius" Value="4.5"/>
-            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource AppMainBackground}"/>
-            <Setter Property="BorderThickness" Value="1.5"/>
-            <Setter Property="HorizontalAlignment" Value="Right"/>
-            <Setter Property="VerticalAlignment" Value="Top"/>
-            <Setter Property="Margin" Value="0,-1,-1,0"/>
-            <Setter Property="IsHitTestVisible" Value="False"/>
+        <!-- Away from its default (Discord 11-26, Halil): the icon itself takes the accent. It
+             used to be an accent dot at the button's corner, which read as an unread notification. -->
+        <Style Selector="Button.corner-icon.active > PathIcon">
+            <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="Opacity" Value="1"/>
         </Style>
         <Style Selector="Button.corner-primary">
             <Setter Property="Padding" Value="14,7"/>
@@ -202,7 +196,7 @@
                 <!-- Right: the page's corner controls. One rule for every section (09-13
                      "icons + popovers" design): filter / sort / view options are round icon
                      buttons whose popovers hold the same items the labelled pills used to,
-                     an accent dot on an icon means the control is away from its default,
+                     an accent-coloured icon means the control is away from its default,
                      the section's single primary action keeps its words as a red pill, and
                      the Library / Cover Flow segment is one icon showing the mode you would
                      switch TO. Order, left to right (11-02, every section): page option
@@ -228,7 +222,7 @@
                                 <Binding Path="!IsPageTitleVisible"/>
                             </MultiBinding>
                         </Panel.IsVisible>
-                        <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.FilterTip}">
+                        <Button Classes="corner-icon" Classes.active="{Binding IsReleaseTypeFiltered}" AutomationProperties.Name="{loc:T Main.FilterTip}">
                             <ToolTip.Tip>
                                 <TextBlock><Run Text="{loc:T Main.FilterTip}"/><Run Text=" · "/><Run Text="{Binding ReleaseTypeFilterDisplay}"/></TextBlock>
                             </ToolTip.Tip>
@@ -260,7 +254,6 @@
                                 </MenuFlyout>
                             </Button.Flyout>
                         </Button>
-                        <Border Classes="corner-dot" IsVisible="{Binding IsReleaseTypeFiltered}"/>
                     </Panel>
 
                     <!-- Albums grid: one filter popover (type + quality) and one sort popover. -->
@@ -273,7 +266,7 @@
                         </StackPanel.IsVisible>
 
                         <Panel VerticalAlignment="Center">
-                            <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.FilterTip}">
+                            <Button Classes="corner-icon" Classes.active="{Binding IsAlbumFilterActive}" AutomationProperties.Name="{loc:T Main.FilterTip}">
                                 <ToolTip.Tip>
                                     <TextBlock><Run Text="{loc:T Main.FilterTip}"/><Run Text=" · "/><Run Text="{Binding ReleaseTypeFilterDisplay}"/><Run Text=" · "/><Run Text="{Binding QualityFilterDisplay}"/></TextBlock>
                                 </ToolTip.Tip>
@@ -315,11 +308,10 @@
                                     </MenuFlyout>
                                 </Button.Flyout>
                             </Button>
-                            <Border Classes="corner-dot" IsVisible="{Binding IsAlbumFilterActive}"/>
                         </Panel>
 
                         <Panel VerticalAlignment="Center">
-                            <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.Sort}">
+                            <Button Classes="corner-icon" Classes.active="{Binding IsAlbumSortActive}" AutomationProperties.Name="{loc:T Main.Sort}">
                                 <ToolTip.Tip>
                                     <TextBlock><Run Text="{loc:T Main.Sort}"/><Run Text=" "/><Run Text="{Binding AlbumSortLabel}"/></TextBlock>
                                 </ToolTip.Tip>
@@ -369,7 +361,6 @@
                                     </MenuFlyout>
                                 </Button.Flyout>
                             </Button>
-                            <Border Classes="corner-dot" IsVisible="{Binding IsAlbumSortActive}"/>
                         </Panel>
 
                         <!-- View (GitHub #149): grid or album carousel, and the carousel's case
@@ -437,7 +428,7 @@
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
                                 IsVisible="{Binding PageActionsVisible}">
                         <Panel VerticalAlignment="Center">
-                            <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.FilterTip}" ToolTip.Tip="{loc:T Main.FilterTip}">
+                            <Button Classes="corner-icon" Classes.active="{Binding IsSongsFilterActive}" AutomationProperties.Name="{loc:T Main.FilterTip}" ToolTip.Tip="{loc:T Main.FilterTip}">
                                 <PathIcon Data="{StaticResource FilterIcon}"/>
                                 <Button.Flyout>
                                     <MenuFlyout Placement="BottomEdgeAlignedRight"
@@ -462,11 +453,10 @@
                                     </MenuFlyout>
                                 </Button.Flyout>
                             </Button>
-                            <Border Classes="corner-dot" IsVisible="{Binding IsSongsFilterActive}"/>
                         </Panel>
 
                         <Panel VerticalAlignment="Center">
-                            <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.Sort}">
+                            <Button Classes="corner-icon" Classes.active="{Binding IsSongsSortActive}" AutomationProperties.Name="{loc:T Main.Sort}">
                                 <ToolTip.Tip>
                                     <TextBlock><Run Text="{loc:T Main.Sort}"/><Run Text=" "/><Run Text="{Binding PageSortColumn}"/></TextBlock>
                                 </ToolTip.Tip>
@@ -533,7 +523,7 @@
                                         <MenuItem Header="{loc:T Main.Descending}" Command="{Binding PageSortCommand}" CommandParameter="Descending">
                                             <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortDescending}"/></MenuItem.Icon>
                                         </MenuItem>
-                                        <!-- GitHub #156: shown exactly while the corner dot is, so the dot
+                                        <!-- GitHub #156: shown exactly while the icon is accented, so that
                                              always has a visible way back to the default order. -->
                                         <Separator IsVisible="{Binding IsSongsSortActive}" />
                                         <MenuItem Header="{loc:T Main.ResetSortToDateAdded}" Command="{Binding PageSortCommand}" CommandParameter="Reset"
@@ -543,7 +533,6 @@
                                     </MenuFlyout>
                                 </Button.Flyout>
                             </Button>
-                            <Border Classes="corner-dot" IsVisible="{Binding IsSongsSortActive}"/>
                         </Panel>
 
                         <Button Classes="corner-icon"
@@ -585,7 +574,7 @@
                     <!-- Playlists: sort popover + New (primary). -->
                     <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding PlaylistActionsVisible}">
                         <Panel VerticalAlignment="Center">
-                            <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.Sort}">
+                            <Button Classes="corner-icon" Classes.active="{Binding IsPlaylistSortActive}" AutomationProperties.Name="{loc:T Main.Sort}">
                                 <ToolTip.Tip>
                                     <TextBlock><Run Text="{loc:T Main.Sort}"/><Run Text=" "/><Run Text="{Binding PlaylistSortLabel}"/></TextBlock>
                                 </ToolTip.Tip>
@@ -611,7 +600,6 @@
                                     </MenuFlyout>
                                 </Button.Flyout>
                             </Button>
-                            <Border Classes="corner-dot" IsVisible="{Binding IsPlaylistSortActive}"/>
                         </Panel>
                         <Button Classes="accent-btn corner-primary" Background="{DynamicResource AccentButtonBackground}"
                                 ToolTip.Tip="{loc:T Main.NewPlaylistTip}" VerticalAlignment="Center">
@@ -707,9 +695,9 @@
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
                                 IsVisible="{Binding ArtistSortVisible}">
                         <!-- Filter (GitHub #233): All Artists / Hide Small Artists. Flips the Settings ›
-                             Artists option; the dot shows while small artists are hidden. -->
+                             Artists option; the icon is accented while small artists are hidden. -->
                         <Panel VerticalAlignment="Center">
-                            <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.FilterTip}" ToolTip.Tip="{loc:T Main.FilterTip}">
+                            <Button Classes="corner-icon" Classes.active="{Binding IsArtistSmallFilterActive}" AutomationProperties.Name="{loc:T Main.FilterTip}" ToolTip.Tip="{loc:T Main.FilterTip}">
                                 <PathIcon Data="{StaticResource FilterIcon}"/>
                                 <Button.Flyout>
                                     <MenuFlyout Placement="BottomEdgeAlignedRight"
@@ -729,10 +717,9 @@
                                     </MenuFlyout>
                                 </Button.Flyout>
                             </Button>
-                            <Border Classes="corner-dot" IsVisible="{Binding IsArtistSmallFilterActive}"/>
                         </Panel>
                         <Panel VerticalAlignment="Center">
-                            <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.Sort}">
+                            <Button Classes="corner-icon" Classes.active="{Binding IsArtistSortActive}" AutomationProperties.Name="{loc:T Main.Sort}">
                                 <ToolTip.Tip>
                                     <TextBlock><Run Text="{loc:T Main.Sort}"/><Run Text=" "/><Run Text="{Binding ArtistSortLabel}"/></TextBlock>
                                 </ToolTip.Tip>
@@ -768,7 +755,6 @@
                                     </MenuFlyout>
                                 </Button.Flyout>
                             </Button>
-                            <Border Classes="corner-dot" IsVisible="{Binding IsArtistSortActive}"/>
                         </Panel>
                         <!-- View: Grid / List, the same View glyph and menu shape as Albums. -->
                         <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.AlbumView}"
@@ -820,7 +806,7 @@
                             <PathIcon Data="{StaticResource FolderIcon}"/>
                         </Button>
                         <Panel VerticalAlignment="Center">
-                            <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.Sort}">
+                            <Button Classes="corner-icon" Classes.active="{Binding IsFoldersSortActive}" AutomationProperties.Name="{loc:T Main.Sort}">
                                 <ToolTip.Tip>
                                     <TextBlock><Run Text="{loc:T Main.Sort}"/><Run Text=" "/><Run Text="{Binding FoldersSortLabel}"/></TextBlock>
                                 </ToolTip.Tip>
@@ -840,7 +826,6 @@
                                     </MenuFlyout>
                                 </Button.Flyout>
                             </Button>
-                            <Border Classes="corner-dot" IsVisible="{Binding IsFoldersSortActive}"/>
                         </Panel>
                         <Button Classes="accent-btn corner-primary" Background="{DynamicResource AccentButtonBackground}"
                                 Command="{Binding PageShuffleFolderCommand}"
@@ -2167,6 +2152,18 @@
             IsVisible="False"
             ZIndex="10" />
 
+    <!-- Discord (Luwi 11-25): drag the sidebar's right edge to collapse or expand it
+         (SidebarResizeGrip). Fills the 8 px gap between the rail and the page, so it takes no
+         clicks from either; under the rail (ZIndex 9) so the hover-expanded rail covers it. -->
+    <Border x:Name="SidebarResizeGrip"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Stretch"
+            Width="8"
+            Margin="68,8,0,12"
+            Background="Transparent"
+            Cursor="SizeWestEast"
+            ZIndex="9" />
+
     <!-- Sidebar: overlaid so hover-expand doesn't reflow content -->
     <Border x:Name="SidebarWrapper"
             HorizontalAlignment="Left"
@@ -2175,15 +2172,8 @@
             Margin="8,8,8,12"
             CornerRadius="20"
             ZIndex="10">
-        <Border.Transitions>
-            <Transitions>
-                <DoubleTransition Property="Width" Duration="0:0:0.2">
-                    <DoubleTransition.Easing>
-                        <CubicEaseOut/>
-                    </DoubleTransition.Easing>
-                </DoubleTransition>
-            </Transitions>
-        </Border.Transitions>
+        <!-- Width moves are animated by SidebarMotion (code-behind): one curve for hover,
+             peek and pin, with the content held still while the rail resizes. -->
         <!-- Liquid Glass host: off, paints the sidebar fill the view used to paint
              itself; on, frosts the page content scrolling past under the rail. The
              rounded clip sits on the content, not on SidebarWrapper: the glass draws its

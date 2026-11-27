@@ -19,12 +19,13 @@ public class SettingsGlideRevealSweepTests
         // General
         "LaunchAtStartupError", "FileTypesStatus",
         // Appearance
-        "EnableAnimatedCovers", "AnimatedArtworkAutoFetch", "AlbumPageTintEnabled",
+        "EnableAnimatedCovers", "AnimatedArtworkAutoFetch", "ShowAnimatedArtworkCacheOptions", "AlbumPageTintEnabled",
         // Player
         "PlaybackBarShowStop", "PlaybackBarShowQuickPlaylist", "PlaybackBarShowTrash", "PlaybackBarShowSkipButtons",
         "ShowTrashFolderMissingHint", "ShowArtworkLyricsHint", "MiniPlayerFrostUnavailable",
         // Lyrics
         "LyricsPresetStatus", "LyricsVisualizerEnabled", "IsDriftStyle", "IsKawarpStyle",
+        "MusicVideoUseBrowserCookies", "ShowMusicVideoToolInstall", "HasMusicVideoProblem",
         // Audio
         "ExclusiveAudioEnabled", "IsCrossfadeStyle", "PlayPauseFadeEnabled", "OutputDeviceMissing",
         "ExclusiveAudioStatus", "MultichannelOutputNeedsRestart", "HeadphoneSurroundNeedsRestart", "ChannelMixNote",
@@ -54,6 +55,7 @@ public class SettingsGlideRevealSweepTests
     {
         "LaunchAtStartupError", "FileTypesStatus", "EnableAnimatedCovers", "ShowTrashFolderMissingHint",
         "ShowArtworkLyricsHint", "MiniPlayerFrostUnavailable", "LyricsPresetStatus", "LyricsVisualizerEnabled",
+        "MusicVideoUseBrowserCookies", "ShowMusicVideoToolInstall", "HasMusicVideoProblem",
         "OutputDeviceMissing", "ExclusiveAudioStatus", "MultichannelOutputNeedsRestart",
         "HeadphoneSurroundNeedsRestart", "ChannelMixNote", "HasHiddenLibraryFolders", "IsDataFolderCopying",
         "IsDataFolderInfoVisible", "IsDataFolderErrorVisible", "IsDataFolderRestartNeeded", "DeveloperMode",

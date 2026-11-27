@@ -29,4 +29,21 @@ public class PlayHistoryEvent
     /// </summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public long? ListenedMs { get; set; }
+
+    /// <summary>
+    /// A media-server song's album, as the Server section keys it: "&lt;connection id&gt;:&lt;server
+    /// album id&gt;" (ServerAlbum.Key), so Album Roulette counts plays made in Noctis for that
+    /// album (GitHub #268). Null on library plays, on events logged before it existed, and when
+    /// the server did not name the album.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ServerAlbumKey { get; set; }
+
+    /// <summary>
+    /// A media-server song's album identity (album artist + title, <see cref="Track.ComputeAlbumId"/>),
+    /// the identity the merged server list shares across servers. Matches the album when the
+    /// server's album id changed or was unknown. Null on library plays and older events.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Guid? ServerAlbumIdentity { get; set; }
 }

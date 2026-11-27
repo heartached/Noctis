@@ -117,7 +117,7 @@ public class LyricsStudioNudgeBarTests : IDisposable
             Press(win, Key.OemComma);
             Assert.Equal(TimeSpan.FromSeconds(5.1), vm.ReviewLines[0].Start);
 
-            var box = panel.GetVisualDescendants().OfType<TextBox>().First(t => t.Classes.Contains("line-edit"));
+            var box = panel.GetVisualDescendants().OfType<Noctis.Controls.EditOnDemandText>().First().Edit();
             box.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.OemComma, Source = box });
             Assert.Equal(TimeSpan.FromSeconds(5.1), vm.ReviewLines[0].Start);
         }

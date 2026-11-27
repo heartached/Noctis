@@ -628,4 +628,178 @@ public class DescriptionDialogTests
         Assert.Equal("Old words", playlist.Description);
         Assert.Equal("Old words", vm.DescriptionEditorText);
     }
+
+    // ── Click outside closes (owner 11-26) ──────────────────────────────
+
+    private static Point Outside(Window win, Control card)
+    {
+        // Left of the card, level with its middle: on the blurred backdrop.
+        var cardLeft = card.TranslatePoint(new Point(0, card.Bounds.Height / 2), win)!.Value;
+        Assert.True(cardLeft.X > 40, "the test window should leave room beside the card");
+        return new Point(cardLeft.X / 2, cardLeft.Y);
+    }
+
+    private static void ClickAt(Window win, Point at)
+    {
+        win.MouseMove(at);
+        win.MouseDown(at, MouseButton.Left);
+        win.MouseUp(at, MouseButton.Left);
+    }
+
+    [AvaloniaFact]
+    public void AlbumDialog_ClickOutsideTheCard_Unchanged_ClosesOnce()
+    {
+        EnsureAppStyles();
+        var lastFm = SlowLastFm.Loaded("Kept.");
+        var vm = AlbumPage(lastFm);
+        var (win, host) = OpenAlbumDialog(vm, forEditing: true);
+        var closed = 0;
+        win.Closed += (_, _) => closed++;
+        Assert.True(PumpUntil(() => CardSettledOpen(host)));
+        Assert.Equal("Kept.", win.FindControl<TextBox>("DescriptionEditor")!.Text);
+
+        ClickAt(win, Outside(win, win.FindControl<Grid>("CardRoot")!));
+
+        Assert.True(host.IsClosing);
+        Assert.True(PumpUntil(() => closed > 0, 2000));
+        PumpUntil(() => false, 250);
+        Assert.Equal(1, closed);
+        Assert.Empty(lastFm.Overrides);
+        Assert.Equal("Kept.", vm.AlbumDescription);
+    }
+
+    [AvaloniaFact]
+    public void AlbumDialog_ClickOutsideTheCard_AfterTyping_StaysOpenAndKeepsTheEdit_EscStillDrops()
+    {
+        EnsureAppStyles();
+        var lastFm = SlowLastFm.Loaded("Kept.");
+        var vm = AlbumPage(lastFm);
+        var (win, host) = OpenAlbumDialog(vm, forEditing: true);
+        var closed = 0;
+        win.Closed += (_, _) => closed++;
+        try
+        {
+            Assert.True(PumpUntil(() => CardSettledOpen(host)));
+            var editor = win.FindControl<TextBox>("DescriptionEditor")!;
+            editor.Text = "Half typed";
+
+            ClickAt(win, Outside(win, win.FindControl<Grid>("CardRoot")!));
+            PumpUntil(() => false, 250);
+            Assert.False(host.IsClosing, "an outside click must not throw away a changed text");
+            Assert.True(win.IsVisible);
+            Assert.Equal(0, closed);
+            Assert.Equal("Half typed", editor.Text);
+            Assert.Equal("Half typed", vm.AlbumDescriptionEditorText);
+
+            // Esc still drops the edit on purpose.
+            win.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
+            Assert.True(PumpUntil(() => closed > 0, 2000));
+            PumpUntil(() => false, 250);
+            Assert.Equal(1, closed);
+            Assert.Empty(lastFm.Overrides);
+            Assert.Equal("Kept.", vm.AlbumDescription);
+            Assert.Equal("Kept.", vm.AlbumDescriptionEditorText);
+        }
+        finally { CloseNow(win); }
+    }
+
+    [AvaloniaFact]
+    public void PlaylistDialog_ClickOutsideTheCard_AfterTyping_StaysOpen_TypedBackToTheOriginal_Closes()
+    {
+        EnsureAppStyles();
+        var (vm, playlist, persistence) = PlaylistPage("Old words");
+        var (win, host) = OpenPlaylistDialog(vm, forEditing: true);
+        try
+        {
+            Assert.True(PumpUntil(() => CardSettledOpen(host)));
+            var editor = win.FindControl<TextBox>("DescriptionEditor")!;
+            var outside = Outside(win, win.FindControl<Grid>("CardRoot")!);
+            editor.Text = "Changed";
+
+            ClickAt(win, outside);
+            PumpUntil(() => false, 100);
+            Assert.False(host.IsClosing);
+            Assert.Equal("Changed", vm.DescriptionEditorText);
+
+            // Back to what it opened with: nothing to lose, so the outside click closes again.
+            editor.Text = "Old words";
+            ClickAt(win, outside);
+            Assert.True(host.IsClosing);
+            Assert.True(PumpUntil(() => !win.IsVisible, 2000));
+            Assert.Equal(0, persistence.PlaylistSaves);
+            Assert.Equal("Old words", playlist.Description);
+        }
+        finally { CloseNow(win); }
+    }
+
+    [AvaloniaFact]
+    public void BothDialogs_SelectionDragFromTheEditorReleasedOutside_StaysOpen_ThenAnOutsideClickCloses()
+    {
+        EnsureAppStyles();
+        var albumVm = AlbumPage(SlowLastFm.Loaded("Some words to select across the editor."));
+        var (albumWin, albumHost) = OpenAlbumDialog(albumVm, forEditing: false);
+        AssertDragStaysThenClickCloses(albumWin, albumHost);
+
+        var (playlistVm, playlist, persistence) = PlaylistPage("Old words");
+        var (playlistWin, playlistHost) = OpenPlaylistDialog(playlistVm, forEditing: false);
+        AssertDragStaysThenClickCloses(playlistWin, playlistHost);
+        Assert.Equal(0, persistence.PlaylistSaves);
+        Assert.Equal("Old words", playlist.Description);
+        Assert.Equal("Old words", playlistVm.DescriptionEditorText);
+    }
+
+    private static void AssertDragStaysThenClickCloses(Window win, PillDialogHost host)
+    {
+        try
+        {
+            Assert.True(PumpUntil(() => CardSettledOpen(host)));
+            var editor = win.FindControl<TextBox>("DescriptionEditor")!;
+            var outside = Outside(win, win.FindControl<Grid>("CardRoot")!);
+            var start = editor.TranslatePoint(new Point(30, 24), win)!.Value;
+
+            win.MouseMove(start);
+            win.MouseDown(start, MouseButton.Left);
+            win.MouseMove(new Point((start.X + outside.X) / 2, start.Y), RawInputModifiers.LeftMouseButton);
+            win.MouseMove(outside, RawInputModifiers.LeftMouseButton);
+            win.MouseUp(outside, MouseButton.Left);
+            PumpUntil(() => false, 100);
+            Assert.False(host.IsClosing, "a drag that started inside the card must not close it");
+            Assert.True(win.IsVisible);
+
+            // Only a left press outside counts: a right click there leaves it open too.
+            win.MouseDown(outside, MouseButton.Right);
+            win.MouseUp(outside, MouseButton.Right);
+            PumpUntil(() => false, 50);
+            Assert.False(host.IsClosing);
+
+            win.MouseDown(outside, MouseButton.Left);
+            win.MouseUp(outside, MouseButton.Left);
+            Assert.True(host.IsClosing);
+            Assert.True(PumpUntil(() => !win.IsVisible, 2000));
+        }
+        finally { CloseNow(win); }
+    }
+
+    [AvaloniaFact]
+    public void AlbumDialog_ClickInsideTheCard_StaysOpen()
+    {
+        EnsureAppStyles();
+        var vm = AlbumPage(SlowLastFm.Loaded("x"));
+        var (win, host) = OpenAlbumDialog(vm, forEditing: false);
+        try
+        {
+            Assert.True(PumpUntil(() => CardSettledOpen(host)));
+            var card = win.FindControl<Grid>("CardRoot")!;
+            // Near a corner and on the header: the card's own business.
+            foreach (var p in new[] { new Point(6, 6), new Point(card.Bounds.Width / 2, 20), new Point(card.Bounds.Width - 8, card.Bounds.Height - 8) })
+            {
+                var at = card.TranslatePoint(p, win)!.Value;
+                win.MouseDown(at, MouseButton.Left);
+                win.MouseUp(at, MouseButton.Left);
+                PumpUntil(() => false, 30);
+                Assert.False(host.IsClosing, $"a click at {p} inside the card closed it");
+            }
+        }
+        finally { CloseNow(win); }
+    }
 }

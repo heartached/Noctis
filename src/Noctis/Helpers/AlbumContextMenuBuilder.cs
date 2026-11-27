@@ -37,6 +37,8 @@ public sealed class AlbumContextMenuBuilder
     public MenuItem ScanReplayGain { get; private set; } = null!;
     /// <summary>GitHub #195: every song of the album (or the Ctrl-selection) → the bulk Find Lyrics dialog. Bound by <see cref="BindFindLyrics"/>.</summary>
     public MenuItem FindLyrics { get; private set; } = null!;
+    /// <summary>GitHub #267: the album (or the Ctrl-selection) → Get Genres from Discogs. Bound by <see cref="BindDiscogsGenres"/>.</summary>
+    public MenuItem DiscogsGenres { get; private set; } = null!;
     public MenuItem ShowFolder { get; private set; } = null!;
     /// <summary>GitHub #121: the album's songs → Send to Folder (copy or move). Bound by <see cref="BindSendToFolder"/>.</summary>
     public MenuItem SendToFolder { get; private set; } = null!;
@@ -138,6 +140,9 @@ public sealed class AlbumContextMenuBuilder
         ScanReplayGain = new MenuItem { Header = "Scan ReplayGain", IsVisible = false };
         ScanReplayGain.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis.UI/Assets/Icons/Metadata%20ICON.png");
         items.Add(ScanReplayGain);
+
+        DiscogsGenres = MenuV2.Row(resourceHost, Loc.T("DiscogsGenres.Menu"), "MenuLineBadge", visible: false);
+        items.Add(DiscogsGenres);
 
         // No "Search Lyrics" here (GitHub #208): it searched the album's first song only and opened
         // the lyrics page over whatever was playing. Find Lyrics… covers every song of the album.
@@ -244,6 +249,9 @@ public sealed class AlbumContextMenuBuilder
         Tools.Items.Add(Convert);
         ScanReplayGain = MenuV2.Row(host, Loc.T("LibraryAlbums.ScanReplayGain"), "MenuLineReplayGain", visible: false);
         Tools.Items.Add(ScanReplayGain);
+        // GitHub #267
+        DiscogsGenres = MenuV2.Row(host, Loc.T("DiscogsGenres.Menu"), "MenuLineBadge", visible: false);
+        Tools.Items.Add(DiscogsGenres);
         DontScrobble = MenuV2.Row(host, string.Empty, "MenuLineScrobbleOff", visible: false);
         Tools.Items.Add(DontScrobble);
         items.Add(Tools);
@@ -362,6 +370,16 @@ public sealed class AlbumContextMenuBuilder
         BindOptional(FindLyrics, findLyricsCommand, album);
         // GitHub #214: while a hidden Find Lyrics run is pending, this entry brings it back.
         FindLyrics.Header = ViewModels.MetadataHelper.PendingFindLyricsMenuHeader() ?? Loc.T("LibraryAlbums.FindLyrics");
+        if (IsV2) MenuV2.RefreshLayout(Menu.Items);
+    }
+
+    /// <summary>
+    /// GitHub #267: "Get Genres from Discogs" for the album or the Ctrl-selection it is in (hidden
+    /// when null). Separate from <see cref="Bind"/> like <see cref="BindSendToFolder"/>.
+    /// </summary>
+    public void BindDiscogsGenres(Album album, ICommand? discogsGenresCommand)
+    {
+        BindOptional(DiscogsGenres, discogsGenresCommand, album);
         if (IsV2) MenuV2.RefreshLayout(Menu.Items);
     }
 

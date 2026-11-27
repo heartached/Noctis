@@ -1,3 +1,8 @@
+using System.Diagnostics;
+using Avalonia.Headless;
+using Avalonia.Media;
+using Avalonia.Threading;
+using SkiaSharp;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Media.Transformation;
@@ -107,5 +112,82 @@ public class MediaArtworkTests
         art.IsSpinning = true;
         art.IsSpinning = false;
         art.Medium = ArtworkMedium.Cover;
+    }
+
+    [AvaloniaFact]
+    public void VinylAndCassette_UseTheCarouselProportions()
+    {
+        // Same drawing as the album carousel's cases, laid out in pixels for the box.
+        var art = new MediaArtwork { Medium = ArtworkMedium.Vinyl, Width = 417, Height = 417 };
+        var window = new Window { Width = 500, Height = 500, Content = art };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        var s = 417 / AlbumCarouselCard.VinylWidth;
+        Assert.Equal(s, art.FindControl<Border>("VinylSleeve")!.Bounds.Width, tolerance: 1.0);
+        var slide = art.FindControl<Panel>("VinylSlide")!;
+        Assert.Equal(2 * AlbumCarouselCard.VinylDiscRadius * s, slide.Bounds.Width, tolerance: 1.0);
+        Assert.Equal(slide.Bounds.Width, slide.Bounds.Height, tolerance: 1.0); // square: a scratch finds the disc's centre from it
+        // A scratch grabs the disc anywhere on it, not only on the label art.
+        Assert.NotNull(art.FindControl<Border>("VinylSpin")!.Background);
+
+        art.Medium = ArtworkMedium.Cassette;
+        Dispatcher.UIThread.RunJobs();
+        var shell = art.FindControl<Canvas>("CassetteShell")!.Bounds;
+        Assert.Equal(417, shell.Width, tolerance: 1.0);
+        Assert.Equal(417 / AlbumCarouselCard.CassetteWidth * AlbumCarouselCard.CassetteHeight, shell.Height, tolerance: 1.0);
+        window.Close();
+    }
+
+    /// <summary>Saves one PNG per costume, paused and playing, on a dark and a light page.
+    /// Runs only with NOCTIS_TEST_SKIA=1 and NOCTIS_ARTWORK_SHOTS set to an output folder.</summary>
+    [AvaloniaFact]
+    public void Costumes_SaveRenders()
+    {
+        var dir = Environment.GetEnvironmentVariable("NOCTIS_ARTWORK_SHOTS");
+        if (!HeadlessTestApp.RealRendering || string.IsNullOrEmpty(dir)) return;
+        Directory.CreateDirectory(dir);
+        var path = Path.Combine(Path.GetTempPath(), "NoctisArtworkShot.png");
+        using (var bmp = new SKBitmap(512, 512))
+        using (var canvas = new SKCanvas(bmp))
+        {
+            using var paint = new SKPaint
+            {
+                Shader = SKShader.CreateLinearGradient(new SKPoint(0, 0), new SKPoint(512, 512), new[] { SKColors.SteelBlue, SKColors.MediumPurple }, SKShaderTileMode.Clamp),
+            };
+            canvas.DrawRect(0, 0, 512, 512, paint);
+            using var white = new SKPaint { Color = SKColors.White.WithAlpha(220), IsAntialias = true };
+            canvas.DrawCircle(256, 220, 110, white);
+            using var dark = new SKPaint { Color = SKColors.Black.WithAlpha(160) };
+            canvas.DrawRect(40, 400, 432, 60, dark);
+            using var data = SKImage.FromBitmap(bmp).Encode(SKEncodedImageFormat.Png, 90);
+            using var fs = File.Create(path);
+            data.SaveTo(fs);
+        }
+
+        foreach (var medium in new[] { ArtworkMedium.CompactDisc, ArtworkMedium.Vinyl, ArtworkMedium.Cassette })
+            foreach (var light in new[] { false, true })
+            {
+                var row = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 40, Margin = new Avalonia.Thickness(30) };
+                MediaArtwork Art(bool spinning) => new() { Medium = medium, SourcePath = path, DecodeWidth = 768, Width = 420, Height = 420, IsSpinning = spinning };
+                row.Children.Add(Art(false));
+                row.Children.Add(Art(true));
+                var window = new Window
+                {
+                    Width = 960, Height = 480, Content = row,
+                    Background = new SolidColorBrush(Color.Parse(light ? "#F2F2F4" : "#141414")),
+                    RequestedThemeVariant = light ? Avalonia.Styling.ThemeVariant.Light : Avalonia.Styling.ThemeVariant.Dark,
+                };
+                window.Show();
+                var sw = Stopwatch.StartNew();
+                while (sw.ElapsedMilliseconds < 1200)
+                {
+                    Dispatcher.UIThread.RunJobs();
+                    AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                    Thread.Sleep(10);
+                }
+                window.CaptureRenderedFrame()!.Save(Path.Combine(dir, $"lyrics-{medium}-{(light ? "light" : "dark")}.png"));
+                window.Close();
+            }
     }
 }

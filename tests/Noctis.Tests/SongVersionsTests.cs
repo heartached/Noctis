@@ -53,6 +53,17 @@ public class SongVersionsTests
     [InlineData("Wonderwall", "wonderwall (remastered)")]
     [InlineData("Don't Look Back in Anger", "Dont Look Back In Anger (Remastered)")]
     [InlineData("All Too Well", "All Too Well (Taylor's Version)")]
+    // GitHub #263: "Ver." is short for Version, and Japanese releases wrap the version in
+    // dashes or wave dashes ("-Japanese Ver.-", "～Piano Ver.～") or full-width brackets.
+    [InlineData("Wonderwall", "Wonderwall (Music Box Ver.)")]
+    [InlineData("Wonderwall", "Wonderwall -Japanese Ver.-")]
+    [InlineData("Wonderwall (Music Box Ver.)", "Wonderwall -Japanese Ver.-")]
+    [InlineData("Wonderwall", "Wonderwall ～Piano Ver.～")]
+    [InlineData("Wonderwall", "Wonderwall〜Piano ver.〜")]
+    [InlineData("Wonderwall", "Wonderwall ~Acoustic~")]
+    [InlineData("Wonderwall", "Wonderwall（Instrumental）")]
+    [InlineData("Wonderwall", "Wonderwall [TV Size Ver.]")]
+    [InlineData("Wonderwall", "Wonderwall (Ver. 2)")]
     public void SameSong_IsAVersion(string a, string b)
     {
         var x = T(a);
@@ -74,6 +85,9 @@ public class SongVersionsTests
     [InlineData("Intro", "Intro")]                 // every album's Intro is not a version
     [InlineData("Interlude", "Interlude (Live)")]
     [InlineData("Track 3", "Track 3")]
+    [InlineData("Song", "Song -Part 2-")]            // a wrapped suffix still has to name a version
+    [InlineData("Hero", "Anti-Hero")]
+    [InlineData("Song", "Song - Hero -")]
     public void DifferentSong_IsNotAVersion(string a, string b)
     {
         var x = T(a);
@@ -143,6 +157,10 @@ public class SongVersionsTests
     [InlineData("Wonderwall (Live) [2014 Remaster]", "Live · 2014 Remaster")]
     [InlineData("Wonderwall (Live) - 2014 Remaster", "Live · 2014 Remaster")]
     [InlineData("Wonderwall (feat. X) (Acoustic)", "Acoustic")]
+    [InlineData("Wonderwall (Music Box Ver.)", "Music Box Ver.")]
+    [InlineData("Wonderwall -Japanese Ver.-", "Japanese Ver.")]
+    [InlineData("Wonderwall (Music Box Ver.) -Japanese Ver.-", "Music Box Ver. · Japanese Ver.")]
+    [InlineData("Wonderwall ～Piano Ver.～", "Piano Ver.")]
     public void VersionLabel_IsTheStrippedSuffix(string title, string expected)
         => Assert.Equal(expected, SongVersions.VersionLabel(title));
 

@@ -1,0 +1,252 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:Noctis.Localization"
+        xmlns:vm="using:Noctis.ViewModels"
+        xmlns:controls="using:Noctis.Controls"
+        x:Class="Noctis.Views.WhatsNewDialog"
+        x:DataType="vm:WhatsNewViewModel"
+        Title="{loc:T Settings.WhatsNew}"
+        CanResize="False"
+        WindowDecorations="None"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Styles>
+        <!-- One rounded card per group (Added, Improved, Fixed, Other). -->
+        <Style Selector="Border.wn-group">
+            <Setter Property="CornerRadius" Value="18" />
+            <Setter Property="Padding" Value="20,14,20,6" />
+        </Style>
+        <Style Selector="TextBlock.wn-group-label">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="LetterSpacing" Value="1.1" />
+            <Setter Property="Opacity" Value="0.55" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Ellipse.wn-dot">
+            <Setter Property="Width" Value="8" />
+            <Setter Property="Height" Value="8" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Fill" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+        </Style>
+        <Style Selector="Ellipse.wn-dot.added">
+            <Setter Property="Fill" Value="#3ECF8E" />
+        </Style>
+        <Style Selector="Ellipse.wn-dot.improved">
+            <Setter Property="Fill" Value="#6AA9FF" />
+        </Style>
+        <Style Selector="Ellipse.wn-dot.fixed">
+            <Setter Property="Fill" Value="{DynamicResource AccentColorBrush}" />
+        </Style>
+
+        <!-- A change row: a hairline above every row but the group's first. -->
+        <Style Selector="Border.wn-row">
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+            <Setter Property="BorderThickness" Value="0,1,0,0" />
+            <Setter Property="Padding" Value="0,12" />
+        </Style>
+        <Style Selector="ItemsControl.wn-rows ContentPresenter:nth-child(1) Border.wn-row">
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="TextBlock.wn-line">
+            <Setter Property="FontSize" Value="13.5" />
+            <Setter Property="LineHeight" Value="20" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="TextBlock.wn-line.titled">
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="TextBlock.wn-detail">
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="LineHeight" Value="18" />
+            <Setter Property="Opacity" Value="0.6" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+
+        <!-- "#123": a small dim link to the issue. -->
+        <Style Selector="Button.wn-issue">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="7,1" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Opacity" Value="0.5" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.wn-issue:pointerover">
+            <Setter Property="Opacity" Value="0.9" />
+        </Style>
+        <Style Selector="Button.wn-issue:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+        </Style>
+
+        <Style Selector="Ellipse.loading-spinner">
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="Stroke" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="StrokeThickness" Value="2.5" />
+            <Setter Property="StrokeDashArray" Value="11,5" />
+            <Setter Property="StrokeLineCap" Value="Round" />
+            <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+        </Style>
+        <!-- Keyed on [IsVisible=True] so a hidden spinner's INFINITE clock stops. -->
+        <Style Selector="Ellipse.loading-spinner[IsVisible=True]">
+            <Style.Animations>
+                <Animation Duration="0:0:0.85" IterationCount="INFINITE" Easing="LinearEasing">
+                    <KeyFrame Cue="0%"><Setter Property="RotateTransform.Angle" Value="0" /></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="RotateTransform.Angle" Value="360" /></KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+    </Window.Styles>
+
+    <!-- Settings › About › What's new (owner 11-26, "clean and simple and organized"): the
+         running version's release notes in the rounded pill pop-up (PillDialogHost: blurred app
+         behind; the X, Done, Esc and a click on the backdrop all close, animated once). Header,
+         one card per group of changes, Open on GitHub / Done. The card's height follows its
+         content up to what the window allows (MaxHeight, FitToWindow); the notes scroll. -->
+    <controls:PillDialogHost>
+
+    <DockPanel x:Name="CardRoot" Width="640">
+
+        <!-- Header: icon tile, title with the version in accent, release date; close -->
+        <Border DockPanel.Dock="Top"
+                Padding="28,22,22,18"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="52,16,*,12,Auto">
+                <Border Grid.Column="0" Width="52" Height="52" CornerRadius="16" Classes="pill-well">
+                    <controls:LineIcon Data="{DynamicResource PageLineSparkle}" Width="22" Height="22" Opacity="0.7"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <StackPanel Grid.Column="2" Spacing="3" VerticalAlignment="Center">
+                    <!-- The runs on one line: whitespace between them would add a space to the title. -->
+                    <TextBlock x:Name="TitleText" FontSize="20" FontWeight="Bold" TextTrimming="CharacterEllipsis"><Run Text="{Binding TitleBefore}" /><Run Text="{Binding TitleVersion}" Foreground="{DynamicResource AccentTextBrush}" /><Run Text="{Binding TitleAfter}" /></TextBlock>
+                    <TextBlock x:Name="SubtitleText"
+                               Text="{Binding Subtitle}"
+                               FontSize="13" Opacity="0.6" TextTrimming="CharacterEllipsis"
+                               IsVisible="{Binding HasSubtitle}" />
+                </StackPanel>
+                <!-- Solid accent, the Settings sheet's X. -->
+                <Button x:Name="CloseButton"
+                        Grid.Column="4"
+                        Classes="pill-primary"
+                        Width="36" Height="36" MinHeight="36" Padding="0"
+                        VerticalAlignment="Center"
+                        ToolTip.Tip="{loc:T Common.Close}"
+                        AutomationProperties.Name="{loc:T Common.Close}"
+                        Click="OnCloseClick">
+                    <controls:LineIcon Data="{StaticResource MenuLineClose}" Width="20" Height="20" />
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- Footer: Open on GitHub, Done -->
+        <Border DockPanel.Dock="Bottom"
+                Padding="28,16"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,1,0,0">
+            <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+                <Button x:Name="OpenOnGitHubButton"
+                        Classes="pill-secondary"
+                        Content="{loc:T WhatsNew.OpenOnGitHub}"
+                        Command="{Binding OpenOnGitHubCommand}"
+                        MinWidth="108" />
+                <Button x:Name="DoneButton"
+                        Classes="pill-primary"
+                        Content="{loc:T Common.Done}"
+                        Click="OnCloseClick"
+                        MinWidth="108" />
+            </StackPanel>
+        </Border>
+
+        <!-- Body: loading, unavailable, or the notes -->
+        <Panel>
+            <StackPanel x:Name="LoadingPanel" Spacing="12" Margin="0,48"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                        IsVisible="{Binding IsLoading}">
+                <Ellipse Classes="loading-spinner" HorizontalAlignment="Center" IsVisible="{Binding IsLoading}" />
+                <TextBlock Text="{loc:T Server.Loading}" FontSize="13" Opacity="0.6" HorizontalAlignment="Center" />
+            </StackPanel>
+
+            <TextBlock x:Name="UnavailableText"
+                       Text="{loc:T WhatsNew.Unavailable}"
+                       FontSize="14" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center"
+                       Margin="40,52" HorizontalAlignment="Center" VerticalAlignment="Center"
+                       IsVisible="{Binding IsUnavailable}" />
+
+            <ScrollViewer x:Name="NotesScroll"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto"
+                          IsVisible="{Binding IsLoaded}">
+                <ItemsControl x:Name="SectionList" ItemsSource="{Binding Sections}" Margin="24,20,24,22">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Spacing="16" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:WhatsNewSectionViewModel">
+                            <Border Classes="pill-well wn-group">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Spacing="9" Margin="0,2,0,6">
+                                        <Ellipse Classes="wn-dot"
+                                                 Classes.added="{Binding IsAdded}"
+                                                 Classes.improved="{Binding IsImproved}"
+                                                 Classes.fixed="{Binding IsFixed}" />
+                                        <TextBlock Classes="wn-group-label" Text="{Binding Label}" />
+                                    </StackPanel>
+                                    <ItemsControl Classes="wn-rows" ItemsSource="{Binding Items}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:WhatsNewItemViewModel">
+                                                <Border Classes="wn-row">
+                                                    <Grid ColumnDefinitions="*,Auto">
+                                                        <StackPanel Grid.Column="0" Spacing="3" VerticalAlignment="Center">
+                                                            <TextBlock Classes="wn-line"
+                                                                       Classes.titled="{Binding HasDetail}"
+                                                                       Text="{Binding Title}" />
+                                                            <TextBlock Classes="wn-detail"
+                                                                       Text="{Binding Detail}"
+                                                                       IsVisible="{Binding HasDetail}" />
+                                                        </StackPanel>
+                                                        <ItemsControl Grid.Column="1"
+                                                                      Margin="12,2,-7,0"
+                                                                      VerticalAlignment="Top"
+                                                                      ItemsSource="{Binding Issues}"
+                                                                      IsVisible="{Binding HasIssues}">
+                                                            <ItemsControl.ItemsPanel>
+                                                                <ItemsPanelTemplate>
+                                                                    <StackPanel Orientation="Horizontal" />
+                                                                </ItemsPanelTemplate>
+                                                            </ItemsControl.ItemsPanel>
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate x:DataType="vm:WhatsNewIssueLink">
+                                                                    <Button Classes="wn-issue"
+                                                                            Content="{Binding Text}"
+                                                                            Command="{Binding Open}"
+                                                                            ToolTip.Tip="{Binding Tip}"
+                                                                            AutomationProperties.Name="{Binding Tip}" />
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Panel>
+    </DockPanel>
+    </controls:PillDialogHost>
+</Window>

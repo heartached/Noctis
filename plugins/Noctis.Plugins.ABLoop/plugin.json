@@ -1,7 +1,7 @@
 {
   "id": "dev.noctis.plugins.abloop",
   "name": "A-B Loop",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "Noctis",
   "description": "Loop any part of a song and save your loops.",
   "type": "dotnet",

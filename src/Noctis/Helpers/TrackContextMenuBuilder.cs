@@ -73,9 +73,13 @@ public sealed class TrackContextMenuBuilder
     /// Hidden unless the view passes a badgeCommand; rebuilt on every Bind since the list changes.</summary>
     public MenuItem Badge { get; private set; } = null!;
     public MenuItem SendToFolder { get; private set; } = null!;
+    /// <summary>GitHub #267: the songs' albums → Get Genres from Discogs. Bound by <see cref="BindDiscogsGenres"/>.</summary>
+    public MenuItem DiscogsGenres { get; private set; } = null!;
     public MenuItem LyricsBackground { get; private set; } = null!;
     public MenuItem LyricsBackgroundChoose { get; private set; } = null!;
     public MenuItem LyricsBackgroundClear { get; private set; } = null!;
+    /// <summary>Discord 11-25: paste a YouTube link (stream or download) or pick from a search.</summary>
+    public MenuItem LyricsBackgroundYouTube { get; private set; } = null!;
     public MenuItem DontScrobble { get; private set; } = null!;
     public MenuItem ShowFolder { get; private set; } = null!;
     public MenuItem OpenWith { get; private set; } = null!;
@@ -273,6 +277,8 @@ public sealed class TrackContextMenuBuilder
         LyricsBackground.Icon = CreatePngIcon("avares://Noctis.UI/Assets/Icons/Lyrics%20ICON.png");
         LyricsBackgroundChoose = new MenuItem { Header = "Choose video for this song", Command = LyricsBackgroundOverrides.ChooseForTrackCommand };
         LyricsBackground.Items.Add(LyricsBackgroundChoose);
+        LyricsBackgroundYouTube = new MenuItem { Header = Loc.T("Menu.MusicVideoFromYouTube"), Command = LyricsBackgroundOverrides.MusicVideoFromYouTubeCommand };
+        LyricsBackground.Items.Add(LyricsBackgroundYouTube);
         LyricsBackgroundClear = new MenuItem { Header = "Use default video", Command = LyricsBackgroundOverrides.ClearForTrackCommand };
         LyricsBackground.Items.Add(LyricsBackgroundClear);
         items.Add(LyricsBackground);
@@ -285,6 +291,9 @@ public sealed class TrackContextMenuBuilder
         SendToFolder = new MenuItem { Header = "Send to Folder…", IsVisible = false };
         SendToFolder.Icon = CreatePngIcon("avares://Noctis.UI/Assets/Icons/Folder%20ICON.png");
         items.Add(SendToFolder);
+
+        DiscogsGenres = MenuV2.Row(resourceHost, Loc.T("DiscogsGenres.Menu"), "MenuLineBadge", visible: false);
+        items.Add(DiscogsGenres);
 
         ShowFolder = new MenuItem { Header = "Show Folder" };
         ShowFolder.Icon = CreatePngIcon("avares://Noctis.UI/Assets/Icons/Folder%20ICON.png");
@@ -400,6 +409,8 @@ public sealed class TrackContextMenuBuilder
         LyricsBackground = MenuV2.Row(host, Loc.T("AlbumDetail.LyricsBackgroundVideo"), "MenuLineVideo");
         LyricsBackgroundChoose = new MenuItem { Header = Loc.T("Menu.ChooseSongVideo"), Command = LyricsBackgroundOverrides.ChooseForTrackCommand };
         LyricsBackground.Items.Add(LyricsBackgroundChoose);
+        LyricsBackgroundYouTube = new MenuItem { Header = Loc.T("Menu.MusicVideoFromYouTube"), Command = LyricsBackgroundOverrides.MusicVideoFromYouTubeCommand };
+        LyricsBackground.Items.Add(LyricsBackgroundYouTube);
         LyricsBackgroundClear = new MenuItem { Header = Loc.T("AlbumDetail.UseDefaultVideo"), Command = LyricsBackgroundOverrides.ClearForTrackCommand };
         LyricsBackground.Items.Add(LyricsBackgroundClear);
         items.Add(LyricsBackground);
@@ -418,6 +429,9 @@ public sealed class TrackContextMenuBuilder
         Tools.Items.Add(Spectrogram);
         SendToFolder = MenuV2.Row(host, Loc.T("SendTo.Title"), "MenuLineSendToFolder", visible: false);
         Tools.Items.Add(SendToFolder);
+        // GitHub #267
+        DiscogsGenres = MenuV2.Row(host, Loc.T("DiscogsGenres.Menu"), "MenuLineBadge", visible: false);
+        Tools.Items.Add(DiscogsGenres);
         OpenWith = MenuV2.Row(host, Loc.T("Menu.OpenFileWith"), "MenuLineOpenWith");
         Tools.Items.Add(OpenWith);
         DontScrobble = MenuV2.Row(host, string.Empty, "MenuLineScrobbleOff", visible: false);
@@ -565,6 +579,8 @@ public sealed class TrackContextMenuBuilder
         BindOptional(MoveToAlbum, moveToAlbumCommand, track);
 
         LyricsBackgroundChoose.CommandParameter = track;
+        LyricsBackgroundYouTube.CommandParameter = track;
+        LyricsBackgroundYouTube.IsVisible = !track.IsRemoteStream;
         LyricsBackgroundClear.CommandParameter = track;
         LyricsBackgroundClear.IsVisible = LyricsBackgroundOverrides.HasOverride(LyricsBackgroundOverrides.KeyForTrack(track));
 
@@ -708,6 +724,16 @@ public sealed class TrackContextMenuBuilder
         if (string.IsNullOrWhiteSpace(pathData)) return null;
         try { return Geometry.Parse(pathData); }
         catch { return null; }
+    }
+
+    /// <summary>
+    /// GitHub #267: "Get Genres from Discogs" for the song's album (or the albums of the
+    /// Ctrl-selection it is in); hidden when null. Call after <see cref="Bind"/>.
+    /// </summary>
+    public void BindDiscogsGenres(Track track, ICommand? discogsGenresCommand)
+    {
+        BindOptional(DiscogsGenres, discogsGenresCommand, track);
+        if (IsV2) MenuV2.RefreshLayout(Menu.Items);
     }
 
     private static void BindOptional(MenuItem item, ICommand? command, Track track)

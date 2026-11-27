@@ -28,7 +28,7 @@ deciding whether to install one.
 
 ## What a plugin can do
 
-API **1.8** (Noctis 1.7.0 and later; 1.7 since 1.6.9; 1.3 to 1.6 since 1.6.6; 1.2 since 1.5.9; 1.1 since 1.5.3):
+API **1.9** (Noctis 1.7.3 and later; 1.8 since 1.7.0; 1.7 since 1.6.9; 1.3 to 1.6 since 1.6.6; 1.2 since 1.5.9; 1.1 since 1.5.3):
 
 | Area | What | Permission |
 |---|---|---|
@@ -258,7 +258,7 @@ Everything lives in the `Noctis.Plugins` namespace.
 | `void Log(string)` | 1.0 | | Writes to the Noctis debug log, prefixed with the plugin name. |
 | `void RegisterVisualLayer(IVisualLayerProvider)` | 1.0 | | A lyrics-page background layer. |
 | `string PluginDirectory` | 1.1 | | The folder the plugin was loaded from. Assemblies are loaded from memory, so `Assembly.Location` is empty: use this for bundled files. |
-| `IPlaybackControl Playback` | 1.1 | `playback.control` | `PlayPause()`, `Play()`, `Pause()`, `Next()`, `Previous()`, `Seek(TimeSpan)`; since 1.3 `PlayTracks(trackIds, startIndex = 0)` replaces the queue with those library tracks (unknown ids are skipped); since 1.5 `GetQueue()`, `SetUpNext(trackIds)` and the `TracksQueued` event; since 1.7 `QueueTracks(trackIds, playNext)`, see [The queue](#the-queue). Safe from any thread. |
+| `IPlaybackControl Playback` | 1.1 | `playback.control` | `PlayPause()`, `Play()`, `Pause()`, `Next()`, `Previous()`, `Seek(TimeSpan)`; since 1.3 `PlayTracks(trackIds, startIndex = 0)` replaces the queue with those library tracks (unknown ids are skipped); since 1.5 `GetQueue()`, `SetUpNext(trackIds)` and the `TracksQueued` event; since 1.7 `QueueTracks(trackIds, playNext)`, see [The queue](#the-queue); since 1.9 `PlayServerAlbumAsync(albumId, shuffle)` and `QueueServerAlbumAsync(albumId, playNext)` for albums of the user's media servers. Safe from any thread. |
 | `ILibraryReader Library` | 1.1 | `library.read` | `TrackCount`, `Search(query, limit = 50)` (every word must appear in title, artist or album; accent- and case-insensitive; max 500); since 1.2 `GetAll()`, every track; since 1.4 `GetPlaylists()`, see below. |
 | `IPluginSettings Settings` | 1.1 | | Declared settings (see above). |
 | `void Notify(string)` | 1.1 | `notifications` | A notice pill for ~4 s. At most one per second per plugin; long text is cut at 200 characters. |
@@ -837,7 +837,7 @@ push): the exact commands are in [`plugins/PUBLISHING.md`](../plugins/PUBLISHING
 | Plugin | Folder | Uses |
 |---|---|---|
 | Mixxx | `plugins/Noctis.Plugins.Mixxx` | API 1.2: BPM and key from Mixxx's library |
-| Album Roulette | `plugins/Noctis.Plugins.AlbumRoulette` | API 1.7: a view, `PlayTracks`, `QueueTracks`, `ShowAlbum`, a track command, library commands (artist page, Songs page), `GetLyricLines` (the Language chip), notices |
+| Album Roulette | `plugins/Noctis.Plugins.AlbumRoulette` | API 1.7: a view, `PlayTracks`, `QueueTracks`, `ShowAlbum`, a track command, library commands (artist page, Songs page), `GetLyricLines` (the Language chip), notices; optional 1.9: the media servers' albums on the reel (`GetServerAlbumsAsync`, `GetServerAlbumArtworkAsync`, `PlayServerAlbumAsync`, `QueueServerAlbumAsync`; their `PlayCount` / `LastPlayed` (the servers' plays plus the plays made in Noctis) drive the Never played and Not played in 6 months chips, and an album with no plays known from either stays off those two) |
 | A-B Loop | `plugins/Noctis.Plugins.ABLoop` | API 1.4: a view, `Seek`/`Play`/`Pause`, a track command |
 | Chords | `plugins/Noctis.Plugins.Chords` | API 1.6: `AudioDecoder`, a view, `Seek`, `PlayTracks`, a track command |
 
@@ -1054,6 +1054,7 @@ Planned for phase 2, modelled on Flow Launcher and Obsidian:
 | 1.6 | 1.6.6+ | `IAudioDecoder` (`host.AudioDecoder`) with the `audio.decode` permission: decode a song file to mono PCM for offline analysis. |
 | 1.8 | 1.7.0+ | Lyrics renderers: `RegisterLyricsRenderer`, `ILyricsRenderer`, `ILyricsLineView`, `LyricsLineInfo`, `LyricsLineWord`, `LyricsLineVoice`, `LyricsLineState`, `LyricsLineStyle`, `LyricsLineFrame` (no permission); the user picks one in Settings → Lyrics. Needs `"minAppVersion": "1.7.0"`. `PluginApi.Minor` reads 8 from this kit on (the 1.7 kit still reported 6). |
 | 1.7 | 1.6.9+ | `ILibraryReader.GetLyricLines` (under `library.read`), `IPlaybackControl.QueueTracks` (under `playback.control`), `RegisterLibraryCommand` / `LibraryCommandPlaces` / `LibraryCommandContext` (under `menu.commands`). A plugin that calls them needs `"minAppVersion": "1.6.9"`: on an older Noctis the call fails with `MissingMethodException` when the calling method is compiled, before any `catch` in that method runs. |
+| 1.9 | 1.7.3+ | Media servers (under `library.read` / `playback.control`): `ILibraryReader.GetServerAlbumsAsync()` lists the albums of every connected Navidrome/Jellyfin/Ampache/Subsonic server merged into one list (`ServerAlbumInfo`, with `PlayCount` / `LastPlayed` as the servers report them plus the album's plays in Noctis, which the servers never see: null = neither knows, which is not "never played"), `GetServerAlbumArtworkAsync(albumId)` downloads a cover once; `IPlaybackControl.PlayServerAlbumAsync` / `QueueServerAlbumAsync` play one from its server. Their songs are not library tracks. On an older Noctis neither the calls nor `ServerAlbumInfo` exist: keep every use in its own `[MethodImpl(NoInlining)]` method and catch `MissingMethodException` / `TypeLoadException` around the call (what Album Roulette 1.0.3 and later do), or set `"minAppVersion": "1.7.3"`. |
 
 ## Legacy plugins (API 1.0, no plugin.json)
 

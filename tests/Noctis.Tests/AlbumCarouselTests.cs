@@ -180,6 +180,41 @@ public class AlbumCarouselTests
         w.Close();
     }
 
+    // Owner 11-27: the artist under the carousel was plain text, and hovering the quality badge
+    // said nothing (the album page explains it in a pop-up).
+    [AvaloniaFact]
+    public void Caption_ArtistNamesOpenTheArtist_AndTheQualityBadgeExplainsItself()
+    {
+        var albums = Many(5);
+        var (c, w) = Show(albums);
+        string? opened = null;
+        c.ArtistCommand = new RelayCommand<string>(a => opened = a);
+        Settle(c);
+
+        var artist = c.CaptionArtist;
+        Assert.Equal(albums[0].ArtistDisplay, artist.Text);
+        Assert.Equal(albums[0].ArtistDisplay, Noctis.Helpers.CaptionCreditLink.GetCredit(artist));
+        Assert.Same(c.ArtistCommand, Noctis.Helpers.CaptionCreditLink.GetCommand(artist));
+        Assert.True(artist.IsEffectivelyVisible);
+        // The pointer reaches the names: the caption is no longer shut to it.
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        var at = artist.TranslatePoint(new Point(artist.Bounds.Width / 2, artist.Bounds.Height / 2), c)!.Value;
+        Assert.Same(artist, c.InputHitTest(at));
+        var hit = Noctis.Helpers.CaptionCreditLink.NameAt(artist, new Point(artist.Bounds.Width / 2, artist.Bounds.Height / 2));
+        Assert.NotNull(hit);
+        c.ArtistCommand.Execute(hit!.Value.Name);
+        Assert.Equal(hit.Value.Name, opened);
+
+        // The next album's credit follows the caption.
+        Key(c, Avalonia.Input.Key.Right);
+        Settle(c);
+        Assert.Equal(albums[1].ArtistDisplay, Noctis.Helpers.CaptionCreditLink.GetCredit(artist));
+
+        Assert.IsType<StackPanel>(ToolTip.GetTip(c.CaptionQuality));
+        w.Close();
+    }
+
     [AvaloniaFact]
     public void Keys_BrowseOneAlbumAtATime_AndEnterOpensTheCentredAlbum()
     {
@@ -289,6 +324,16 @@ public class AlbumCarouselTests
             // The cover always sits inside the card.
             Assert.True(new Rect(card.CardSize).Contains(card.CoverRect.Deflate(0.5)), style.ToString());
         }
+    }
+
+    [Fact]
+    public void Vinyl_LabelEdgeShowsPastTheSleeve()
+    {
+        // The label (the cover printed small) must peek out past the sleeve's right edge
+        // (x = 1 cover edge), not hide behind it, and the record must fit its card.
+        var labelRight = 0.5 + AlbumCarouselCard.VinylDiscOffset + AlbumCarouselCard.VinylDiscRadius * AlbumCarouselCard.VinylLabelRadius;
+        Assert.True(labelRight > 1.05, $"label ends at {labelRight:0.000}");
+        Assert.Equal(AlbumCarouselCard.VinylWidth, 0.5 + AlbumCarouselCard.VinylDiscOffset + AlbumCarouselCard.VinylDiscRadius, 6);
     }
 
     // ── View models ───────────────────────────────────────────────────────────
@@ -707,5 +752,31 @@ public class AlbumCarouselTests
         Shot("Mixed", AlbumCarouselStyle.JewelCase, c => c.StyleOverrides = mixed);
         Shot("Mixed-CentreCassette", AlbumCarouselStyle.JewelCase, c => { c.StyleOverrides = mixed; c.SnapTo(8); });
         Shot("Mixed-Narrow", AlbumCarouselStyle.Cassette, c => c.StyleOverrides = mixed, width: 820);
+
+        // Close-ups: one card per case at a large cover size, on a dark and a light page,
+        // the second card dimmed the way a side card is.
+        foreach (var style in new[] { AlbumCarouselStyle.JewelCase, AlbumCarouselStyle.Vinyl, AlbumCarouselStyle.Cassette })
+            foreach (var light in new[] { false, true })
+            {
+                var row = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 60, Margin = new Thickness(40) };
+                row.Children.Add(new AlbumCarouselCard { Album = albums[1], CaseStyle = style, CoverSize = 360, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top });
+                row.Children.Add(new AlbumCarouselCard { Album = albums[4], CaseStyle = style, CoverSize = 200, Dim = 0.35, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top });
+                var window = new Window
+                {
+                    Width = 1000, Height = 560, Content = row,
+                    Background = new SolidColorBrush(Color.Parse(light ? "#F2F2F4" : "#141414")),
+                    RequestedThemeVariant = light ? Avalonia.Styling.ThemeVariant.Light : Avalonia.Styling.ThemeVariant.Dark,
+                };
+                window.Show();
+                var sw = Stopwatch.StartNew();
+                while (sw.ElapsedMilliseconds < 700)
+                {
+                    Dispatcher.UIThread.RunJobs();
+                    AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                    Thread.Sleep(10);
+                }
+                window.CaptureRenderedFrame()!.Save(Path.Combine(dir, $"case-{style}-{(light ? "light" : "dark")}.png"));
+                window.Close();
+            }
     }
 }

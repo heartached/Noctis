@@ -48,6 +48,7 @@ public sealed class RouletteFilter
 
     public bool Matches(RouletteAlbum album, DateTimeOffset now)
     {
+        if (!album.HasPlayableSong) return false; // every song hidden from shuffle, as Song Roulette skips them
         if (SkipCompilations && album.IsCompilation) return false;
         if (Genre is { } g && !album.Genres.Contains(g, StringComparer.OrdinalIgnoreCase)) return false;
         if (Language is { } l && !string.Equals(album.Language, l, StringComparison.OrdinalIgnoreCase)) return false;
@@ -67,7 +68,7 @@ public sealed class RouletteFilter
         {
             case PlayedFilter.NeverPlayed when !album.NeverPlayed:
                 return false;
-            case PlayedFilter.NotIn6Months when album.LastPlayed is { } last && last > now.AddMonths(-6):
+            case PlayedFilter.NotIn6Months when !album.NotPlayedSince(now.AddMonths(-6)):
                 return false;
         }
         if (Artist is { } a && !album.Artists.Any(x => string.Equals(x, a, StringComparison.OrdinalIgnoreCase))) return false;

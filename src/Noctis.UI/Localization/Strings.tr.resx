@@ -149,7 +149,7 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
   <data name="Settings.NewPlaylistPositionTop" xml:space="preserve"><value>Üstte</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
   <data name="Settings.NewPlaylistPositionBottom" xml:space="preserve"><value>Altta</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
   <data name="Settings.RemoveEmptyFolders" xml:space="preserve"><value>Boş Klasörleri Kaldır</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
-  <data name="Settings.RemoveEmptyFoldersHint" xml:space="preserve"><value>Son çalma listesi dışarı taşındığında veya silindiğinde klasörü kaldır. Yeni bir klasör, içine bir çalma listesi girene kadar kalır.</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.RemoveEmptyFoldersHint" xml:space="preserve"><value>Son çalma listesi gidince klasörü kaldırır. Yeni boş klasörler kalır.</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
   <data name="Settings.SidebarMoveUp" xml:space="preserve"><value>Yukarı taşı</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarMoveDown" xml:space="preserve"><value>Aşağı taşı</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CollapseAlbumEditions" xml:space="preserve"><value>Albüm Sürümlerini Birleştir</value><comment>Text in SettingsView.axaml</comment></data>
@@ -208,6 +208,15 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
   <data name="Settings.AutoDownloadUpdatesCaption" xml:space="preserve"><value>Güncellemeleri arka planda indirir. Hazır olduğunda Kur ve Yeniden Başlat'a tıkla.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Postpone" xml:space="preserve"><value>Ertele</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WhatsNew" xml:space="preserve"><value>Yenilikler</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="WhatsNew.Title" xml:space="preserve"><value>{0} Yenilikleri</value></data>
+  <data name="WhatsNew.Released" xml:space="preserve"><value>{0:D} tarihinde yayımlandı</value></data>
+  <data name="WhatsNew.Added" xml:space="preserve"><value>Eklenenler</value></data>
+  <data name="WhatsNew.Improved" xml:space="preserve"><value>İyileştirmeler</value></data>
+  <data name="WhatsNew.Fixed" xml:space="preserve"><value>Düzeltmeler</value></data>
+  <data name="WhatsNew.Other" xml:space="preserve"><value>Diğer</value></data>
+  <data name="WhatsNew.Unavailable" xml:space="preserve"><value>Bu sürümün sürüm notları henüz hazır değil.</value></data>
+  <data name="WhatsNew.OpenOnGitHub" xml:space="preserve"><value>GitHub'da aç</value></data>
+  <data name="WhatsNew.IssueTip" xml:space="preserve"><value>{0} kaydını GitHub'da aç</value></data>
   <data name="Settings.ShowRecentReleasesOnly" xml:space="preserve"><value>Son yayınları gör</value><comment>Advanced: collapses the release history</comment></data>
   <data name="Settings.LyricsBackgroundPerSongHint" xml:space="preserve"><value>Bir şarkıya veya albüme kendi videosunu vermek için sağ tıkla.</value><comment>Appearance: under Lyrics Background Video</comment></data>
   <data name="Settings.PauseVideoWithPlayback" xml:space="preserve"><value>Videoyu Oynatmayla Birlikte Duraklat</value><comment>Appearance toggle title</comment></data>
@@ -323,9 +332,9 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
   <data name="Settings.EqualizerButton" xml:space="preserve"><value>Ekolayzer</value><comment>Player Island Buttons row: EQ on/off button (GitHub #94)</comment></data>
   <data name="Settings.EqualizerButtonHint" xml:space="preserve"><value>Karıştır'ın ardından bir EQ açma/kapama düğmesi.</value><comment>Player Island Buttons row hint</comment></data>
   <data name="Settings.PlaybackTime" xml:space="preserve"><value>Çalma süresi</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>Parça kutusunda geçerli parçanın geçen ve kalan süresi. Bunun yerine toplam uzunluğu göstermek için süreye tıklayın.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>Geçen ve kalan süreyi gösterir. Toplam uzunluk için süreye tıklayın.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.InlineVolumeSlider" xml:space="preserve"><value>Ses Kaydırıcısını Her Zaman Göster</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
-  <data name="Settings.InlineVolumeSliderHint" xml:space="preserve"><value>Ses kaydırıcısı açılır pencere yerine Ses düğmesinin yanında durur. Sesi kapatmak için düğmeye tıklayın. Dar bir ada yine açılır pencereyi kullanır.</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
+  <data name="Settings.InlineVolumeSliderHint" xml:space="preserve"><value>Ses kaydırıcısını Ses düğmesinin yanında tutar. Sesi kapatmak için düğmeye tıklayın.</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve"><value>Dalga formlu ilerleme çubuğu</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WaveformSeekBarHint" xml:space="preserve"><value>Şarkının dalga formunu ilerleme çubuğunda gösterir.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrackBoxOpacity" xml:space="preserve"><value>Parça Kutusu Opaklığı</value><comment>Text in SettingsView.axaml</comment></data>
@@ -393,7 +402,7 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
   <data name="Settings.ArtworkColour" xml:space="preserve"><value>Kapak rengi</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TintBarsCurrentCover" xml:space="preserve"><value>Çubukları kapak rengiyle boya. Kapalıyken beyaz olur.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.FullSpectrum" xml:space="preserve"><value>Tam spektrum</value><comment>Text in SettingsView.axaml (GitHub #205)</comment></data>
-  <data name="Settings.FullSpectrumHint" xml:space="preserve"><value>Çubukları bir stüdyo analizörü gibi ağırlıklandır, böylece 20 kHz'e kadar sessiz tizler görünür kalır.</value><comment>Text in SettingsView.axaml (GitHub #205)</comment></data>
+  <data name="Settings.FullSpectrumHint" xml:space="preserve"><value>Sessiz tizleri 20 kHz'e kadar güçlendirir, böylece görünür kalırlar.</value><comment>Text in SettingsView.axaml (GitHub #205)</comment></data>
   <data name="Settings.FrequencyBarsRisingFromTip" xml:space="preserve"><value>Alttan yükselen frekans çubukları</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.Bars" xml:space="preserve"><value>Çubuklar</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.BarsMirroredAboutCentreTip" xml:space="preserve"><value>Orta çizgiye göre aynalanmış çubuklar</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
@@ -456,31 +465,31 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
   <data name="Settings.FullscreenLyricsFocus" xml:space="preserve"><value>Tam Ekran Söz Odağı</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.DimAllButCurrent" xml:space="preserve"><value>Geçerli satır ve komşuları dışındaki her satırı karart.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsFullScreenHideIsland" xml:space="preserve"><value>Tam Ekranda Oynatıcı Adasını Gizle</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsFullScreenHideIslandHint" xml:space="preserve"><value>Tam ekranda söz sayfası şarkının altında yalnızca ilerleme çubuğunu gösterir. Oynatma klavye kısayollarıyla kontrol edilmeye devam eder.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsFullScreenHideIslandHint" xml:space="preserve"><value>Tam ekranda yalnızca ilerleme çubuğunu gösterir. Klavye kontrolleri çalışmaya devam eder.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsMinLineOpacity" xml:space="preserve"><value>En Düşük Satır Opaklığı</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsMinLineOpacityHint" xml:space="preserve"><value>Her satırı hafifçe görünür tutar, böylece herhangi birine tıklayabilirsin. %0 uzak satırları gizler.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsMinLineOpacityHint" xml:space="preserve"><value>Uzak satırları hafifçe görünür tutar, böylece onlara tıklayabilirsin. %0 onları gizler.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.JoinSplitWords" xml:space="preserve"><value>Bölünmüş Kelimeleri Birleştir</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.KeepWordsWholeWhen" xml:space="preserve"><value>TTML sözleri kelimeleri hecelere böldüğünde kelimeleri bütün tut.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepWordsWholeWhen" xml:space="preserve"><value>Sözler kelimeleri hecelere böldüğünde kelimeleri bütün tut.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsGlowAndLift" xml:space="preserve"><value>Parlama ve Yükselme</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsGlowAndLiftHint" xml:space="preserve"><value>Söylenen kelimeler yükselir, uzatılan notalar parlar.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsRenderer" xml:space="preserve"><value>Söz Oluşturucu</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsRendererHint" xml:space="preserve"><value>Söz satırlarını bir eklentiyle çiz. Kaydırma, zamanlama ve tıklayarak atlama Noctis'te kalır.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsRendererHint" xml:space="preserve"><value>Söz satırlarını bir eklenti çizer. Kaydırma ve zamanlama aynı kalır.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsRendererBuiltIn" xml:space="preserve"><value>Noctis</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsRendererOff" xml:space="preserve"><value>{0} (eklenti kapalı)</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsCenterWhenNoLyrics" xml:space="preserve"><value>Sözü Olmayan Şarkıda Oynatıcıyı Ortala</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve"><value>Şarkının sözü yoksa kapağı ve kontrolleri ortaya taşır.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve"><value>Kapağı ve kontrolleri ortaya taşır.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsAutoReturn" xml:space="preserve"><value>Geçerli Satıra Otomatik Dön</value><comment>Lyrics Page toggle in SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsAutoReturnHint" xml:space="preserve"><value>Sözleri kaydırdıktan birkaç saniye sonra söylenen satıra geri döner. Kapalı: Takip et'e basana kadar kaydırdığınız yerde kalır.</value><comment>Lyrics Page toggle hint in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoReturnHint" xml:space="preserve"><value>Kaydırdıktan birkaç saniye sonra geçerli satıra döner. Kapalı: Takip et'e basana kadar yerinde kalır.</value><comment>Lyrics Page toggle hint in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsBackgroundBehindSidebar" xml:space="preserve"><value>Kenar Çubuğunun Arkasında Arka Plan</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsBackgroundBehindSidebarHint" xml:space="preserve"><value>Söz arka planının kenar çubuğunun arkasına kadar uzanmasını sağlar.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsWaveformSeekBar" xml:space="preserve"><value>Dalga Formlu İlerleme Çubuğu</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsWaveformSeekBarHint" xml:space="preserve"><value>Şarkının dalga formunu söz sayfasının ilerleme çubuğunda gösterir.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsWaveformSeekBarHint" xml:space="preserve"><value>Şarkının dalga formunu ilerleme çubuğunda gösterir.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowTranslations" xml:space="preserve"><value>Çevirileri Göster</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.ShowTranslationsHint" xml:space="preserve"><value>Bir TTML söz dosyasındaki çeviriyi her satırın altında göster.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowTranslationsHint" xml:space="preserve"><value>Dosyada çeviri varsa her satırın altında gösterir.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowRomanization" xml:space="preserve"><value>Latin Harfli Okunuşu Göster</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.ShowRomanizationHint" xml:space="preserve"><value>Dosyada varsa Latin harfli sözleri (romaji, pinyin) her satırın altında gösterir.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowRomanizationHint" xml:space="preserve"><value>Dosyada romaji veya pinyin varsa her satırın altında gösterir.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowBackgroundVocals" xml:space="preserve"><value>Arka Vokalleri Göster</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.ShowBackgroundVocalsHint" xml:space="preserve"><value>Arka vokalleri ve doğaçlamaları satırın altında daha küçük bir satırda göster.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowBackgroundVocalsHint" xml:space="preserve"><value>Arka vokalleri ve doğaçlamaları daha küçük bir satırda gösterir.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayerBarOpacity" xml:space="preserve"><value>Cam Opaklığı</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowSolidPlaybackBar" xml:space="preserve"><value>Oynatıcının, kuyruğun ve menülerin ne kadar dolgun göründüğü.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.BackgroundBlur" xml:space="preserve"><value>Arka Plan Bulanıklığı</value><comment>Settings slider title: blur of the app behind pop-ups and Settings</comment></data>
@@ -530,14 +539,14 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
   <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>Karıştırmayı Açık Tut</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>Karıştırma açıkken bir albüm, çalma listesi veya şarkı çalmak onu açık tutar ve yeni müziği karıştırır.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SkipSilence" xml:space="preserve"><value>Sessizliği Atla</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.SkipSilenceHint" xml:space="preserve"><value>Her şarkıyı ilk sesinde başlatır ve son sesinden sonra sıradakine geçer. Dosyaların değiştirilmez; bir şarkı için ayarladığın başlangıç ve bitiş zamanları önceliklidir.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilenceHint" xml:space="preserve"><value>Şarkıların başındaki ve sonundaki sessizliği atlar. Dosyaların değiştirilmez.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevel" xml:space="preserve"><value>Sessizlik Seviyesi</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevelHint" xml:space="preserve"><value>Bundan sessiz olan her şey sessizlik sayılır. Düşük değer sessiz kapanışları korur; yüksek değer cızırtı gibi daha fazlasını keser.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="PlaybackBar.PlayingFrom" xml:space="preserve"><value>{0} içinden çalınıyor</value><comment>Queue drawer link and island title tooltip (Discord 11-24). {0} = album, playlist, artist or page name</comment></data>
   <data name="Settings.ShowPlaySource" xml:space="preserve"><value>Müziğin Nereden Çaldığını Göster</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.ShowPlaySourceHint" xml:space="preserve"><value>Kuyruk, müziğin başlatıldığı albümü, çalma listesini veya sayfayı gösterir. Oradaki şarkıya dönmek için tıkla.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowPlaySourceHint" xml:space="preserve"><value>Kuyruk, müziğin nereden başlatıldığını gösterir. Oraya dönmek için tıkla.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TitleOpensPlaySource" xml:space="preserve"><value>Şarkı Adı Çaldığı Yeri Açar</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.TitleOpensPlaySourceHint" xml:space="preserve"><value>Oynatıcı adasında şarkı adına tıklamak, seni albümü yerine şarkının çaldığı sayfadaki şarkıya götürür.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySourceHint" xml:space="preserve"><value>Şarkı adına tıklamak, albümü yerine şarkının çaldığı sayfayı açar.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>Eksik Şarkılar</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>Kuyruktaki bir şarkının dosyası yoksa Noctis onu atlar. Ona ne olacağını seç.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>Eksik Olarak İşaretle</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>
@@ -669,7 +678,7 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
   <data name="Settings.NetEaseCloudMusic" xml:space="preserve"><value>NetEase Cloud Music</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LargeSyncedLyricsCatalog" xml:space="preserve"><value>Geniş senkronize söz kataloğu</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Musixmatch" xml:space="preserve"><value>Musixmatch</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
-  <data name="Settings.MusixmatchHint" xml:space="preserve"><value>Kelime senkronlu sözler · captcha istediğinde duraklayabilir</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MusixmatchHint" xml:space="preserve"><value>Kelime senkronlu sözler · captcha isteyebilir</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Kugou" xml:space="preserve"><value>Kugou</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.KugouHint" xml:space="preserve"><value>Kelime senkronlu söz kataloğu</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LrcRed" xml:space="preserve"><value>lrc.red</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
@@ -677,7 +686,9 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
   <data name="Settings.Unison" xml:space="preserve"><value>Unison</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.UnisonHint" xml:space="preserve"><value>Better Lyrics topluluk sözleri · Lyrics from Unison (unison.boidu.dev)</value><comment>Text in SettingsView.axaml; keep "Lyrics from Unison (unison.boidu.dev)": the attribution Unison's ODbL licence asks for</comment></data>
   <data name="Settings.LrcMux" xml:space="preserve"><value>lrcmux</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
-  <data name="Settings.LrcMuxHint" xml:space="preserve"><value>lrcmux.dev üzerinden Deezer, KuGou, YouTube Music ve Musixmatch sözleri, en son sorulur</value><comment>Text in SettingsView.axaml (GitHub #219)</comment></data>
+  <data name="Settings.LrcMuxHint" xml:space="preserve"><value>lrcmux.dev üzerinden Deezer, KuGou, YouTube Music ve Musixmatch · en son sorulur</value><comment>Text in SettingsView.axaml (GitHub #219)</comment></data>
+  <data name="Settings.Genius" xml:space="preserve"><value>Genius</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
+  <data name="Settings.GeniusHint" xml:space="preserve"><value>Diğer kaynaklarda olmayan şarkılar için zamanlamasız sözler · Lyrics Studio’da senkronla</value><comment>Text in SettingsView.axaml (GitHub #265)</comment></data>
   <data name="Settings.YouTubeMusicLyrics" xml:space="preserve"><value>YouTube Music</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.YouTubeMusicLyricsHint" xml:space="preserve"><value>Senkronize sözler · daha yavaş arama</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsSourcesPickerHint" xml:space="preserve"><value>Söz sayfasındaki Kaynak Seç, burada kapatılan kaynakları yine kullanabilir.</value><comment>Text in SettingsView.axaml, under the online lyrics providers</comment></data>
@@ -753,8 +764,8 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
   <data name="Settings.AreYouSureAction" xml:space="preserve"><value>Emin misin? Bu işlem geri alınamaz.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ResetEverything" xml:space="preserve"><value>Her Şeyi Sıfırla</value><comment>Content in SettingsView.axaml</comment></data>
   <data name="Settings.ClearArtworkCache" xml:space="preserve"><value>Kapak Önbelleğini Temizle</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.DeleteCachedArtworkWill" xml:space="preserve"><value>Önbelleğe alınmış kapakları sil. Bir sonraki taramada yeniden oluşturulur.</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.NoteRemovesAllArtwork" xml:space="preserve"><value>Not: Bu, kitaplığındaki tüm kapakları kaldırır.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.DeleteCachedArtworkWill" xml:space="preserve"><value>Kayıtlı kapakları ve sanatçı fotoğraflarını sil. Şarkı dosyalarındaki ve klasörlerdeki kapaklar hemen geri gelir, sanatçı fotoğrafları yeniden indirilir.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.NoteRemovesAllArtwork" xml:space="preserve"><value>Not: Seçtiğin sanatçı fotoğrafları ve yalnızca Noctis'te olan kapaklar kaybolur.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ClearCache" xml:space="preserve"><value>Önbelleği Temizle</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeyboardShortcuts" xml:space="preserve"><value>Klavye kısayolları</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ClickKeyChangePress" xml:space="preserve"><value>Değiştirmek için bir tuşa tıkla. Esc iptal eder, Backspace temizler.</value><comment>Text in SettingsView.axaml</comment></data>
@@ -868,6 +879,9 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
   <data name="AlbumDetail.UnlinkTracksFrom" xml:space="preserve"><value>Şuradan Parça Bağlantısını Kaldır</value><comment>Submenu in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.RemoveFromLibrary" xml:space="preserve"><value>Kitaplıktan Kaldır</value><comment>Header in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.OtherVersions" xml:space="preserve"><value>Diğer Sürümler</value><comment>Text in AlbumDetailView.axaml</comment></data>
+  <data name="AlbumDetail.Disc" xml:space="preserve"><value>Disk {0}</value><comment>Album page, over a disc’s songs (GitHub #264)</comment></data>
+  <data name="AlbumDetail.PlayDisc" xml:space="preserve"><value>Disk {0} çal</value><comment>Disc header menu: play only this disc (GitHub #264)</comment></data>
+  <data name="AlbumDetail.ShuffleDisc" xml:space="preserve"><value>Disk {0} karıştır</value><comment>Disc header menu and button: shuffle only this disc (GitHub #264)</comment></data>
   <data name="AlbumDetail.PlayNext" xml:space="preserve"><value>Sonraki Çal</value><comment>Header in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.Favorites" xml:space="preserve"><value>Favoriler</value><comment>Header in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.RemoveFromFavorites" xml:space="preserve"><value>Favorilerden Kaldır</value><comment>Header in AlbumDetailView.axaml</comment></data>
@@ -1671,6 +1685,12 @@ Kaydetmek bunları ekrandaki sözlerle değiştirir. Noctis'in yazmadığı bir 
   <data name="Metadata.ArtSearchBoxHint" xml:space="preserve"><value>Albüm veya sanatçı</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
   <data name="Metadata.ArtNoMatches" xml:space="preserve"><value>Apple Music'te eşleşen albüm yok. Başka bir ad dene.</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
   <data name="Metadata.ArtDownloadFailed" xml:space="preserve"><value>İndirme başarısız oldu.</value><comment>Artwork chooser (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibAlbums" xml:space="preserve"><value>Albümler</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibSinglesEps" xml:space="preserve"><value>Single'lar ve EP'ler</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibAppearsOn" xml:space="preserve"><value>Yer aldığı çalışmalar</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibMatches" xml:space="preserve"><value>En iyi eşleşmeler</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibMoreBy" xml:space="preserve"><value>{0} sanatçısından daha fazlası</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel)</comment></data>
+  <data name="Metadata.ArtLibReleases" xml:space="preserve"><value>{0} yayın</value><comment>Artwork chooser library (ArtworkChooserCard / MetadataViewModel). Plural forms, see Mobile.Count.Songs.</comment></data>
   <data name="Metadata.Downloading" xml:space="preserve"><value>İndiriliyor…</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.SearchArtwork" xml:space="preserve"><value>Kapak Ara</value><comment>Content in MetadataWindow.axaml</comment></data>
   <data name="Metadata.AddFromFile" xml:space="preserve"><value>Dosyadan ekle</value><comment>Content in MetadataWindow.axaml</comment></data>
@@ -2208,6 +2228,21 @@ Yıllar: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar se
   <data name="Spectrogram.NeedsFfmpeg" xml:space="preserve"><value>Spektrogram için ffmpeg gerekir. Ayarlar'da ffmpeg yolunu belirle ve tekrar dene.</value><comment>Spectrogram pop-up error</comment></data>
   <data name="Spectrogram.FileMissing" xml:space="preserve"><value>Dosya diskte bulunamadı.</value><comment>Spectrogram pop-up error</comment></data>
   <data name="Spectrogram.Failed" xml:space="preserve"><value>Analiz başarısız: {0}</value><comment>Spectrogram pop-up error; {0} = the error</comment></data>
+  <data name="Spectrogram.Verdict.Checking" xml:space="preserve"><value>Denetleniyor…</value><comment>Spectrogram verdict row while the source-quality check runs</comment></data>
+  <data name="Spectrogram.Verdict.LooksGenuine" xml:space="preserve"><value>Kayıplı kodlama izi yok</value><comment>Spectrogram verdict: lossless file whose frequency content looks like a real lossless source</comment></data>
+  <data name="Spectrogram.Verdict.ProbablyLossy" xml:space="preserve"><value>Büyük olasılıkla kayıplı bir kaynaktan</value><comment>Spectrogram verdict: lossless file that probably came from an MP3/AAC</comment></data>
+  <data name="Spectrogram.Verdict.ProbablyUpsampled" xml:space="preserve"><value>Büyük olasılıkla CD kalitesinden yükseltilmiş</value><comment>Spectrogram verdict: hi-res file that is probably CD audio upsampled</comment></data>
+  <data name="Spectrogram.Verdict.ProbablyReencoded" xml:space="preserve"><value>Büyük olasılıkla daha düşük bit hızından yeniden kodlanmış</value><comment>Spectrogram verdict: lossy file whose cutoff is far below what its bitrate keeps</comment></data>
+  <data name="Spectrogram.Verdict.MatchesBitrate" xml:space="preserve"><value>Bit hızıyla uyumlu</value><comment>Spectrogram verdict: lossy file whose cutoff fits its bitrate</comment></data>
+  <data name="Spectrogram.Verdict.CantTell" xml:space="preserve"><value>Anlaşılamıyor</value><comment>Spectrogram verdict: no conclusion</comment></data>
+  <data name="Spectrogram.Verdict.TooQuiet" xml:space="preserve"><value>karar vermek için çok az ses var</value><comment>Spectrogram verdict detail when there is too little sound to judge</comment></data>
+  <data name="Spectrogram.Verdict.Cutoff" xml:space="preserve"><value>kesim ≈ {0} kHz</value><comment>Spectrogram verdict detail and plot marker label; {0} = frequency in kHz (e.g. 16.0)</comment></data>
+  <data name="Spectrogram.Verdict.ContentUpTo" xml:space="preserve"><value>{0} kHz’e kadar içerik</value><comment>Spectrogram verdict detail; {0} = highest frequency with content, in kHz</comment></data>
+  <data name="Spectrogram.Verdict.CutoffMp3Low" xml:space="preserve"><value>kesim ≈ {0} kHz, MP3 128 kbps için tipik</value><comment>Spectrogram verdict detail; {0} = cutoff in kHz</comment></data>
+  <data name="Spectrogram.Verdict.CutoffMp3Mid" xml:space="preserve"><value>kesim ≈ {0} kHz, MP3 160–192 kbps için tipik</value><comment>Spectrogram verdict detail; {0} = cutoff in kHz</comment></data>
+  <data name="Spectrogram.Verdict.CutoffMp3High" xml:space="preserve"><value>kesim ≈ {0} kHz, MP3 320 veya AAC için tipik</value><comment>Spectrogram verdict detail; {0} = cutoff in kHz</comment></data>
+  <data name="Spectrogram.Verdict.Padded24" xml:space="preserve"><value>24 bit kapsayıcı, 16 bit ses</value><comment>Spectrogram verdict detail: a 24-bit file whose lowest 8 bits are always zero</comment></data>
+  <data name="Spectrogram.Verdict.Tip" xml:space="preserve"><value>Frekans içeriğinden bir tahmin; sessiz, eski veya bant sınırlı kayıtlarda yanılabilir.</value><comment>Tooltip on the Spectrogram verdict row</comment></data>
 
   <!-- StatisticsView.axaml (auto-migrated) -->
   <data name="Statistics.ListeningStatistics" xml:space="preserve"><value>Dinleme İstatistikleri</value><comment>Text in StatisticsView.axaml</comment></data>
@@ -2525,10 +2560,16 @@ Yıllar: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar se
   <data name="Plugins.Card.Installing" xml:space="preserve"><value>Kuruluyor</value></data>
   <data name="Plugins.Card.On" xml:space="preserve"><value>Açık</value></data>
   <data name="Plugins.Card.Off" xml:space="preserve"><value>Kapalı</value></data>
-  <data name="Plugins.Card.Verified" xml:space="preserve"><value>Resmi Noctis Eklentisi</value></data>
+  <data name="Plugins.Card.Verified" xml:space="preserve"><value>Doğrulandı</value></data>
   <data name="Plugins.Card.A11yOfficial" xml:space="preserve"><value>{0}, Noctis'in resmi eklentisi</value></data>
   <data name="Plugins.Card.A11yCommunity" xml:space="preserve"><value>{0}, topluluk eklentisi, yapan: {1}</value></data>
   <data name="Plugins.Card.A11yCommunityNoAuthor" xml:space="preserve"><value>{0}, topluluk eklentisi</value></data>
+  <data name="Plugins.Card.LocalCopy" xml:space="preserve"><value>Yerel kopya · doğrulanmadı</value></data>
+  <data name="Plugins.Card.A11yLocalCopy" xml:space="preserve"><value>{0}, yerel kopya, doğrulanmadı</value></data>
+  <data name="Plugins.Card.NotInstalled" xml:space="preserve"><value>Yüklü değil</value></data>
+  <data name="Plugins.Card.NeedsNewerApp" xml:space="preserve"><value>Noctis güncellenmeli</value></data>
+  <data name="Plugins.Card.NotForThisOs" xml:space="preserve"><value>Bu işletim sistemi için değil</value></data>
+  <data name="Plugins.Card.Blocked" xml:space="preserve"><value>Engellendi</value></data>
   <data name="Plugins.Detail.Back" xml:space="preserve"><value>Eklentiler</value></data>
   <data name="Plugins.Detail.Version" xml:space="preserve"><value>v{0}</value></data>
   <data name="Plugins.Detail.Homepage" xml:space="preserve"><value>Ana sayfayı ziyaret et</value></data>
@@ -2875,8 +2916,9 @@ Yıllar: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar se
   <data name="StudioPicker.Clear" xml:space="preserve"><value>Temizle</value><comment>Choose songs footer: Select all once every row on show is ticked (unticks them)</comment></data>
   <data name="StudioPicker.OneSong" xml:space="preserve"><value>1 şarkı</value><comment>Choose songs: tag on an album row with one local song</comment></data>
   <data name="StudioPicker.SongCount" xml:space="preserve"><value>{0} şarkı</value><comment>Choose songs: tag on an album row ({0} = local songs on it)</comment></data>
-  <data name="LyricsStudio.Queue" xml:space="preserve"><value>ŞARKILAR</value><comment>Queue column header</comment></data>
   <data name="LyricsStudio.ReviewEmptyTitle" xml:space="preserve"><value>Henüz incelenecek bir şey yok</value><comment>Review pane empty state</comment></data>
+  <data name="LyricsStudio.LoadingLyrics" xml:space="preserve"><value>Şarkı sözleri okunuyor…</value></data>
+  <data name="LyricsStudio.TagWriteFailed" xml:space="preserve"><value>Sözler “{0}” etiketlerine yazılamadı.</value></data>
   <data name="LyricsStudio.ReviewEmptyBody" xml:space="preserve"><value>Listeden bir şarkı seç. Sözü olan şarkılar Başlat'a bastığında zamanlanır; sözü olmayanlar için yapıştırma kutusu açılır.</value><comment>Review pane empty state</comment></data>
   <data name="LyricsStudio.Upgrade" xml:space="preserve"><value>Her kelimeyi zamanla</value><comment>Review button, shown for line-level lyrics</comment></data>
   <data name="LyricsStudio.UpgradeTip" xml:space="preserve"><value>Bu satırların her kelimesini zamanlar. Satır düzeyindeki dosya korunur.</value><comment>Review button tooltip</comment></data>
@@ -2888,6 +2930,7 @@ Sözleri kaydet'e basana kadar diske hiçbir şey yazılmaz.</value><comment>Con
   <data name="LyricsStudio.LrcRedSyncWorking" xml:space="preserve"><value>lrc.red modeli her kelimeyi zamanlıyor…</value><comment>Song status and button label while lrc.red's model runs</comment></data>
   <data name="LyricsStudio.LrcRedSynced" xml:space="preserve"><value>lrc.red modeliyle kelime senkronlu · gözden geçir</value><comment>Song status after lrc.red's model word-synced it</comment></data>
   <data name="LyricsStudio.LrcRedSource" xml:space="preserve"><value>lrc.red'den · modeliyle kelime senkronlu</value><comment>Review source line for lyrics lrc.red's model word-synced</comment></data>
+  <data name="LyricsStudio.GeniusSource" xml:space="preserve"><value>Genius’ten</value><comment>Review source line for plain lyrics found on Genius and timed by the model (GitHub #265)</comment></data>
   <data name="LyricsStudio.ReviewHint" xml:space="preserve"><value>Satırı dinlemek için bir zamana tıkla. Metni yerinde düzenle. Renkli satırlara bir daha bak.</value><comment>Review pane hint</comment></data>
   <data name="LyricsStudio.NudgeEarlier" xml:space="preserve"><value>Tüm satırlar 0,1 sn öne · kısayol [</value><comment>Tooltip</comment></data>
   <data name="LyricsStudio.NudgeLater" xml:space="preserve"><value>Tüm satırlar 0,1 sn sonraya · kısayol ]</value><comment>Tooltip</comment></data>
@@ -2918,7 +2961,6 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="LyricsStudio.TranscribeDraft" xml:space="preserve"><value>Bunun yerine dinlet · Deneysel</value><comment>Lyrics box button: transcribe the song into the box</comment></data>
   <data name="LyricsStudio.TranscribeDraftTip" xml:space="preserve"><value>Lullaby duyduğunu yazar. Söylenen vokaller genellikle kötü yazıya dökülür: hizalamadan önce kelimeleri düzelt.</value><comment>Tooltip "Lullaby" is the model's name: keep it untranslated.</comment></data>
   <data name="LyricsStudio.Align" xml:space="preserve"><value>Sözleri hizala</value><comment>Lyrics box primary button</comment></data>
-  <data name="LyricsStudio.Beta" xml:space="preserve"><value>Beta</value><comment>Pill next to the Lyrics Studio title (top bar and dialog header)</comment></data>
   <data name="LyricsStudio.Preview" xml:space="preserve"><value>Önizle</value><comment>Review button: play the song on the lyrics page with the unsaved timings</comment></data>
   <data name="LyricsStudio.PreviewTip" xml:space="preserve"><value>Şarkıyı çal ve kaydedilmemiş bu zamanlamaları seçilen biçimde söz sayfasında izle. Hiçbir şey kaydedilmez.</value><comment>Tooltip</comment></data>
   <data name="LyricsStudio.AlignTip" xml:space="preserve"><value>Bu sözleri seçilen biçimde şarkıya göre zamanla, ardından kaydetmeden önce gözden geçir</value><comment>Tooltip</comment></data>
@@ -3059,15 +3101,15 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Settings.LyricsSaveTarget.Embedded" xml:space="preserve"><value>Ses dosyasının içine</value><comment>Save lyrics to choice: the audio file's own tags (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsSaveTarget.Both" xml:space="preserve"><value>İkisi de</value><comment>Save lyrics to choice: files and the audio file's tags (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsAutoDownload" xml:space="preserve"><value>Sözleri otomatik indir</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsAutoDownloadHint" xml:space="preserve"><value>Sözü olmayan şarkılar için söz bulur ve kaydeder. Mevcut sözler asla değiştirilmez.</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoDownloadHint" xml:space="preserve"><value>Sözü olmayan şarkılar için söz kaydeder. Mevcut sözleri asla değiştirmez.</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsPreferredType" xml:space="preserve"><value>Tercih edilen söz türü</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsPreferredTypeHint" xml:space="preserve"><value>Noctis çevrimiçi sözleri kendisi seçtiğinde neyi tuttuğu.</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsPreferredTypeHint" xml:space="preserve"><value>Noctis sözleri kendisi bulduğunda seçtiği tür.</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsUpgradePlain" xml:space="preserve"><value>Düz sözleri yükselt</value><comment>Settings ▸ Lyrics (GitHub #194), SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsUpgradePlainHint" xml:space="preserve"><value>Bir şarkının yalnızca düz sözleri varsa tercih ettiğin senkronize türü arar. Bulunamazsa düz sözler kalır.</value><comment>Settings ▸ Lyrics (GitHub #194), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsUpgradePlainHint" xml:space="preserve"><value>Bir şarkının yalnızca düz sözleri varsa senkronize söz arar. Bulunamazsa düz sözler kalır.</value><comment>Settings ▸ Lyrics (GitHub #194), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsAutoFindNew" xml:space="preserve"><value>Yeni şarkılar için söz bul</value><comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsAutoFindNewHint" xml:space="preserve"><value>Kitaplığına eklenen şarkılar için arka planda söz arar. Senkronize sözleri olan şarkılara dokunulmaz.</value><comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoFindNewHint" xml:space="preserve"><value>Eklediğin şarkılar için söz bulur. Senkronize sözleri olan şarkılar atlanır.</value><comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsAutoFindLibrary" xml:space="preserve"><value>Tüm kitaplık için söz bul</value><comment>Settings ▸ Lyrics (GitHub #219), SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsAutoFindLibraryHint" xml:space="preserve"><value>Henüz senkronize sözleri olmayan şarkılar için arka planda söz bulur.</value><comment>Settings ▸ Lyrics (GitHub #219), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoFindLibraryHint" xml:space="preserve"><value>Senkronize sözü olmayan her şarkı için söz bulur.</value><comment>Settings ▸ Lyrics (GitHub #219), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsPreferredType.WordSynced" xml:space="preserve"><value>Kelime senkronlu (mevcut en iyisi)</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsPreferredType.LineSynced" xml:space="preserve"><value>Satır senkronlu</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsPreferredType.Plain" xml:space="preserve"><value>Düz metin</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
@@ -3085,6 +3127,8 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Settings.Section.AudioTools" xml:space="preserve"><value>Yardımcı programlar</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.Updates" xml:space="preserve"><value>Güncellemeler ve geliştirici</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.Reset" xml:space="preserve"><value>Sıfırla</value><comment>Settings section label</comment></data>
+  <data name="Settings.Section.Versions" xml:space="preserve"><value>Sürümler</value><comment>Settings section label (Advanced tab, Developer Mode: the version list)</comment></data>
+  <data name="Settings.Section.Logs" xml:space="preserve"><value>Günlükler</value><comment>Settings section label (Advanced tab, Developer Mode: the session log)</comment></data>
   <data name="Settings.Section.YourAccount" xml:space="preserve"><value>Hesabın</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.Sync" xml:space="preserve"><value>Eşitleme</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.OtherAccounts" xml:space="preserve"><value>Diğer hesaplar</value><comment>Settings section label</comment></data>
@@ -3183,8 +3227,8 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Phone.Description" xml:space="preserve"><value>Bu kitaplığı telefonunda dinle ve indir.</value><comment>Phone app card subtitle</comment></data>
   <data name="Settings.Section.OtherComputers" xml:space="preserve"><value>Diğer bilgisayarlar</value><comment>Settings section label, Account &amp; Devices tab</comment></data>
   <data name="PcSync.Title" xml:space="preserve"><value>Başka bir bilgisayarla eşitle</value><comment>Sync with another computer card title</comment></data>
-  <data name="PcSync.Description" xml:space="preserve"><value>Favoriler, puanlar, çalma sayıları ve çalma listeleri iki bilgisayarda aynı kalır. Her biri kendi müzik dosyalarını tutar; şarkılar başlık, sanatçı ve süreye göre eşleştirilir.</value><comment>Sync with another computer card subtitle</comment></data>
-  <data name="PcSync.Help" xml:space="preserve"><value>Diğer bilgisayarda "{0}" ve "{1}" seçeneklerini aç, ardından {2} › {3} bölümünü aç. Onun adresini ve kendi hesabını buraya yaz.</value><comment>Sync with another computer, where to start on the other computer; {0} = the phone card title, {1} = the phone sync switch title, {2} = Connect a phone, {3} = Enter manually (filled from those strings)</comment></data>
+  <data name="PcSync.Description" xml:space="preserve"><value>Favorileri, puanları, çalma sayılarını ve çalma listelerini iki bilgisayarda da aynı tutar. Müzik dosyaları ayrı kalır.</value><comment>Sync with another computer card subtitle</comment></data>
+  <data name="PcSync.Help" xml:space="preserve"><value>Diğer bilgisayarda "{0}" ve "{1}" seçeneklerini aç, ardından {2} › {3} bölümündeki adresi ve hesabını buraya gir.</value><comment>Sync with another computer, where to start on the other computer; {0} = the phone card title, {1} = the phone sync switch title, {2} = Connect a phone, {3} = Enter manually (filled from those strings)</comment></data>
   <data name="PcSync.Address" xml:space="preserve"><value>Diğer bilgisayarda gösterilen adres</value><comment>Address box watermark</comment></data>
   <data name="PcSync.User" xml:space="preserve"><value>E-posta veya kullanıcı adı</value><comment>Email or username box watermark</comment></data>
   <data name="PcSync.Password" xml:space="preserve"><value>Parola</value><comment>Password box watermark</comment></data>
@@ -3266,6 +3310,7 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Shortcuts.Action.SeekForward" xml:space="preserve"><value>İleri sar</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
   <data name="Shortcuts.Action.SeekBackward" xml:space="preserve"><value>Geri sar</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
   <data name="Shortcuts.Action.ToggleMiniPlayer" xml:space="preserve"><value>Mini oynatıcı</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
+  <data name="Shortcuts.Action.ToggleSidebar" xml:space="preserve"><value>Kenar çubuğunu genişlet / daralt</value><comment>Settings › Shortcuts and command palette (Discord, Luwi 11-25)</comment></data>
   <data name="Shortcuts.Action.GoBack" xml:space="preserve"><value>Geri</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
   <data name="Shortcuts.Action.GoForward" xml:space="preserve"><value>İleri</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
   <data name="Shortcuts.Action.GoHome" xml:space="preserve"><value>Ana Sayfa'ya git</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
@@ -3446,7 +3491,7 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Settings.AnimArtAutoFetch" xml:space="preserve"><value>Hareketli Kapakları Otomatik Bul</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtAutoFetchDesc" xml:space="preserve"><value>Bir albümü açtığında hareketli kapağını arar.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtCacheSize" xml:space="preserve"><value>Önbellek Boyutu</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve"><value>Dolduğunda en eski kapaklar silinir.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve"><value>Hareketli kapaklar ve sanatçı videoları için. Dolduğunda en eskiler silinir.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtCacheUsedOf" xml:space="preserve"><value>{1} alanın {0} kadarı kullanılıyor</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtQuality" xml:space="preserve"><value>Hareketli Kapak Kalitesi</value><comment>Settings › Appearance › Artwork: quality fetched loops are downloaded at (GitHub #185)</comment></data>
   <data name="Settings.AnimArtQualityDesc" xml:space="preserve"><value>2160p daha keskin görünür ama yaklaşık 3 kat yer kaplar. 2160p'si olmayan kapaklar 1080p kullanır.</value><comment>Settings › Appearance › Artwork › Animated Artwork Quality hint</comment></data>
@@ -4222,7 +4267,7 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="Settings.ShowStarRatingsHint" xml:space="preserve"><value>Şarkılara puan vermiyorsan kapat. Albüm sayfalarındaki, şarkı listelerindeki ve menülerdeki yıldızları gizler. Puanların silinmez.</value><comment>Description under Show star ratings</comment></data>
   <data name="Settings.HideArtistsFewerThan" xml:space="preserve"><value>Şundan az şarkısı olan sanatçıları gizle</value><comment>Label before the song-count picker ("3 songs")</comment></data>
   <data name="Settings.HideSidebarUntilHover" xml:space="preserve"><value>Kenar çubuğunu üzerine gelene kadar gizle</value><comment>Settings > General > Sidebar toggle (GitHub #233)</comment></data>
-  <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>Kenar çubuğunu tamamen gizler, sayfalar tam genişliği kullanır. Göstermek için işaretçiyi pencerenin sol kenarına götür.</value><comment>Description under Hide sidebar until hover</comment></data>
+  <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>Kenar çubuğunu gizler. Göstermek için işaretçiyi sol kenara götür.</value><comment>Description under Hide sidebar until hover</comment></data>
   <data name="Count.Tracks" xml:space="preserve"><value>{0:N0} parça|{0:N0} parça</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.Items" xml:space="preserve"><value>{0:N0} öğe|{0:N0} öğe</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.HoursMinutes" xml:space="preserve"><value>{0} sa {1} dk</value><comment>Short duration (sidebar playlist row)</comment></data>
@@ -4387,6 +4432,10 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="Lyrics.TrySource" xml:space="preserve"><value>{0} kaynağını dene</value><comment>Lyrics page</comment></data>
   <data name="Server.NoAlbums" xml:space="preserve"><value>Henüz albüm yok. Bu sunucudaki müzik kitaplığı boş — ya da ona ulaşılamadı.</value><comment>Server page</comment></data>
   <data name="Server.AlbumLoadFailed" xml:space="preserve"><value>Bu albüm sunucudan yüklenemedi.</value><comment>Server page</comment></data>
+  <data name="Server.ServerNoAnswer" xml:space="preserve"><value>{0} yanıt vermedi.</value><comment>Server page, under "Connected to …": a server timed out or could not be reached. {0} = server name</comment></data>
+  <data name="Server.ServerSignInFailed" xml:space="preserve"><value>{0} oturum açmayı kabul etmedi.</value><comment>Server page, under "Connected to …": a server rejected the login. {0} = server name</comment></data>
+  <data name="Server.ServerFailed" xml:space="preserve"><value>{0} bir hatayla yanıt verdi.</value><comment>Server page, under "Connected to …": a server answered with an HTTP/protocol error. {0} = server name</comment></data>
+  <data name="Server.RetryServer" xml:space="preserve"><value>Yeniden dene</value><comment>Server page: button beside a server that did not answer; asks only that server again</comment></data>
   <data name="LrcEditor.StampingOffVideoAudio" xml:space="preserve"><value>Müzik videosunun sesi çalarken zaman damgası kapalı — müzik videosu sesini kapat ve şarkıyı yeniden başlat</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.NothingToSave" xml:space="preserve"><value>Kaydedilecek bir şey yok — en az bir satıra zaman damgası koy</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.SavedEmbedFailed" xml:space="preserve"><value>Kaydedildi · sözler ses dosyasına yazılamadı (kullanımda veya salt okunur mu?)</value><comment>Sync lyrics (LRC editor) status</comment></data>
@@ -4494,7 +4543,7 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="Search.LyricsOnly" xml:space="preserve"><value>Yalnızca Sözler</value><comment>Search box lyrics button menu: find songs by their lyrics only</comment></data>
   <data name="Settings.DataFolderNewerVersion" xml:space="preserve"><value>Bu veri klasörü Noctis {0} tarafından kaydedildi. Daha yeni ayarları korunur, ancak bu sürüm güncelleyene kadar onları kullanamaz.</value><comment>Notice pill at startup, shown once: a data folder shared with another computer was last saved by a newer Noctis; {0} is that version, e.g. 1.7.1 (GitHub #230)</comment></data>
   <data name="Settings.LyricsPageHideLyrics" xml:space="preserve"><value>Söz Sayfasında Sözleri Gizle</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsPageHideLyricsHint" xml:space="preserve"><value>Şarkının sözleri olsa bile bunun yerine ortalanmış oynatıcıyı gösterir.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsPageHideLyricsHint" xml:space="preserve"><value>Sözler yerine her zaman ortalanmış oynatıcıyı gösterir.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="LyricShare.Watermark" xml:space="preserve"><value>Noctis filigranı</value><comment>Checkbox above the card preview: draw the Noctis wordmark on the share card, its PNG and its video (LyricShareDialog, owner 11-12)</comment></data>
   <data name="LyricShare.WatermarkTip" xml:space="preserve"><value>Kartta ve videosunda Noctis logosunu gösterir</value><comment>ToolTip on the Noctis watermark checkbox (LyricShareDialog)</comment></data>
   <data name="MoveToAlbum.Menu" xml:space="preserve"><value>Albüme Taşı</value><comment>Song menu row (GitHub #239)</comment></data>
@@ -4542,4 +4591,98 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="Settings.Desc.ShortcutsMac" xml:space="preserve"><value>Değiştirmek için bir tuşa tıkla. Esc iptal eder, Delete bağı kaldırır.</value><comment>macOS wording of Settings.Desc.Shortcuts (Loc.Platform)</comment></data>
   <data name="Settings.AppIconDescMac" xml:space="preserve"><value>Menü çubuğundaki simgeyi değiştirir. Dock klasik simgeyi korur.</value><comment>macOS wording of Settings.AppIconDesc (Loc.Platform)</comment></data>
   <data name="GroupAlbums.SelectHintMac" xml:space="preserve"><value>Bu adda başka albüm yok. Albümler ızgarasında birbirine ait albümlere ⌘ tuşuyla tıkla, ardından birine sağ tıkla.</value><comment>GroupAlbums.SelectHint on macOS, where Ctrl-click is a right-click and ⌘-click adds to the selection</comment></data>
+  <data name="Metadata.Of" xml:space="preserve"><value>/</value><comment>Between the two boxes of Track / Disc / Movement "3 of 12" in MetadataWindow.axaml</comment></data>
+  <data name="Metadata.PlayCountLastPlayed" xml:space="preserve"><value>{0} (son çalınma {1})</value><comment>Edit Info play count; {0} = plays, {1} = date and time</comment></data>
+  <data name="DiscogsGenres.Title" xml:space="preserve"><value>Discogs türleri</value><comment>Get Genres from Discogs dialog title (window)</comment></data>
+  <data name="DiscogsGenres.TitleOne" xml:space="preserve"><value>1 albüm için türleri al</value></data>
+  <data name="DiscogsGenres.TitleMany" xml:space="preserve"><value>{0:N0} albüm için türleri al</value><comment>Get Genres from Discogs dialog. Plural forms, see Mobile.Count.Songs.</comment></data>
+  <data name="DiscogsGenres.Subtitle" xml:space="preserve"><value>Her albümü Discogs'ta arar ve stillerini albümün türleri olarak önerir. Uygula'yı seçene kadar hiçbir şey kaydedilmez.</value></data>
+  <data name="DiscogsGenres.ReadyHint" xml:space="preserve"><value>Albümleri aramak için Bul'a basın, ardından değiştirilecekleri işaretleyin.</value></data>
+  <data name="DiscogsGenres.Use" xml:space="preserve"><value>Kullan</value></data>
+  <data name="DiscogsGenres.SourceStyles" xml:space="preserve"><value>Stiller</value></data>
+  <data name="DiscogsGenres.SourceGenres" xml:space="preserve"><value>Türler</value></data>
+  <data name="DiscogsGenres.SourceBoth" xml:space="preserve"><value>Stiller ve türler</value></data>
+  <data name="DiscogsGenres.Max" xml:space="preserve"><value>Kaç tane</value><comment>Label: at most how many genres to take</comment></data>
+  <data name="DiscogsGenres.MaxAll" xml:space="preserve"><value>Tümü</value></data>
+  <data name="DiscogsGenres.UseRelease" xml:space="preserve"><value>Ana sürüm yerine en yakın yayın sürümünü kullan</value></data>
+  <data name="DiscogsGenres.AddToExisting" xml:space="preserve"><value>Mevcut türlerin yerine koymak yerine onlara ekle</value></data>
+  <data name="DiscogsGenres.Now" xml:space="preserve"><value>Şimdi:</value><comment>Label before an album's current genres</comment></data>
+  <data name="DiscogsGenres.New" xml:space="preserve"><value>Yeni:</value><comment>Label before the genres Discogs proposes</comment></data>
+  <data name="DiscogsGenres.NoGenre" xml:space="preserve"><value>Tür yok</value></data>
+  <data name="DiscogsGenres.Mixed" xml:space="preserve"><value>Şarkıya göre farklı</value></data>
+  <data name="DiscogsGenres.Master" xml:space="preserve"><value>Ana sürüm</value><comment>Discogs master release (the release group)</comment></data>
+  <data name="DiscogsGenres.Release" xml:space="preserve"><value>Yayın</value><comment>One Discogs release version</comment></data>
+  <data name="DiscogsGenres.OpenOnDiscogs" xml:space="preserve"><value>Discogs'ta aç</value></data>
+  <data name="DiscogsGenres.Searching" xml:space="preserve"><value>Aranıyor…</value></data>
+  <data name="DiscogsGenres.NotFound" xml:space="preserve"><value>Bulunamadı</value></data>
+  <data name="DiscogsGenres.LookupFailed" xml:space="preserve"><value>Aranamadı</value></data>
+  <data name="DiscogsGenres.NoChange" xml:space="preserve"><value>Değişiklik yok</value></data>
+  <data name="DiscogsGenres.RowSaved" xml:space="preserve"><value>Kaydedildi</value></data>
+  <data name="DiscogsGenres.RowWriteFailed" xml:space="preserve"><value>Kaydedilemedi</value></data>
+  <data name="DiscogsGenres.SumFound" xml:space="preserve"><value>{0:N0} bulundu</value></data>
+  <data name="DiscogsGenres.SumNotFound" xml:space="preserve"><value>{0:N0} bulunamadı</value></data>
+  <data name="DiscogsGenres.Busy" xml:space="preserve"><value>Discogs şu anda meşgul. Birkaç dakika sonra yeniden deneyin.</value></data>
+  <data name="DiscogsGenres.Saving" xml:space="preserve"><value>Türler kaydediliyor…</value></data>
+  <data name="DiscogsGenres.Saved" xml:space="preserve"><value>Türler kaydedildi · albüm: {0:N0}</value></data>
+  <data name="DiscogsGenres.SavedSomeFailed" xml:space="preserve"><value>Kaydedilen albüm: {0:N0} · kaydedilemeyen şarkı: {1:N0}</value></data>
+  <data name="DiscogsGenres.Apply" xml:space="preserve"><value>Uygula</value></data>
+  <data name="DiscogsGenres.Continue" xml:space="preserve"><value>Devam et</value></data>
+  <data name="DiscogsGenres.Attribution" xml:space="preserve"><value>Veriler Discogs tarafından sağlanmıştır.</value><comment>Required by the Discogs API terms, shown under the results</comment></data>
+  <data name="DiscogsGenres.Menu" xml:space="preserve"><value>Discogs'tan türleri al</value><comment>Album / song menu (Tools) and album page menu: GitHub #267</comment></data>
+  <data name="Settings.DiscogsGenres" xml:space="preserve"><value>Discogs'tan türleri al</value></data>
+  <data name="Settings.DiscogsGenresSub" xml:space="preserve"><value>Albümlerinin türlerini Discogs'taki stilleriyle etiketler. Her değişikliği kaydedilmeden önce gözden geçirirsin.</value></data>
+  <data name="Palette.DiscogsGenres" xml:space="preserve"><value>Discogs'tan türleri al…</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.DiscogsGenresSub" xml:space="preserve"><value>Albüm türlerini Discogs stilleriyle etiketle</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Settings.Server.Add" xml:space="preserve"><value>Sunucu ekle</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.Remove" xml:space="preserve"><value>Kaldır</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.UseServer" xml:space="preserve"><value>Bu sunucuyu kullan</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.NameLabel" xml:space="preserve"><value>AD (İSTEĞE BAĞLI)</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.NameWatermark" xml:space="preserve"><value>Ev sunucusu</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Server.AmpacheHint" xml:space="preserve"><value>Ampache: Giriş parolanızla değil, Subsonic parolanızla (Ampache hesabınızda belirlenir) veya API anahtarınızla oturum açın.</value><comment>Music Server (GitHub #268)</comment></data>
+  <data name="Settings.Section.MusicVideos" xml:space="preserve"><value>Müzik videoları</value><comment>Settings section label (Lyrics tab)</comment></data>
+  <data name="Settings.MusicVideoAutoFind" xml:space="preserve"><value>Müzik videolarını otomatik bul</value><comment>Settings ▸ Lyrics ▸ Music videos toggle (Discord 11-25)</comment></data>
+  <data name="Settings.MusicVideoAutoFindHint" xml:space="preserve"><value>Sözlerin arkasında sessiz bir YouTube videosu oynatır. Sanatçıyı ve şarkı adını YouTube'a gönderir.</value><comment>Settings ▸ Lyrics ▸ Music videos toggle hint</comment></data>
+  <data name="Settings.MusicVideoToolNeeded" xml:space="preserve"><value>YouTube'da video aramak için yt-dlp gerekir.</value><comment>Shown when yt-dlp is missing for music video search/streaming</comment></data>
+  <data name="YtDlp.BotCheck" xml:space="preserve"><value>YouTube robot olmadığınızı doğrulamanızı istedi. "Tarayıcımın YouTube oturumunu kullan" seçeneğini açın veya daha sonra tekrar deneyin.</value><comment>Music video lookup refused by YouTube's bot check, no browser sign-in in use</comment></data>
+  <data name="YtDlp.BotCheckSignedIn" xml:space="preserve"><value>YouTube hâlâ robot olmadığınızı doğrulamanızı istiyor. {0} içinde YouTube'da oturum açtığınızdan emin olun veya daha sonra tekrar deneyin.</value><comment>Bot check even with the browser sign-in; {0} = browser name (Firefox, Chrome…)</comment></data>
+  <data name="YtDlp.CookiesUnreadable" xml:space="preserve"><value>YouTube oturumunuz {0} içinden okunamadı. {0} uygulamasını tamamen kapatıp tekrar deneyin veya başka bir tarayıcı seçin (en iyi Firefox çalışır).</value><comment>yt-dlp could not read the browser's cookies (locked/encrypted); {0} = browser name</comment></data>
+  <data name="YtDlp.CookiesNotFound" xml:space="preserve"><value>Bu bilgisayarda {0} veya YouTube oturumu bulunamadı. YouTube için kullandığınız tarayıcıyı seçin.</value><comment>The chosen browser or its profile is not on this computer; {0} = browser name</comment></data>
+  <data name="YtDlp.CookiesFailed" xml:space="preserve"><value>{0} içindeki YouTube oturumunuz kullanılamadı: {1}</value><comment>yt-dlp could not use the browser sign-in, in a wording Noctis does not know; {0} = browser name, {1} = yt-dlp's own error line</comment></data>
+  <data name="MusicVideo.LastLookupFailed" xml:space="preserve"><value>Son müzik videosu araması başarısız oldu: {0}</value><comment>Settings ▸ Lyrics ▸ Music videos note: the last lookup failed for a reason Noctis has no message for; {0} = yt-dlp's own error line</comment></data>
+  <data name="Settings.MusicVideoBrowserSignIn" xml:space="preserve"><value>Tarayıcımın YouTube oturumunu kullan</value><comment>Settings ▸ Lyrics ▸ Music videos toggle</comment></data>
+  <data name="Settings.MusicVideoBrowserSignInHint" xml:space="preserve"><value>YouTube'un "robot olmadığınızı doğrulayın" kontrolünü çözer. Tarayıcınızın YouTube çerezleri yalnızca YouTube için kullanılır.</value><comment>Settings ▸ Lyrics ▸ Music videos toggle hint</comment></data>
+  <data name="Settings.MusicVideoBrowser" xml:space="preserve"><value>Tarayıcı</value><comment>Settings ▸ Lyrics ▸ Music videos: label of the browser picker</comment></data>
+  <data name="MusicVideo.Title" xml:space="preserve"><value>YouTube'dan müzik videosu</value><comment>Music Video from YouTube dialog title</comment></data>
+  <data name="MusicVideo.PasteLink" xml:space="preserve"><value>Bir YouTube bağlantısı yapıştır</value><comment>Music video dialog: label of the link box</comment></data>
+  <data name="MusicVideo.LinkWatermark" xml:space="preserve"><value>youtube.com/watch?v=… veya youtu.be/…</value><comment>Music video dialog: link box placeholder</comment></data>
+  <data name="MusicVideo.Stream" xml:space="preserve"><value>Akışla oynat</value><comment>Music video dialog: play the pasted video from YouTube without downloading</comment></data>
+  <data name="MusicVideo.StreamTip" xml:space="preserve"><value>İndirmeden, sözlerin arkasında YouTube'dan oynat</value><comment>Tooltip of Stream</comment></data>
+  <data name="MusicVideo.Download" xml:space="preserve"><value>İndir</value><comment>Music video dialog: download the pasted video</comment></data>
+  <data name="MusicVideo.DownloadTip" xml:space="preserve"><value>Bu şarkının söz arka plan videosu olarak kaydet</value><comment>Tooltip of Download</comment></data>
+  <data name="MusicVideo.Results" xml:space="preserve"><value>Arama sonuçları</value><comment>Music video dialog: heading of the YouTube search results</comment></data>
+  <data name="MusicVideo.Use" xml:space="preserve"><value>Kullan</value><comment>Music video dialog: use this search result</comment></data>
+  <data name="MusicVideo.Current" xml:space="preserve"><value>Geçerli</value><comment>Music video dialog: badge on the video the song plays now</comment></data>
+  <data name="MusicVideo.NoVideo" xml:space="preserve"><value>Bu şarkı için video kullanma</value><comment>Music video dialog button</comment></data>
+  <data name="MusicVideo.BackToAutomatic" xml:space="preserve"><value>Otomatiğe dön</value><comment>Music video dialog button: forget the user's choice</comment></data>
+  <data name="MusicVideo.BackToAutomaticTip" xml:space="preserve"><value>Seçimini unut ve otomatik eşleşme karar versin</value><comment>Tooltip of Back to automatic</comment></data>
+  <data name="MusicVideo.Close" xml:space="preserve"><value>Kapat</value><comment>Music video dialog: close button</comment></data>
+  <data name="MusicVideo.CurrentAutomatic" xml:space="preserve"><value>Henüz bir şey seçilmedi: otomatik eşleşme karar veriyor.</value><comment>Music video dialog: the song has no choice yet</comment></data>
+  <data name="MusicVideo.CurrentNone" xml:space="preserve"><value>Bu şarkı videosuz çalınıyor.</value><comment>Music video dialog: the user chose no video</comment></data>
+  <data name="MusicVideo.CurrentNoMatch" xml:space="preserve"><value>Otomatik arama iyi bir eşleşme bulamadı.</value><comment>Music video dialog: the automatic search found nothing</comment></data>
+  <data name="MusicVideo.CurrentUser" xml:space="preserve"><value>Senin seçimin: {0}</value><comment>Music video dialog; {0} = video title</comment></data>
+  <data name="MusicVideo.CurrentAuto" xml:space="preserve"><value>Otomatik eşleşme: {0}</value><comment>Music video dialog; {0} = video title</comment></data>
+  <data name="MusicVideo.NotALink" xml:space="preserve"><value>Bu bir YouTube video bağlantısı değil.</value><comment>Music video dialog link status</comment></data>
+  <data name="MusicVideo.LookingUp" xml:space="preserve"><value>Video aranıyor…</value><comment>Music video dialog link status</comment></data>
+  <data name="MusicVideo.LinkNotFound" xml:space="preserve"><value>YouTube bu bağlantı için video bulamadı.</value><comment>Music video dialog link status</comment></data>
+  <data name="MusicVideo.LinkFailed" xml:space="preserve"><value>Bağlantı okunamadı: {0}</value><comment>Music video dialog link status; {0} = reason</comment></data>
+  <data name="MusicVideo.Searching" xml:space="preserve"><value>YouTube'da aranıyor…</value><comment>Music video dialog search status</comment></data>
+  <data name="MusicVideo.NoResults" xml:space="preserve"><value>Sonuç yok.</value><comment>Music video dialog search status</comment></data>
+  <data name="MusicVideo.SearchFailed" xml:space="preserve"><value>Arama başarısız: {0}</value><comment>Music video dialog search status; {0} = reason</comment></data>
+  <data name="Menu.MusicVideoFromYouTube" xml:space="preserve"><value>YouTube'dan müzik videosu</value><comment>Song menu ▸ Lyrics Background Video row (no ellipsis)</comment></data>
+  <data name="PlaybackBar.MusicVideoFromYouTube" xml:space="preserve"><value>YouTube'dan müzik videosu</value><comment>Island ⋯ menu on the lyrics page</comment></data>
+  <data name="Lyrics.WrongVideo" xml:space="preserve"><value>Yanlış video mu?</value><comment>Lyrics page button next to the Audio / Video switch while a YouTube video streams</comment></data>
+  <data name="Lyrics.WrongVideoTip" xml:space="preserve"><value>Başka bir video seç, bağlantı yapıştır veya bu şarkı için videoyu kapat</value><comment>Tooltip of Wrong video?</comment></data>
+  <data name="Settings.ArtistVideos" xml:space="preserve"><value>Sanatçı Videoları</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ArtistVideosDesc" xml:space="preserve"><value>Varsa sanatçının Apple Music videosunu sayfasının arkasında oynatır. Açtığın her sanatçıyı arar.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="ArtistDetail.RemoveArtistVideo" xml:space="preserve"><value>Sanatçı Videosunu Kaldır</value><comment>Header in ArtistDetailView.axaml</comment></data>
 </root>

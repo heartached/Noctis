@@ -78,7 +78,7 @@ public sealed class LyricsWriter
     /// .lrc; LRC only saves the line timings alone (word timings dropped, in the tags too) and removes an old .elrc,
     /// which the lyrics page reads first.</param>
     public LyricsSaveOutcome SaveDetailed(Track track, string? plain, string? synced, bool embedInTags, bool replaceForeignSidecar, string? ttml = null,
-        LyricsSaveTarget? target = null, LyricsStudioFiles files = LyricsStudioFiles.ElrcAndLrc)
+        LyricsSaveTarget? target = null, LyricsStudioFiles files = LyricsStudioFiles.ElrcAndLrc, Action? tagWriteFailed = null)
     {
         if (files == LyricsStudioFiles.LrcOnly && !string.IsNullOrWhiteSpace(synced)
             && LyricsFormatDetector.Detect(null, synced) == LyricsFormat.Elrc)
@@ -148,12 +148,12 @@ public sealed class LyricsWriter
         if (isLocal && mode.WritesTags())
         {
             var (tagPlain, tagSynced) = (plain, synced);
-            QueueTagWrite(path, () => _metadata.WriteLyrics(path, tagPlain, tagSynced));
+            QueueTagWrite(path, () => _metadata.WriteLyrics(path, tagPlain, tagSynced), tagWriteFailed);
             tagsQueued = true;
         }
         else if (embedInTags && isLocal)
         {
-            QueueTagWrite(path, () => _metadata.WriteTrackMetadata(track));
+            QueueTagWrite(path, () => _metadata.WriteTrackMetadata(track), tagWriteFailed);
         }
         return new LyricsSaveOutcome(true, sidecarWritten, replaced, kept, tagsQueued);
     }
@@ -164,13 +164,30 @@ public sealed class LyricsWriter
         catch { return LyricsSaveTarget.Sidecar; }
     }
 
-    /// <summary>Tag writes wait (deferred writer) until the file is not the one playing; one per file, the latest wins.</summary>
-    private void QueueTagWrite(string path, Func<bool> write)
+    /// <summary>Tag writes wait (deferred writer) until the file is not the one playing; one per file, the latest wins.
+    /// <paramref name="failed"/> runs (on a worker thread) when the write, once it runs, fails or throws.</summary>
+    private void QueueTagWrite(string path, Func<bool> write, Action? failed = null)
     {
+        void Run()
+        {
+            bool ok;
+            try { ok = write(); }
+            catch
+            {
+                Notify();
+                throw;
+            }
+            if (!ok) Notify();
+        }
+        void Notify()
+        {
+            DebugLogger.Warn(DebugLogger.Category.Lyrics, "Lyrics.TagWriteFailed", Path.GetFileName(path));
+            try { failed?.Invoke(); } catch { /* a notice must never break the writer */ }
+        }
         if (_tagWriter is not null)
-            _tagWriter.Enqueue(path, "lyrics", () => write());
+            _tagWriter.Enqueue(path, "lyrics", Run);
         else
-            Task.Run(() => { try { write(); } catch { } });
+            Task.Run(() => { try { Run(); } catch { } });
     }
 
     /// <summary>
@@ -302,9 +319,48 @@ public sealed class LyricsWriter
             }
             replaced = true;
         }
-        File.WriteAllText(sidecarPath, Normalize(content), new UTF8Encoding(false));
+        WriteAllTextAtomic(sidecarPath, Normalize(content));
         _registry.Add(sidecarPath);
         written = true;
+    }
+
+    /// <summary>
+    /// Writes a temp file beside <paramref name="path"/> and swaps it in, so a crash, a full disk or a
+    /// cut power mid-write never leaves a half-written lyrics file (written in place, it did). An
+    /// existing file is replaced under its own on-disk name ("Song.LRC" stays "Song.LRC", as the
+    /// in-place write kept it). Where the swap is refused (some network shares), it writes in place.
+    /// </summary>
+    internal static void WriteAllTextAtomic(string path, string text)
+    {
+        var encoding = new UTF8Encoding(false);
+        var tmp = path + ".noctis-tmp";
+        try
+        {
+            File.WriteAllText(tmp, text, encoding);
+            if (OnDiskName(path) is { } existing) File.Replace(tmp, existing, null, ignoreMetadataErrors: true);
+            else File.Move(tmp, path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or PlatformNotSupportedException)
+        {
+            try { File.Delete(tmp); } catch { /* best effort */ }
+            File.WriteAllText(path, text, encoding);
+        }
+    }
+
+    /// <summary>The existing file at <paramref name="path"/> as the file system spells it, or null when there is none.</summary>
+    private static string? OnDiskName(string path)
+    {
+        if (!File.Exists(path)) return null;
+        try
+        {
+            var dir = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(dir)
+                && Directory.EnumerateFiles(dir, Path.GetFileName(path)).FirstOrDefault() is { } spelled
+                && string.Equals(spelled, path, StringComparison.OrdinalIgnoreCase))
+                return spelled;
+        }
+        catch { /* unlistable: the path as given */ }
+        return path;
     }
 
     /// <summary>Trashes our own sidecar at the path, or a foreign one when asked; leaves a foreign one alone otherwise.</summary>

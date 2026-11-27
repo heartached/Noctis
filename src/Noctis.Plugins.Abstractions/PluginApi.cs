@@ -2,15 +2,15 @@ namespace Noctis.Plugins;
 
 /// <summary>
 /// Version of this plugin kit. A plugin states the version it was built against in
-/// plugin.json ("apiVersion": "1.8"). Noctis refuses a plugin whose major version differs
+/// plugin.json ("apiVersion": "1.9"). Noctis refuses a plugin whose major version differs
 /// from <see cref="Major"/>; minor versions only ever add members.
 /// </summary>
 public static class PluginApi
 {
     public const int Major = 1;
-    public const int Minor = 8;
+    public const int Minor = 9;
 
-    /// <summary>"1.8": the value to put in plugin.json's apiVersion.</summary>
+    /// <summary>"1.9": the value to put in plugin.json's apiVersion.</summary>
     public static string Version => $"{Major}.{Minor}";
 }
 
@@ -152,6 +152,20 @@ public interface IPlaybackControl
     /// Unknown ids are skipped.</summary>
     void QueueTracks(IReadOnlyList<string> trackIds, bool playNext)
         => throw new NotSupportedException("This Noctis build does not implement plugin API 1.7. Set minAppVersion in plugin.json.");
+
+    /// <summary>API 1.9. Replaces the queue with an album of the user's media servers
+    /// (<see cref="ServerAlbumInfo.Id"/>, from <see cref="ILibraryReader.GetServerAlbumsAsync"/>)
+    /// and plays it from the first song, or shuffled. Noctis reads the album's songs from the
+    /// server it came from (another server that has the same album when that one fails).
+    /// False when the album is unknown or no server answered with its songs.</summary>
+    Task<bool> PlayServerAlbumAsync(string albumId, bool shuffle = false, CancellationToken ct = default)
+        => throw new NotSupportedException("This Noctis build does not implement plugin API 1.9. Set minAppVersion in plugin.json.");
+
+    /// <summary>API 1.9. Play Next (<paramref name="playNext"/> true) or Add to Queue (false) for
+    /// an album of the user's media servers, as <see cref="QueueTracks"/> does for library songs.
+    /// False when the album is unknown or no server answered with its songs.</summary>
+    Task<bool> QueueServerAlbumAsync(string albumId, bool playNext, CancellationToken ct = default)
+        => throw new NotSupportedException("This Noctis build does not implement plugin API 1.9. Set minAppVersion in plugin.json.");
 }
 
 /// <summary>API 1.5. A copy of the play queue (<see cref="IPlaybackControl.GetQueue"/>).</summary>
@@ -204,6 +218,47 @@ public interface ILibraryReader
     /// the id is unknown).</summary>
     IReadOnlyList<string> GetLyricLines(string trackId)
         => throw new NotSupportedException("This Noctis build does not implement plugin API 1.7. Set minAppVersion in plugin.json.");
+
+    /// <summary>API 1.9. The albums of the user's media servers (Navidrome, Jellyfin, Ampache and
+    /// other Subsonic servers in Settings › Integrations › Music Server), merged into one list:
+    /// an album on several servers is listed once. Their songs are not library tracks; play them
+    /// with <see cref="IPlaybackControl.PlayServerAlbumAsync"/>. Reads the servers over the
+    /// network the first time (then a few minutes from memory), so call it off the UI thread.
+    /// Empty when no server is connected or none answered.</summary>
+    Task<IReadOnlyList<ServerAlbumInfo>> GetServerAlbumsAsync(CancellationToken ct = default)
+        => throw new NotSupportedException("This Noctis build does not implement plugin API 1.9. Set minAppVersion in plugin.json.");
+
+    /// <summary>API 1.9. Path of a server album's cover on this computer, downloaded from its
+    /// server the first time; null when the server has none (or the album is unknown).</summary>
+    Task<string?> GetServerAlbumArtworkAsync(string albumId, CancellationToken ct = default)
+        => throw new NotSupportedException("This Noctis build does not implement plugin API 1.9. Set minAppVersion in plugin.json.");
+}
+
+/// <summary>
+/// API 1.9. An album of one of the user's media servers (<see cref="ILibraryReader.GetServerAlbumsAsync"/>).
+/// </summary>
+/// <param name="Id">Opaque id for <see cref="ILibraryReader.GetServerAlbumArtworkAsync"/> and
+/// <see cref="IPlaybackControl.PlayServerAlbumAsync"/>; stable while the server keeps the album.</param>
+/// <param name="Title">Album title.</param>
+/// <param name="Artist">Album artist.</param>
+/// <param name="Year">Release year, 0 = unknown.</param>
+/// <param name="Genre">Genre as the server lists it, or empty.</param>
+/// <param name="SongCount">Songs on the album, 0 = unknown.</param>
+/// <param name="ServerName">The server it plays from, as Settings names it.</param>
+public sealed record ServerAlbumInfo(string Id, string Title, string Artist, int Year, string Genre, int SongCount, string ServerName)
+{
+    /// <summary>Path of the album's cover when Noctis already has it on this computer, else null
+    /// (<see cref="ILibraryReader.GetServerAlbumArtworkAsync"/> fetches it).</summary>
+    public string? ArtworkPath { get; init; }
+
+    /// <summary>How many times the album was played (0 = never played): its servers' count plus
+    /// the plays of its songs in Noctis, which the servers never see. Null when neither knows.
+    /// Unknown is not "never played": leave such an album out of play-history filters.</summary>
+    public int? PlayCount { get; init; }
+
+    /// <summary>When the album was last played, on a server or in Noctis; null when never played
+    /// or unknown (a server can count plays without dating them).</summary>
+    public DateTimeOffset? LastPlayed { get; init; }
 }
 
 /// <summary>

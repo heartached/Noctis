@@ -2909,20 +2909,32 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         for (var i = 0; i < shown.Count; i++)
         {
             var old = LyricLines[i];
-            if (relit.Contains(old) || !SamePreviewLine(old, shown[i])) changed.Add(i);
+            if (relit.Contains(old) || !SamePreviewLine(old, shown[i], _previewReloadLoose)) changed.Add(i);
         }
         if (changed.Count * 2 > shown.Count) return false;
         foreach (var i in changed) LyricLines[i] = shown[i];
         return true;
     }
 
-    private static bool SamePreviewLine(LyricLine a, LyricLine b) =>
-        a.Timestamp == b.Timestamp && a.EndTimestamp == b.EndTimestamp && a.Text == b.Text && a.Voice == b.Voice
+    // Set while the reload after a saved preview applies the file's lines: with "Also save as TTML"
+    // the lyrics page reads the .ttml, whose lines differ from the preview's (parsed as ELRC) only
+    // in the soft line wrap the LRC parser puts in long lines. Owner 11-26 follow-up: every line was
+    // rebuilt again for that (2 s, ~1 GB in LyricsStudioSavePerfTests).
+    private bool _previewReloadLoose;
+
+    private static bool SamePreviewLine(LyricLine a, LyricLine b, bool wrapInsensitive = false) =>
+        a.Timestamp == b.Timestamp && a.EndTimestamp == b.EndTimestamp
+        && (a.Text == b.Text || wrapInsensitive && SameWords(a.Text, b.Text)) && a.Voice == b.Voice
         && a.IsIntroPlaceholder == b.IsIntroPlaceholder && a.IsInterlude == b.IsInterlude && a.IsBackgroundOnly == b.IsBackgroundOnly
         && a.Translation == b.Translation && a.Transliteration == b.Transliteration
         && a.BackgroundEndTimestamp == b.BackgroundEndTimestamp && a.TransliterationEndTimestamp == b.TransliterationEndTimestamp
         && SameWords(a.Words, b.Words) && SameWords(a.BackgroundWords, b.BackgroundWords)
         && SameWords(a.TransliterationWords, b.TransliterationWords);
+
+    /// <summary>The same words, however the text is wrapped or spaced.</summary>
+    private static bool SameWords(string? a, string? b) =>
+        (a ?? string.Empty).Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
+            .SequenceEqual((b ?? string.Empty).Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 
     private static bool SameWords(IReadOnlyList<WordTiming>? a, IReadOnlyList<WordTiming>? b)
     {
@@ -2944,10 +2956,23 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     public void ClearPreview()
     {
         var previewTrackId = _previewTrackId;
+        var previewShown = IsPreviewActive;
+        // Lit before the reload resets the timeline: those lines are always rebuilt (UpdatePreview's rule).
+        var lit = previewShown ? new HashSet<LyricLine>(_timeline.ActiveLines) : null;
         DropPreview();
         if (previewTrackId != null && _currentTrack is { } current && current.Id == previewTrackId)
+        {
             LoadLyricsForTrack(current);
+            // Owner 11-26: Save in the Studio froze the app 1-4 s. Save drops the preview, and the
+            // reload of the file just written replaced every line on screen, so each open lyrics
+            // view rebuilt every word cell (~1 GB, 4.5 s in LyricsStudioSavePerfTests) for the
+            // very lines the preview showed. The reload swaps only the lines that differ.
+            if (lit is not null) _previewReload = (_searchGeneration, lit);
+        }
     }
+
+    /// <summary>Set by <see cref="ClearPreview"/>: the reload of this generation patches the preview's lines in place.</summary>
+    private (int Generation, HashSet<LyricLine> Lit)? _previewReload;
 
     private void DropPreview()
     {
@@ -3516,7 +3541,12 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                     // realizes the new line controls has run — Loaded-priority work
                     // runs after layout. Off → no stopwatch, no extra post.
                     var swapClock = DebugLogger.IsEnabled ? System.Diagnostics.Stopwatch.StartNew() : null;
-                    ApplyLocalLyricsResult(track, probe);
+                    var reload = _previewReload is { } r && r.Generation == generation ? r.Lit : null;
+                    _previewReload = null;
+                    _previewRelit = reload;
+                    _previewReloadLoose = reload is not null;
+                    try { ApplyLocalLyricsResult(track, probe); }
+                    finally { _previewRelit = null; _previewReloadLoose = false; }
                     LyricsSwapped?.Invoke(this, EventArgs.Empty);
                     MaybeUpgradePlainLyrics();
                     if (swapClock != null)
@@ -3703,8 +3733,12 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
     private static readonly LocalLyricsProbe InstrumentalProbe = new(null, null, InstrumentalSource, FromCache: false);
 
+    /// <summary>Where the lines last applied came from ("Sidecar:Elrc", "Preview"…; tests).</summary>
+    internal string? LastAppliedSource { get; private set; }
+
     private void ApplyLocalLyricsResult(Track track, LocalLyricsProbe probe)
     {
+        LastAppliedSource = probe.Source;
         IsPreviewActive = probe.Source == PreviewSource;
         if (probe.Lines != null && probe.Lines.Count > 0)
         {

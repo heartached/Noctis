@@ -7,7 +7,7 @@ using System.Text.Json.Serialization;
 
 namespace Noctis.Services;
 
-public sealed class UpdateService
+public sealed class UpdateService : IReleaseNotesSource
 {
     // Fetch the recent releases list (instead of /releases/latest) so pre-releases are included.
     // GitHub excludes pre-releases from /releases/latest, which would hide prerelease builds from
@@ -318,6 +318,29 @@ public sealed class UpdateService
         _releaseListCache = response.Headers.ETag is { } etag ? new ReleaseListCache(etag, items) : null;
         return new List<ReleaseListItem>(items);
     }
+
+    /// <summary>
+    /// One release's notes by tag (Settings › About › What's new). Null when GitHub has no
+    /// release with that tag (404: a dev build whose version isn't released yet); any other
+    /// failure (offline, rate limit) throws, as the update check does.
+    /// </summary>
+    public async Task<ReleaseNotesDocument?> GetReleaseNotesAsync(string tag, CancellationToken ct = default)
+    {
+        if (!AutoUpdatePolicy.IsSafeTag(tag)) return null;
+        using var request = new HttpRequestMessage(HttpMethod.Get,
+            $"https://api.github.com/repos/heartached/Noctis/releases/tags/{Uri.EscapeDataString(tag)}");
+        request.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
+
+        using var response = await _http.SendAsync(request, ct);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        response.EnsureSuccessStatusCode();
+
+        var release = await HttpSafety.ReadJsonBoundedAsync<GitHubRelease>(response.Content, ct: ct);
+        if (release is null || release.Draft || string.IsNullOrEmpty(release.TagName)) return null;
+        return new ReleaseNotesDocument(release.TagName, release.PublishedAt, release.Body ?? "");
+    }
+
+    Task<ReleaseNotesDocument?> IReleaseNotesSource.FetchAsync(string tag, CancellationToken ct) => GetReleaseNotesAsync(tag, ct);
 
     private sealed record ReleaseListCache(System.Net.Http.Headers.EntityTagHeaderValue ETag, List<ReleaseListItem> Items);
     private volatile ReleaseListCache? _releaseListCache;
@@ -865,6 +888,9 @@ public sealed class UpdateService
 
     /// <param name="modeOverride">Tests only; the app uses <see cref="AutoMode"/>, resolved only
     /// when something is queued so an ordinary launch pays for one missing-file check.</param>
+    /// <remarks>The user's switch is read from the settings.json next to <paramref name="store"/> (both
+    /// live in the data folder), before settings load: a queue must never outlive the switch (Discord
+    /// 11-26, "i made it off and its still auto updating"), whatever left it behind.</remarks>
     internal bool TryInstallPendingUpdateAtLaunch(bool hasFilesToOpen, AutoUpdateStore store, AutoUpdateMode? modeOverride = null)
     {
         try
@@ -873,10 +899,13 @@ public sealed class UpdateService
             if (state?.Pending is not { } pending) return false;
 
             var mode = modeOverride ?? AutoMode;
+            // Missing file, missing key or a damaged file read as off.
+            var autoOn = PersistenceService.ReadBoolSettingAtLaunch(
+                Path.GetDirectoryName(store.FilePath)!, nameof(Noctis.Models.AppSettings.AutoInstallUpdates));
             var path = pending.InstallerPath;
             var owned = IsOwnedInstallerFile(path);
             var now = DateTimeOffset.UtcNow;
-            var action = AutoUpdatePolicy.DecideLaunchAction(pending, CurrentVersion, mode, hasFilesToOpen, owned, now, out var reason);
+            var action = AutoUpdatePolicy.DecideLaunchAction(pending, CurrentVersion, mode, autoOn, hasFilesToOpen, owned, now, out var reason);
 
             switch (action)
             {
@@ -894,7 +923,7 @@ public sealed class UpdateService
                     var exhausted = pending.LaunchAttempts >= AutoUpdatePolicy.MaxLaunchAttempts;
                     // A file that vanished (temp cleanup) counts as a failed download, so one that
                     // keeps vanishing ends up blocked instead of re-downloading after every launch.
-                    var vanished = !owned && mode != AutoUpdateMode.Off;
+                    var vanished = !owned && mode != AutoUpdateMode.Off && autoOn;
                     if (vanished) state = AutoUpdatePolicy.RecordDownloadFailure(state, pending.Tag, now, hard: false);
                     DiscardPending(store, state, pending, owned, reason, block: exhausted, notify: exhausted || (vanished && state.Blocked));
                     return false;

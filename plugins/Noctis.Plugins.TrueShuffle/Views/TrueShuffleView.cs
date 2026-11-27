@@ -40,6 +40,8 @@ public sealed class TrueShuffleView : UserControl
 
         Content = new ScrollViewer
         {
+            // The text wraps to the window: never a sideways scroll (the app's default is Auto).
+            HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
             Content = new StackPanel
             {
                 Margin = new Thickness(20),

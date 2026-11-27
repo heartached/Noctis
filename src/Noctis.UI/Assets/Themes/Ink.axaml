@@ -45,8 +45,9 @@
     <!-- GitHub #209: the Ctrl-selection plate and outline; App.SetAccent re-derives both. -->
     <SolidColorBrush x:Key="SelectionFillBrush" Color="{StaticResource SystemAccentColor}" Opacity="0.2" />
     <SolidColorBrush x:Key="SelectionStrokeBrush" Color="{StaticResource SystemAccentColor}" Opacity="0.9" />
-    <!-- GitHub #218: the soft glow behind a hovered album (Album Hover Zoom). -->
-    <BoxShadows x:Key="AlbumHoverGlow">0 0 24 1 #3DFFFFFF</BoxShadows>
+    <!-- GitHub #218: the soft shadow under a hovered album (Album Hover Zoom); dark and tight
+         (Discord 11-25), see Styles.axaml. -->
+    <BoxShadows x:Key="AlbumHoverGlow">0 1 3 0 #B3000000</BoxShadows>
 
     <!-- Text -->
     <SolidColorBrush x:Key="PrimaryTextBrush" Color="#F2F2F2" />
@@ -155,4 +156,6 @@
     <SolidColorBrush x:Key="MenuV2TileHoverBrush" Color="#1FFFFFFF" />
     <SolidColorBrush x:Key="MenuV2TilePressedBrush" Color="#29FFFFFF" />
     <SolidColorBrush x:Key="MenuV2DangerHoverBrush" Color="#24E74856" />
+    <!-- Lit stars: the same gold as the base dark theme. -->
+    <SolidColorBrush x:Key="StarGoldBrush" Color="#F5C518" />
 </ResourceDictionary>

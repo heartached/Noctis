@@ -217,6 +217,7 @@ public class AuditRegressionTests
     [InlineData("Greatest Hits (Volume 1)", "Greatest Hits (Volume 2)")]
     [InlineData("Live (Disc 1)", "Live (Disc 2)")]
     [InlineData("Sessions (Part 1)", "Sessions (Part 2)")]
+    [InlineData("Sessions -Part 1-", "Sessions -Part 2-")]
     public void NormalizeForEdition_KeepsNonEditionParentheticalsDistinct(string a, string b)
     {
         // Stripping ANY trailing parenthetical merged genuinely different albums into one
@@ -228,6 +229,11 @@ public class AuditRegressionTests
     [InlineData("The Album", "The Album (Deluxe Edition)")]
     [InlineData("The Album", "The Album [Remastered]")]
     [InlineData("The Album", "The Album (Expanded Edition)")]
+    // GitHub #263: "Ver." editions, dash/wave-dash wrapped and full-width bracketed ones.
+    [InlineData("The Album", "The Album (Japanese Ver.)")]
+    [InlineData("The Album", "The Album -Japanese Ver.-")]
+    [InlineData("The Album", "The Album ～Deluxe Edition～")]
+    [InlineData("The Album", "The Album（Deluxe Edition）")]
     public void NormalizeForEdition_StillCollapsesRealEditions(string plain, string edition)
     {
         Assert.Equal(AlbumTitle.NormalizeForEdition(plain), AlbumTitle.NormalizeForEdition(edition));

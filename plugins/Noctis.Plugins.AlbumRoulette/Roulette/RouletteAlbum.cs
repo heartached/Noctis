@@ -21,6 +21,27 @@ public sealed record RouletteAlbum(
     DateTimeOffset? LastPlayed,
     IReadOnlyList<string> Artists)
 {
+    /// <summary>The album's cover. A server album's arrives later (<see cref="ServerAlbumId"/>), so it can be set.</summary>
+    public string? ArtworkPath { get; set; } = ArtworkPath;
+
+    /// <summary>Set for an album of the user's media servers (GitHub #268): it has no library
+    /// tracks (<see cref="TrackIds"/> is empty) and plays through the server.</summary>
+    public string? ServerAlbumId { get; init; }
+
+    /// <summary>The server it plays from (server albums only).</summary>
+    public string ServerName { get; init; } = "";
+
+    public bool IsServer => ServerAlbumId is not null;
+
+    /// <summary>At least one of its songs is one Noctis's shuffle plays (not "Not liked", not
+    /// "Skip when shuffling", not snoozed), the rule Song Roulette uses per song. An album with
+    /// none stays off the reel. Server albums: true (their songs carry no such marks).</summary>
+    public bool HasPlayableSong { get; init; } = true;
+
+    /// <summary>False for a server album whose server does not say whether it was played: unknown
+    /// is not never, so the play filters leave it out. Library albums always know.</summary>
+    public bool PlaysKnown { get; init; } = true;
+
     /// <summary>"Single" and "EP" are their own; everything else (albums, live, soundtracks,
     /// compilations, remixes) counts as an album.</summary>
     public ReleaseKind Kind => ReleaseType.ToLowerInvariant() switch
@@ -35,7 +56,16 @@ public sealed record RouletteAlbum(
     /// <summary>1990 for 1994; 0 when the year is unknown.</summary>
     public int Decade => Year > 0 ? Year / 10 * 10 : 0;
 
-    public bool NeverPlayed => PlayCount <= 0 && LastPlayed is null;
+    public bool NeverPlayed => PlaysKnown && PlayCount <= 0 && LastPlayed is null;
+
+    /// <summary>True when it is known not to have been played since <paramref name="since"/>
+    /// (never played counts). A server album played on a date its server does not give is unknown.</summary>
+    public bool NotPlayedSince(DateTimeOffset since)
+    {
+        if (!PlaysKnown) return false;
+        if (LastPlayed is { } last) return last <= since;
+        return !IsServer || PlayCount <= 0;
+    }
 
     /// <summary>A song of its own (Song Roulette), not an album.</summary>
     public bool IsSong => Key.StartsWith(SongCatalog.KeyPrefix, StringComparison.Ordinal);
@@ -72,7 +102,7 @@ public static class SongCatalog
         var result = new List<RouletteAlbum>();
         foreach (var t in tracks)
         {
-            if (t.IsDisliked || t.SkipWhenShuffling || t.SnoozedUntil is { } until && until > now) continue;
+            if (!IsPlayable(t, now)) continue;
             var artist = ((string.IsNullOrWhiteSpace(t.Artist) ? t.AlbumArtist : t.Artist) ?? "").Trim();
             var artists = new[] { t.Artist, t.AlbumArtist }
                 .Where(a => !string.IsNullOrWhiteSpace(a)).Select(a => a.Trim())
@@ -88,13 +118,64 @@ public static class SongCatalog
         }
         return result;
     }
+
+    /// <summary>Not "Not liked", not "Skip when shuffling", not snoozed past <paramref name="now"/>:
+    /// what Noctis's own shuffle plays.</summary>
+    public static bool IsPlayable(TrackInfo t, DateTimeOffset now)
+        => !t.IsDisliked && !t.SkipWhenShuffling && !(t.SnoozedUntil is { } until && until > now);
 }
+
+/// <summary>An album of one of the user's media servers, as Album Roulette keeps it
+/// (its own type, so nothing here needs plugin API 1.9's ServerAlbumInfo to load).
+/// <paramref name="PlayCount"/> and <paramref name="LastPlayed"/> are what its server says;
+/// both null = the server does not say.</summary>
+public sealed record RemoteAlbum(string Id, string Title, string Artist, int Year, string Genre, string ServerName, string? ArtworkPath,
+    int? PlayCount = null, DateTimeOffset? LastPlayed = null);
 
 /// <summary>Turns library tracks into albums (one per album, a track without an album is a single of its own).</summary>
 public static class AlbumCatalog
 {
-    public static IReadOnlyList<RouletteAlbum> Group(IEnumerable<TrackInfo> tracks)
+    public const string ServerKeyPrefix = "r:";
+
+    /// <summary>
+    /// The library's albums plus the media servers' albums (GitHub #268). A server album that
+    /// is also in the library (same album artist and title) is left out: the library copy
+    /// plays from this computer and has the play counts. Stable order (Album of the Day).
+    /// </summary>
+    public static IReadOnlyList<RouletteAlbum> WithServerAlbums(IReadOnlyList<RouletteAlbum> library, IEnumerable<RemoteAlbum> server)
     {
+        var known = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var a in library) known.Add(NameKey(a.Artist, a.Title));
+        var result = new List<RouletteAlbum>(library);
+        var added = false;
+        foreach (var r in server)
+        {
+            if (string.IsNullOrEmpty(r.Id) || !known.Add(NameKey(r.Artist, r.Title))) continue;
+            var title = (r.Title ?? "").Trim();
+            var artist = (r.Artist ?? "").Trim();
+            result.Add(new RouletteAlbum(
+                ServerKeyPrefix + r.Id, title, artist, Math.Max(0, r.Year), (r.Genre ?? "").Trim(), "Album",
+                Array.Empty<string>(), "", r.ArtworkPath, Math.Max(0, r.PlayCount ?? 0), r.LastPlayed,
+                artist.Length > 0 ? new[] { artist } : Array.Empty<string>())
+            {
+                ServerAlbumId = r.Id,
+                PlaysKnown = r.PlayCount is not null || r.LastPlayed is not null,
+                ServerName = r.ServerName ?? "",
+                Language = ScriptLanguage.Detect(title, title, artist),
+            });
+            added = true;
+        }
+        if (added) result.Sort((a, b) => string.CompareOrdinal(a.Key, b.Key));
+        return result;
+    }
+
+    private static string NameKey(string? artist, string? title)
+        => (artist ?? "").Trim().ToLowerInvariant() + "|" + (title ?? "").Trim().ToLowerInvariant();
+
+    /// <param name="now">For snoozes (<see cref="RouletteAlbum.HasPlayableSong"/>); null = the clock now.</param>
+    public static IReadOnlyList<RouletteAlbum> Group(IEnumerable<TrackInfo> tracks, DateTimeOffset? now = null)
+    {
+        var at = now ?? DateTimeOffset.Now;
         var groups = new Dictionary<string, List<TrackInfo>>(StringComparer.Ordinal);
         foreach (var t in tracks)
         {
@@ -128,6 +209,7 @@ public static class AlbumCatalog
             {
                 // The language most of its songs are in (one Korean song does not make a Korean album).
                 Language = Most(ordered.Select(t => ScriptLanguage.Detect(t.Title, t.Album, t.Artist))),
+                HasPlayableSong = ordered.Any(t => SongCatalog.IsPlayable(t, at)),
             });
         }
         // A stable order (the Album of the Day hashes into it).

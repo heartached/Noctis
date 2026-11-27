@@ -310,7 +310,9 @@
         <!-- Right margin trimmed to 2 so the vertical scrollbar sits near the window
              edge (Apple Music style) instead of being inset ~12px from it. -->
         <!-- Margin: DockPanel.albums-dock styles above (8px top, 13px with wide spacing). -->
-        <DockPanel Grid.Row="0" Classes="albums-dock">
+        <!-- The top margin is moved inside the scrollers, room for a first-row cover's hover
+             grow (UpdateFirstRowRoom in code-behind). -->
+        <DockPanel x:Name="AlbumsDock" Grid.Row="0" Classes="albums-dock">
 
         <!-- Content area with overlay for empty state -->
         <Grid>
@@ -366,7 +368,7 @@
                 <!-- A genre page's Songs section (header, song rows, "Albums") scrolls above the
                      cards, as in the row grid (GitHub #259). The cards draw above it: a hovered
                      first-row cover grows over the "Albums" header. -->
-                <StackPanel>
+                <StackPanel x:Name="MasonryContent">
                     <ItemsControl x:Name="MasonrySections"
                                   ItemsSource="{Binding MasonrySectionRows}"
                                   IsVisible="{Binding MasonrySectionRows.Count}"
@@ -392,6 +394,7 @@
                                 CaseStyle="{Binding CarouselStyle}"
                                 CenterAlbum="{Binding CarouselCenterAlbum}"
                                 OpenCommand="{Binding OpenAlbumCommand}"
+                                ArtistCommand="{Binding ViewArtistCommand}"
                                 BleedToWindowEdges="True"
                                 Margin="0,4,10,110" />
 

@@ -67,6 +67,8 @@ public partial class MainWindowViewModel : ViewModelBase
     partial void OnIsSettingsModalOpenChanged(bool value)
     {
         UpdateSectionActiveFlags();
+        // An artist page's hero video holds still under the sheet (ArtistDetailViewModel.IsCovered).
+        if (CurrentView is ArtistDetailViewModel coveredArtist) coveredArtist.IsCovered = value;
         // A plugin view open in place of its page goes with the sheet (its control is released).
         if (!value) Settings.LeavePluginView();
     }
@@ -289,6 +291,11 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void ToggleSidebar() => IsSidebarHidden = !IsSidebarHidden;
 
+    /// <summary>Expanded ↔ icon rail (Ctrl/⌘+B, the command palette): flips "Keep sidebar
+    /// expanded". Nothing while the sidebar is hidden (fullscreen lyrics, auto-hide).</summary>
+    public bool ToggleSidebarPinned() =>
+        !IsSidebarHidden && Settings.TrySetSidebarPinned(!Settings.SidebarAlwaysExpanded);
+
     // ── Lyrics side panel ──
 
     /// <summary>Whether the lyrics side panel overlay is open.</summary>
@@ -411,6 +418,9 @@ public partial class MainWindowViewModel : ViewModelBase
         Player.SilenceScanner = new Noctis.Services.AudioAnalysis.SilenceScanService(
             () => App.Services?.GetService<IAudioConverterService>()?.GetFfmpegPath(),
             Noctis.Services.AudioAnalysis.SilenceScanService.DecodeWithVlc);
+        // Discord #feedback 11-25: music videos streamed from YouTube behind the lyrics.
+        Player.MusicVideoStreams = App.Services?.GetService<Noctis.Services.YouTube.MusicVideoStreamService>();
+        PlayerViewModel.OpenMusicVideoPicker ??= MetadataHelper.OpenMusicVideoPicker;
         QueueToast.Attach(Player);
         if (App.Services?.GetService<PhoneHandoffInbox>() is { } handoffInbox)
         {
@@ -433,6 +443,7 @@ public partial class MainWindowViewModel : ViewModelBase
         Settings = new SettingsViewModel(persistence, library, playHistory, mediaServer);
         Settings.SetAudioPlayer(audioPlayer);
         Settings.SetPlayer(Player);
+        Settings.AttachMusicVideoStreams(Player.MusicVideoStreams);
         Player.SetSettingsViewModel(Settings);
         // GitHub #186: the island's quick playlist pop-up with none set leads to their pickers.
         Player.QuickPlaylistSettingsRequested += (_, _) =>
@@ -536,6 +547,9 @@ public partial class MainWindowViewModel : ViewModelBase
         Plugins.PlaylistSource = () => Sidebar.Playlists.ToArray();
         // API 1.6: plugins decode songs with the ffmpeg the converter and the BPM/key analysis use.
         Plugins.FfmpegPathSource = () => App.Services?.GetService<IAudioConverterService>()?.GetFfmpegPath();
+        // API 1.9: plugins (Album Roulette) read and play the media servers' albums (GitHub #268).
+        Plugins.MediaServer = mediaServer;
+        Plugins.PlayHistorySource = () => _playHistory.Events;
         Plugins.AlbumOpener = albumId =>
         {
             if (_library.GetAlbumById(albumId) is not { } album) return false;
@@ -840,7 +854,7 @@ public partial class MainWindowViewModel : ViewModelBase
             && App.Services.GetService<IUnisonLyricsService>() is { } unison)
         {
             _lyricsVm.ExtraLyricsSources = Services.Lyrics.OnlineLyricsSource.BuiltIns(musixmatch, kugou, youTubeMusic, lrcRed, unison,
-                App.Services.GetService<ILrcMuxLyricsService>());
+                App.Services.GetService<ILrcMuxLyricsService>(), App.Services.GetService<IGeniusLyricsService>());
             // "Word-sync with lrc.red's model" on the lyrics page and in Search Lyrics.
             _lyricsVm.LrcRed = lrcRed;
         }
@@ -1023,6 +1037,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // A loon reconnect rotates the clientId and invalidates the artwork URL Discord
         // is currently holding, so re-publish the presence with a fresh, valid URL.
         _loon.Reconnected += OnLoonReconnected;
+        _discord.Connected += OnDiscordConnected;
 
         // And on the way down, drop the cached key: it belongs to a clientId that is gone,
         // so re-publishing it would point Discord at a URL that now 404s.
@@ -1969,10 +1984,17 @@ public partial class MainWindowViewModel : ViewModelBase
         if (ReferenceEquals(oldValue, _statisticsVm) && !ReferenceEquals(newValue, _statisticsVm)) _statisticsVm.OnPageLeft();
         // Settings left: its Connect a phone panel folds, so no sign-in QR stays live off screen.
         if (ReferenceEquals(oldValue, Settings) && !ReferenceEquals(newValue, Settings)) Settings.OnSettingsLeft();
-        if (newValue is ArtistDetailViewModel artistPage) artistPage.IsActive = true;
+        if (oldValue is ArtistDetailViewModel uncoveredArtist) uncoveredArtist.IsCovered = false;
+        if (newValue is ArtistDetailViewModel artistPage)
+        {
+            artistPage.IsCovered = IsSettingsModalOpen;
+            artistPage.IsActive = true;
+        }
         // GitHub #167: an album page fetches its animated cover only while it is on screen.
         if (oldValue is AlbumDetailViewModel leftAlbumPage && !ReferenceEquals(oldValue, newValue)) leftAlbumPage.StopAutoFetch();
         if (newValue is AlbumDetailViewModel albumPage) albumPage.StartAutoFetch();
+        // The pill text a page that can't filter was shown with (see OnSearchTextChanged).
+        if (newValue is not ISearchable) _unsearchablePageSearchText = TopBar?.SearchText ?? string.Empty;
 
         var enteringLyrics = ReferenceEquals(newValue, _lyricsVm);
         var leavingLyrics = ReferenceEquals(oldValue, _lyricsVm) && !enteringLyrics;
@@ -2029,6 +2051,9 @@ public partial class MainWindowViewModel : ViewModelBase
             PlaylistFeaturedArtistsViewModel => Loc.T("TopBar.SearchIn", Loc.T("TopBar.FeaturedArtists")),
             MoreByArtistViewModel => Loc.T("TopBar.SearchIn", Loc.T("Nav.Albums")),
             ArtistDetailViewModel artistPage => Loc.T("TopBar.SearchIn", artistPage.ArtistName),
+            // Statistics, Queue, Audio CD: a search there lands on Songs, so say so.
+            not ISearchable when TopBar.CurrentTabName != "Songs" && UnsearchablePageSearchTarget() == "songs"
+                => Loc.T("TopBar.SearchIn", Loc.T("Nav.Songs")),
             _ => Loc.T("TopBar.SearchIn", TopBar.CurrentTabTitle)
         };
 
@@ -2284,12 +2309,12 @@ public partial class MainWindowViewModel : ViewModelBase
         RestoreNavigationEntry(_forwardHistory.Pop());
     }
 
-    private void RestoreNavigationEntry(NavigationEntry target)
+    private void RestoreNavigationEntry(NavigationEntry target, string? searchText = null)
     {
         ClearAllTopBarActions();
         target.RestoreState();
         TopBar.CurrentTabName = target.TabName;
-        TopBar.SearchText = target.SearchText;
+        TopBar.SearchText = searchText ?? target.SearchText;
         _currentSectionKey = target.SectionKey;
         _albumDetailBackButtonText = target.View is AlbumDetailViewModel
             ? NormalizeAlbumDetailBackButtonText(target.BackButtonText)
@@ -2616,13 +2641,17 @@ public partial class MainWindowViewModel : ViewModelBase
         // switch is a fresh context, so an open (now empty) search box shouldn't
         // follow the user to the new page. Queue popup stays open across navigation —
         // it's only dismissed by toggling the Queue button itself or by Escape.
-        TopBar.IsSearchOpen = false;
-        TopBar.SearchText = string.Empty;
-        // Assigning SearchText only dispatches ApplyFilter when the box value actually
-        // changes (and via a debounce). If the box was already empty from a prior visit,
-        // the destination view keeps whatever filter it was last given — so it can show
-        // nothing even though the search box looks empty. Clear it directly here.
-        ClearStaleSearch(CurrentView);
+        // (A query carried here from a page that can't filter keeps the pill as it is.)
+        if (!_keepSearchOnNavigate)
+        {
+            TopBar.IsSearchOpen = false;
+            TopBar.SearchText = string.Empty;
+            // Assigning SearchText only dispatches ApplyFilter when the box value actually
+            // changes (and via a debounce). If the box was already empty from a prior visit,
+            // the destination view keeps whatever filter it was last given — so it can show
+            // nothing even though the search box looks empty. Clear it directly here.
+            ClearStaleSearch(CurrentView);
+        }
 
         TopBar.CurrentTabName = key switch
         {
@@ -3086,6 +3115,68 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             searchable.ApplyFilter(query);
         }
+        else if (TopBar.IsSearchVisible && !_isCoverFlowMode
+                 && !string.IsNullOrWhiteSpace(TopBar.SearchText)
+                 && query != _unsearchablePageSearchText)
+        {
+            SearchFromUnsearchablePage();
+        }
+    }
+
+    /// <summary>Text the pill held when the current non-searchable page was shown. Only a
+    /// query typed after that is a new search: the text an album page was opened with, or
+    /// restored with on Back, is not.</summary>
+    private string _unsearchablePageSearchText = string.Empty;
+
+    /// <summary>Navigate keeps the pill open with its text (a search carried to a list).</summary>
+    private bool _keepSearchOnNavigate;
+
+    /// <summary>
+    /// The pill stays up on pages that can't filter (an album page keeps its section's tab),
+    /// so a new query typed there was dropped (11-25). It goes to the list the page belongs to:
+    /// Back to that list when it sits right behind the page (Forward returns to the page),
+    /// else the tab's section, with the album page kept in history. The pill stays open with
+    /// the typed text untouched (no caret jump, no lost keys); later keystrokes only filter.
+    /// </summary>
+    /// <summary>The list a search typed on a page that can't filter lands on: the tab's own
+    /// list, or Songs for a page with no list behind it (Statistics, Queue, Audio CD).</summary>
+    private string UnsearchablePageSearchTarget() => TopBar.CurrentTabName switch
+    {
+        "Albums" => "albums",
+        "Artists" => "artists",
+        "Folders" => "folders",
+        "Genres" => "genres",
+        "Playlists" or "Playlist" => "playlists",
+        "Favorites" => "favorites",
+        "Server" => "server",
+        "Inbox" => "inbox",
+        _ => "songs",
+    };
+
+    private void SearchFromUnsearchablePage()
+    {
+        var typed = TopBar.SearchText;
+        if (_navigationHistory.TryPeek(out var previous)
+            && previous.View is ISearchable
+            && previous.View is not (ArtistDetailViewModel or MoreByArtistViewModel or PlaylistFeaturedArtistsViewModel)
+            && previous.TabName == TopBar.CurrentTabName)
+        {
+            _forwardHistory.Push(CaptureCurrentNavigationEntry());
+            RestoreNavigationEntry(_navigationHistory.Pop(), typed);
+        }
+        else
+        {
+            var key = UnsearchablePageSearchTarget();
+            _keepSearchOnNavigate = true;
+            try { Navigate(key); }
+            finally { _keepSearchOnNavigate = false; }
+        }
+
+        if (CurrentView is ISearchable searchable)
+            searchable.ApplyFilter(typed);
+        // Keeps the box focused (a no-op re-focus when it already is).
+        if (TopBar.IsSearchVisible)
+            TopBar.OpenSearchCommand.Execute(null);
     }
 
     private void OnHomeSearchRedirectRequested(object? sender, EventArgs e)
@@ -3718,15 +3809,28 @@ public partial class MainWindowViewModel : ViewModelBase
     private void OnPlayerSeekedForIntegrations(object? sender, TimeSpan newPosition)
     {
         if (!_discord.IsConnected || Player.CurrentTrack == null) return;
+        // A pause cleared the card; a seek while paused must not put it back. Resuming sends
+        // the presence again from the new position.
+        if (Player.State != PlaybackState.Playing) return;
 
         var now = DateTime.UtcNow;
         if (now - _lastDiscordSeekUpdate < DiscordSeekThrottle) return;
         _lastDiscordSeekUpdate = now;
 
-        _ = UpdateDiscordPresenceAsync(Player.CurrentTrack, newPosition, Player.State == PlaybackState.Playing);
+        _ = UpdateDiscordPresenceAsync(Player.CurrentTrack, newPosition, true);
     }
 
     private void OnLoonDisconnected() => _discord.InvalidateArtworkCache();
+
+    /// <summary>Discord was opened after Noctis (or Rich Presence was just switched on): show the
+    /// song that is playing now. Every other publish waits for a play, pause, seek or track
+    /// change, so the card stayed empty until then.</summary>
+    private void OnDiscordConnected() =>
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (!_discord.IsConnected || Player.State != PlaybackState.Playing || Player.CurrentTrack is not { } track) return;
+            _ = UpdateDiscordPresenceAsync(track, Player.Position, true);
+        });
 
     private void OnLoonReconnected()
     {
@@ -3738,10 +3842,12 @@ public partial class MainWindowViewModel : ViewModelBase
         // require Playing, so a relay reconnect while paused — and the relay's very first
         // connect, which also raises this — left the presence pinned to an unreachable URL
         // for the rest of the track with no other path back to the real cover.
+        // Only a playing song has a card up: a pause clears it, and resuming sends a fresh one
+        // (with the new artwork URL), so there is nothing to refresh while paused.
         var track = Player.CurrentTrack;
-        if (track == null || Player.State == PlaybackState.Stopped) return;
+        if (track == null || Player.State != PlaybackState.Playing) return;
 
-        _ = UpdateDiscordPresenceAsync(track, Player.Position, Player.State == PlaybackState.Playing);
+        _ = UpdateDiscordPresenceAsync(track, Player.Position, true);
     }
 
     private async Task UpdateDiscordPresenceAsync(Track track, TimeSpan position, bool isPlaying)

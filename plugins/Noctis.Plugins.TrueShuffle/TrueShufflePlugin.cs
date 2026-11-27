@@ -14,7 +14,7 @@ public sealed class TrueShufflePlugin : INoctisPlugin, IPluginViewProvider
 {
     public const string Id = "dev.noctis.plugins.trueshuffle";
     public const string Author = "Alfamin";
-    public const string Version = "1.0.0";
+    public const string Version = "1.0.1";
     public const string About = "A fairer shuffle with modes like No repeats.";
 
     private IPluginHost? _host;

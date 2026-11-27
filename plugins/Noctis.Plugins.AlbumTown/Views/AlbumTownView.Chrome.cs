@@ -310,7 +310,9 @@ public sealed partial class AlbumTownView
             });
             _lyrics[album.Key] = lines;
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        // MissingMethodException: a Noctis 1.6.6 has no GetLyricLines at all (API 1.7), which the
+        // host's NotSupportedException guard cannot catch; the residents just do not quote.
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or MissingMethodException or NotSupportedException)
         {
             _lyrics[album.Key] = Array.Empty<string>();
         }

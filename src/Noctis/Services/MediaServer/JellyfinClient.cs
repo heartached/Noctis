@@ -102,11 +102,14 @@ public sealed class JellyfinClient : IMediaServerClient
     }
 
     public async Task<IReadOnlyList<ServerAlbum>> GetAlbumsAsync(SourceConnection connection, int offset, int limit, CancellationToken ct = default)
+        => (await GetAlbumPageAsync(connection, offset, limit, ct)).Albums;
+
+    public async Task<ServerAlbumPage> GetAlbumPageAsync(SourceConnection connection, int offset, int limit, CancellationToken ct = default)
     {
-        var query = "IncludeItemTypes=MusicAlbum&Recursive=true&SortBy=SortName&SortOrder=Ascending" +
+        var query = "IncludeItemTypes=MusicAlbum&Recursive=true&SortBy=SortName&SortOrder=Ascending&EnableUserData=true" +
                     $"&StartIndex={Math.Max(0, offset)}&Limit={Math.Clamp(limit, 1, 500)}";
-        var result = await QueryItemsAsync(connection, query, ct);
-        if (result == null) return Array.Empty<ServerAlbum>();
+        var (result, error) = await QueryItemsCheckedAsync(connection, query, ct);
+        if (result == null) return new(Array.Empty<ServerAlbum>(), error);
 
         var albums = new List<ServerAlbum>();
         foreach (var item in result.Items)
@@ -115,7 +118,7 @@ public sealed class JellyfinClient : IMediaServerClient
             if (mapped != null) albums.Add(mapped);
         }
         result.Dispose();
-        return albums;
+        return new(albums);
     }
 
     public async Task<IReadOnlyList<Track>> GetAlbumTracksAsync(SourceConnection connection, ServerAlbum album, CancellationToken ct = default)
@@ -255,9 +258,16 @@ public sealed class JellyfinClient : IMediaServerClient
 
     /// <summary>GET /Users/{userId}/Items?{query} with header auth; null on any failure.</summary>
     private async Task<ItemsResult?> QueryItemsAsync(SourceConnection connection, string query, CancellationToken ct)
+        => (await QueryItemsCheckedAsync(connection, query, ct)).Result;
+
+    /// <summary>An Items query; on failure the result is null and the error says why.</summary>
+    private async Task<(ItemsResult? Result, MediaServerConnectResult? Error)> QueryItemsCheckedAsync(SourceConnection connection, string query, CancellationToken ct)
     {
         var baseUrl = MediaServerUrl.TryNormalizeBase(connection.BaseUriOrPath, out _, out _);
-        if (baseUrl == null || string.IsNullOrWhiteSpace(connection.UserId)) return null;
+        if (baseUrl == null)
+            return (null, MediaServerConnectResult.Fail(MediaServerError.InvalidUrl, Loc.T("Settings.Server.InvalidUrl")));
+        if (string.IsNullOrWhiteSpace(connection.UserId))
+            return (null, MediaServerConnectResult.Fail(MediaServerError.AuthFailed, Loc.T("Settings.Server.WrongLogin")));
 
         var url = $"{baseUrl}/Users/{Uri.EscapeDataString(connection.UserId)}/Items?{query}";
         try
@@ -265,17 +275,24 @@ public sealed class JellyfinClient : IMediaServerClient
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.TryAddWithoutValidation("Authorization", BuildAuthHeader(connection, connection.TokenOrPassword));
             using var response = await _http.SendAsync(request, ct);
-            if (!response.IsSuccessStatusCode) return null;
+            if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+                return (null, MediaServerConnectResult.Fail(MediaServerError.AuthFailed, Loc.T("Settings.Server.WrongLogin")));
+            if (!response.IsSuccessStatusCode)
+                return (null, MediaServerConnectResult.Fail(MediaServerError.ServerError, Loc.T("Settings.Server.Http", (int)response.StatusCode)));
             var json = await HttpSafety.ReadStringBoundedAsync(response.Content, ct: ct);
-            return new ItemsResult(JsonDocument.Parse(json));
+            return (new ItemsResult(JsonDocument.Parse(json)), null);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
             throw;
         }
-        catch
+        catch (JsonException)
         {
-            return null;
+            return (null, MediaServerConnectResult.Fail(MediaServerError.ServerError, Loc.T("Settings.Server.NotJellyfin")));
+        }
+        catch (Exception ex)
+        {
+            return (null, MediaServerConnectResult.FromTransportException(ex));
         }
     }
 
@@ -284,6 +301,7 @@ public sealed class JellyfinClient : IMediaServerClient
         var id = GetString(item, "Id");
         if (string.IsNullOrWhiteSpace(id)) return null;
 
+        var (playCount, lastPlayed) = ReadPlayInfo(item);
         var hasPrimaryImage = item.TryGetProperty("ImageTags", out var tags) &&
                               tags.ValueKind == JsonValueKind.Object &&
                               tags.TryGetProperty("Primary", out _);
@@ -295,8 +313,33 @@ public sealed class JellyfinClient : IMediaServerClient
             Year = GetInt(item, "ProductionYear"),
             SongCount = GetInt(item, "ChildCount"),
             Duration = TimeSpan.FromTicks(Math.Max(0, GetLong(item, "RunTimeTicks"))),
-            CoverArtId = hasPrimaryImage ? id : null
+            CoverArtId = hasPrimaryImage ? id : null,
+            Genre = FirstOfArray(item, "Genres") ?? string.Empty,
+            PlayCount = playCount,
+            LastPlayed = lastPlayed
         };
+    }
+
+    /// <summary>
+    /// The album's play info from its UserData. Jellyfin counts plays on the songs, so an
+    /// album's own PlayCount is often 0 even after its songs were played: a zero only means
+    /// "never played" when UnplayedItemCount says every song is unplayed. A count above 0, a
+    /// date, Played, or fewer unplayed songs than the album has all say it was played;
+    /// anything else stays unknown (null, null).
+    /// </summary>
+    internal static (int? PlayCount, DateTimeOffset? LastPlayed) ReadPlayInfo(JsonElement item)
+    {
+        if (!item.TryGetProperty("UserData", out var data) || data.ValueKind != JsonValueKind.Object)
+            return (null, null);
+        var count = ServerPlayInfo.Count(data, "PlayCount") ?? 0;
+        var last = ServerPlayInfo.Date(data, "LastPlayedDate");
+        var played = data.TryGetProperty("Played", out var p) && p.ValueKind == JsonValueKind.True;
+        var unplayed = ServerPlayInfo.Count(data, "UnplayedItemCount");
+        var songs = GetInt(item, "ChildCount");
+        if (count > 0 || last != null) return (count > 0 ? count : null, last);
+        if (played || (unplayed != null && songs > 0 && unplayed < songs)) return (1, null); // played, date unknown
+        if (unplayed != null && songs > 0) return (0, null); // every song unplayed
+        return (null, null);
     }
 
     private static Track MapSong(SourceConnection connection, JsonElement item, ServerAlbum? album)
@@ -329,7 +372,8 @@ public sealed class JellyfinClient : IMediaServerClient
             DateAdded = DateTime.UtcNow,
             SourceType = SourceType.Jellyfin,
             SourceTrackId = itemId,
-            SourceConnectionId = connection.Id.ToString("N")
+            SourceConnectionId = connection.Id.ToString("N"),
+            SourceAlbumId = GetString(item, "AlbumId") ?? album?.Id
         };
 
         track.AlbumId = Track.ComputeAlbumId(track.AlbumArtist, track.Album);

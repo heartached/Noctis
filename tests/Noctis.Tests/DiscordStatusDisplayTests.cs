@@ -213,6 +213,37 @@ public class DiscordStatusDisplayTests : IDisposable
         throw new TimeoutException("No SET_ACTIVITY reached the pipe");
     }
 
+    /// <summary>
+    /// Discord opened after Noctis: nothing published the playing song until the next play, pause
+    /// or track change. The service now says when a connection is made (once per connection, and
+    /// after its gate is free so the handler can publish straight away).
+    /// </summary>
+    [Fact]
+    public async Task Connecting_RaisesConnectedOnce_AndTheHandlerCanPublishAtOnce()
+    {
+        var pipe = new FakeDiscordPipe();
+        var service = new DiscordPresenceService(() => new DiscordRpcClient("1470224696976085096", client: pipe));
+        var raised = 0;
+        Task? publish = null;
+        service.Connected += () =>
+        {
+            raised++;
+            publish = service.UpdateAsync(new DiscordPresenceTrack("Song", "Artist", "Album"), TimeSpan.FromSeconds(5), TimeSpan.FromMinutes(3), true);
+        };
+
+        Assert.True(await service.ConnectAsync());
+        Assert.Equal(1, raised);
+        Assert.NotNull(publish);
+        await publish!.WaitAsync(TimeSpan.FromSeconds(10));
+        var activity = await NextActivityAsync(pipe);
+        Assert.Equal("Song", (string?)activity["details"]);
+
+        // Already connected: no second signal.
+        Assert.True(await service.ConnectAsync());
+        Assert.Equal(1, raised);
+        service.Dispose();
+    }
+
     private static async Task<DiscordPresenceService> ConnectedServiceAsync(FakeDiscordPipe pipe)
     {
         var service = new DiscordPresenceService(() => new DiscordRpcClient("1470224696976085096", client: pipe));
@@ -263,6 +294,112 @@ public class DiscordStatusDisplayTests : IDisposable
         var sent = await NextActivityAsync(pipe);
         Assert.Equal(2, (int)sent["status_display_type"]!);
         Assert.NotNull(sent["timestamps"]);
+    }
+
+    /// <summary>
+    /// Owner 11-26: "make sure the Status on Discord option is actually working and is it
+    /// supposed to update in real time". The whole path, Settings to the pipe: a song playing,
+    /// its presence on Discord, then each option changed in Settings. Each change writes
+    /// exactly one new activity with the new status_display_type (or album line) and the
+    /// song's timestamps as they were.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task ChangingTheOptionsWhilePlaying_SendsOneActivityEach_WithTheTimestampsKept()
+    {
+        var (vm, player, pipe, service) = await PlayingThroughThePipeAsync();
+        using var _ = service;
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var first = await NextActivityAsync(pipe);
+        Assert.Equal(1, (int)first["status_display_type"]!);
+        Assert.Equal("Short n' Sweet", (string?)first["assets"]?["large_text"]);
+
+        foreach (var (choice, wire) in new[] { ("Title", 2), ("AppName", 0), ("Artist", 1) })
+        {
+            player.Position = clock.Elapsed; // the song plays on meanwhile
+            vm.SelectedDiscordStatusDisplayOption = vm.DiscordStatusDisplayOptions.Single(o => o.Value == choice);
+            var sent = await NextActivityAsync(pipe);
+            Assert.Equal(wire, (int)sent["status_display_type"]!);
+            Assert.Equal(2, (int)sent["type"]!);
+            Assert.Equal("Espresso", (string?)sent["details"]);
+            Assert.Equal("Sabrina Carpenter", (string?)sent["state"]);
+            AssertSameTimestamps(first, sent);
+            await AssertNothingMoreAsync(pipe);
+        }
+
+        player.Position = clock.Elapsed;
+        vm.DiscordShowAlbum = false;
+        var noAlbum = await NextActivityAsync(pipe);
+        Assert.Null((string?)noAlbum["assets"]?["large_text"]);
+        Assert.Equal(1, (int)noAlbum["status_display_type"]!);
+        AssertSameTimestamps(first, noAlbum);
+        await AssertNothingMoreAsync(pipe);
+
+        player.Position = clock.Elapsed;
+        vm.DiscordShowAlbum = true;
+        Assert.Equal("Short n' Sweet", (string?)(await NextActivityAsync(pipe))["assets"]?["large_text"]);
+        await AssertNothingMoreAsync(pipe);
+        GC.KeepAlive(player);
+    }
+
+    /// <summary>
+    /// A pause clears the presence (MainWindowViewModel: Paused/Stopped → ClearAsync). Changing
+    /// an option then must not bring the card back: it used to send a paused activity, which
+    /// showed the song on Discord while nothing played, until the next play/pause.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData(PlaybackState.Paused)]
+    [InlineData(PlaybackState.Stopped)]
+    public async Task ChangingTheOptions_WhileNothingPlays_SendsNothing(PlaybackState state)
+    {
+        var (vm, player, pipe, service) = await PlayingThroughThePipeAsync();
+        using var _ = service;
+        await NextActivityAsync(pipe);
+        if (state == PlaybackState.Paused) player.PlayPauseCommand.Execute(null);
+        else player.StopPlaybackCommand.Execute(null);
+        Assert.Equal(state, player.State);
+        await service.ClearAsync(); // what the window does on pause / stop
+        for (var waited = 0; !pipe.Activities.Contains(null) && waited < 10_000; waited += 20) await Task.Delay(20);
+        Assert.Contains(null, pipe.Activities);
+        pipe.Activities.Clear();
+
+        vm.SelectedDiscordStatusDisplayOption = vm.DiscordStatusDisplayOptions.Single(o => o.Value == "Title");
+        vm.DiscordShowAlbum = false;
+        await AssertNothingMoreAsync(pipe, includeClears: true);
+    }
+
+    private async Task<(SettingsViewModel Vm, PlayerViewModel Player, FakeDiscordPipe Pipe, DiscordPresenceService Service)> PlayingThroughThePipeAsync()
+    {
+        var vm = NewVm();
+        await vm.LoadAsync();
+        var player = new PlayerViewModel(new FakeAudioPlayer(), new FakeLibraryService(), new TestPersistenceService(), new FakeAnimatedCoverService());
+        vm.SetPlayer(player);
+        var pipe = new FakeDiscordPipe();
+        var service = await ConnectedServiceAsync(pipe);
+        vm.SetDiscordPresence(service);
+
+        var song = new Track { Title = "Espresso", Artist = "Sabrina Carpenter", Album = "Short n' Sweet", FilePath = "a.flac", Duration = TimeSpan.FromMinutes(3) };
+        player.ReplaceQueueAndPlay(new List<Track> { song }, 0);
+        Assert.Equal(PlaybackState.Playing, player.State);
+        // The window's publish for the song (MainWindowViewModel.UpdateDiscordPresenceAsync),
+        // with a cover so the album line shows.
+        await service.UpdateAsync(new DiscordPresenceTrack(song.Title, song.Artist, song.Album, "https://loon.example/a.jpg"),
+            player.Position, song.Duration, isPlaying: true);
+        return (vm, player, pipe, service);
+    }
+
+    private static void AssertSameTimestamps(JObject first, JObject sent)
+    {
+        // Rebuilt from the player's position, so equal to within the time between the two sends.
+        Assert.InRange(Math.Abs((long)sent["timestamps"]!["start"]! - (long)first["timestamps"]!["start"]!), 0, 1000);
+        Assert.InRange(Math.Abs((long)sent["timestamps"]!["end"]! - (long)first["timestamps"]!["end"]!), 0, 1000);
+    }
+
+    private static async Task AssertNothingMoreAsync(FakeDiscordPipe pipe, bool includeClears = false)
+    {
+        // DiscordRPC writes from its own worker loop, a few hundred ms after the call.
+        await Task.Delay(1500);
+        var left = pipe.Activities.ToArray();
+        Assert.Empty(includeClears ? left : left.Where(a => a != null));
     }
 
     /// <summary>

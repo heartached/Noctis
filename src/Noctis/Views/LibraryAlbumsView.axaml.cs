@@ -54,6 +54,35 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
         // Forward Ctrl+A from the window so it works without first clicking a tile.
         _ = new WindowKeyForwarder(this, OnViewKeyDown);
         MultiSelectHelper.KeepRowsUnselected(AlbumListBox);
+        AlbumsDock.PropertyChanged += (_, e) => { if (e.Property == MarginProperty) UpdateFirstRowRoom(); };
+        UpdateFirstRowRoom();
+    }
+
+    /// <summary>
+    /// Room above the first row for Album Hover Zoom (Discord 11-25): 5px above a first-row cover
+    /// was less than half its grow, so TileHoverZoom grew it downward by the whole grow, over the
+    /// top of its title. The dock's top margin moves inside the scrollers (a negative top margin
+    /// on each scroller, as much top padding inside), so the first row rests where it did and
+    /// the cover grows round its centre like every other row. A cover big enough to need more
+    /// than that (wide windows in Automatic size) gets the rest, which moves the grid down by it.
+    /// </summary>
+    private void UpdateFirstRowRoom()
+    {
+        var dockTop = AlbumsDock.Margin.Top;
+        // A first-row cover's top inside the scroller content: the row's 1px margin (Masonry:
+        // the panel's 1px margin) + the tile's top margin and padding (0 + 4, wide 2 + 6).
+        var coverTop = _vm?.IsWideAlbumSpacing == true ? 9 : 5;
+        var pad = Math.Max(dockTop, TileHoverZoom.FirstRowTopRoom(_vm?.TileArtworkSize ?? 0, this) - coverTop);
+        AlbumListBox.Margin = new Thickness(0, -dockTop, 0, 0);
+        AlbumListBox.Padding = new Thickness(0, pad, 0, 115);
+        MasonryScroller.Margin = new Thickness(0, -dockTop, 0, 0);
+        MasonryContent.Margin = new Thickness(0, pad, 0, 0);
+    }
+
+    private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(LibraryAlbumsViewModel.TileArtworkSize) or nameof(LibraryAlbumsViewModel.IsWideAlbumSpacing))
+            UpdateFirstRowRoom();
     }
 
     private void OnTilePointerPressed(object? sender, PointerPressedEventArgs e)
@@ -321,6 +350,7 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
             snoozeCommand: vm.SnoozeAlbumForMonthCommand);
         _albumMenuBuilder.BindSendToFolder(album, vm.SendAlbumToFolderCommand); // GitHub #121
         _albumMenuBuilder.BindFindLyrics(album, vm.FindLyricsAlbumCommand); // GitHub #195
+        _albumMenuBuilder.BindDiscogsGenres(album, vm.DiscogsGenresAlbumCommand); // GitHub #267
         _albumMenuBuilder.BindGroupAlbums(album, vm.GroupIntoOneAlbumCommand); // GitHub #178
         _albumMenuBuilder.BindCarouselStyle(album, AlbumCarouselStyleOverrides.For(album), vm.IsCarouselAvailable); // GitHub #233
 
@@ -334,6 +364,7 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
         {
             _vm.FilteredAlbumRows.CollectionChanged -= OnFilteredRowsChanged;
             _vm.CtrlSelectionConsumed -= OnCtrlSelectionConsumed;
+            _vm.PropertyChanged -= OnVmPropertyChanged;
         }
 
         _vm = DataContext as LibraryAlbumsViewModel;
@@ -341,8 +372,10 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
         {
             _vm.FilteredAlbumRows.CollectionChanged += OnFilteredRowsChanged;
             _vm.CtrlSelectionConsumed += OnCtrlSelectionConsumed;
+            _vm.PropertyChanged += OnVmPropertyChanged;
             _scrollResetFilterKey = _vm.FilterKey;
         }
+        UpdateFirstRowRoom();
     }
 
     /// <summary>A menu command used the selection: drop it here too (GitHub #178).</summary>
@@ -473,6 +506,17 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
+
+        // The cached view comes back with the same DataContext (PageDeck keeps 8 sections; past
+        // that it is detached and later attached again), so OnDataContextChanged does not run:
+        // hook again what OnDetachedFromVisualTree unhooked. -= first so it is never hooked twice.
+        if (_vm != null)
+        {
+            _vm.FilteredAlbumRows.CollectionChanged -= OnFilteredRowsChanged;
+            _vm.CtrlSelectionConsumed -= OnCtrlSelectionConsumed;
+            _vm.FilteredAlbumRows.CollectionChanged += OnFilteredRowsChanged;
+            _vm.CtrlSelectionConsumed += OnCtrlSelectionConsumed;
+        }
 
         if (DataContext is LibraryAlbumsViewModel vm && vm.SavedScrollOffset > 0)
         {

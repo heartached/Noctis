@@ -1,0 +1,90 @@
+{
+ "meta": {
+  "status": 200
+ },
+ "response": {
+  "sections": [
+   {
+    "type": "song",
+    "hits": [
+     {
+      "index": "song",
+      "type": "song",
+      "result": {
+       "id": 135012,
+       "title": "Jóga",
+       "artist_names": "Björk",
+       "instrumental": false,
+       "lyrics_state": "complete",
+       "url": "https://genius.com/Bjork-joga-lyrics",
+       "primary_artist": {
+        "name": "Björk"
+       }
+      }
+     },
+     {
+      "index": "song",
+      "type": "song",
+      "result": {
+       "id": 8427640,
+       "title": "Björk — Jóga (Tradução em Português)",
+       "artist_names": "Genius Brasil Traduções",
+       "instrumental": false,
+       "lyrics_state": "complete",
+       "url": "https://genius.com/Genius-brasil-traducoes-bjork-joga-traducao-em-portugues-lyrics",
+       "primary_artist": {
+        "name": "Genius Brasil Traduções"
+       }
+      }
+     },
+     {
+      "index": "song",
+      "type": "song",
+      "result": {
+       "id": 6770097,
+       "title": "Jóga (Howie B Main Mix)",
+       "artist_names": "Björk",
+       "instrumental": false,
+       "lyrics_state": "complete",
+       "url": "https://genius.com/Bjork-joga-howie-b-main-mix-lyrics",
+       "primary_artist": {
+        "name": "Björk"
+       }
+      }
+     },
+     {
+      "index": "song",
+      "type": "song",
+      "result": {
+       "id": 5670637,
+       "title": "Jóga (String & Vocal Mix)",
+       "artist_names": "Björk",
+       "instrumental": false,
+       "lyrics_state": "complete",
+       "url": "https://genius.com/Bjork-joga-string-and-vocal-mix-lyrics",
+       "primary_artist": {
+        "name": "Björk"
+       }
+      }
+     },
+     {
+      "index": "song",
+      "type": "song",
+      "result": {
+       "id": 4229249,
+       "title": "Jóga (Live on November 29th, 1997)",
+       "artist_names": "Björk",
+       "instrumental": false,
+       "lyrics_state": "complete",
+       "url": "https://genius.com/Bjork-joga-live-on-november-29th-1997-lyrics",
+       "primary_artist": {
+        "name": "Björk"
+       }
+      }
+     }
+    ]
+   }
+  ],
+  "next_page": 2
+ }
+}

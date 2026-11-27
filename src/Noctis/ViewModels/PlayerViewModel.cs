@@ -110,10 +110,14 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
     [ObservableProperty] private bool _isWatchingMusicVideo;
 
     /// <summary>The clip plays in the cover slot.</summary>
-    public bool ShowsMusicVideoInCover => HasMusicVideo && !MusicVideoAsBackground && !IsWatchingMusicVideo;
+    public bool ShowsMusicVideoInCover => HasMusicVideo && !PlacesMusicVideoBehindLyrics && !IsWatchingMusicVideo;
 
     /// <summary>The clip fills the page behind the lyrics.</summary>
-    public bool ShowsMusicVideoBackdrop => HasMusicVideo && MusicVideoAsBackground && !IsWatchingMusicVideo;
+    public bool ShowsMusicVideoBackdrop => HasMusicVideo && PlacesMusicVideoBehindLyrics && !IsWatchingMusicVideo;
+
+    /// <summary>Behind the lyrics: the setting, or a video streamed from YouTube (always behind
+    /// the lyrics, as asked on Discord 11-25: the cover stays the song's own artwork).</summary>
+    private bool PlacesMusicVideoBehindLyrics => MusicVideoAsBackground || IsStreamingMusicVideo;
 
     /// <summary>The clip plays full size over the page (Video side of the switch).</summary>
     public bool ShowsMusicVideoFullSize => HasMusicVideo && IsWatchingMusicVideo;
@@ -170,6 +174,7 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         _resolvedMusicVideoPath = found;
         CurrentTrackHasMusicVideoFile = found != null;
         CurrentMusicVideoPath = MusicVideosEnabled ? found : null;
+        ResolveMusicVideoStream();
     }
 
     /// <summary>What the music video follows: the song's position minus the engine's output
@@ -187,6 +192,7 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
     partial void OnPositionChanged(TimeSpan value)
     {
         if (HasMusicVideo) OnPropertyChanged(nameof(MusicVideoSyncPosition));
+        if (IsStreamingMusicVideo) CheckMusicVideoStreamExpiry();
     }
 
     // ── Chapters (.m4b audiobooks, Discord Luwi): the current file's chapter marks, listed

@@ -57,6 +57,7 @@ public class ComputerLinkServiceTests : IAsyncLifetime
         public readonly LibraryServerAdapter Adapter;
         public readonly AppSettings Settings;
         public readonly TestComputer Protector;
+        public readonly SignallingRecorder Recorder;
 
         public Pc(string root, string name, bool syncOn)
         {
@@ -66,8 +67,9 @@ public class ComputerLinkServiceTests : IAsyncLifetime
             Persistence = new PersistenceService(Path.Combine(root, "data")) { Protector = Protector };
             Settings = new AppSettings { SyncEnabled = syncOn, SyncDeviceId = "desktop-" + name.ToLowerInvariant() + "-test", SyncDeviceName = "PC " + name, MusicFolders = { Music } };
             Ledger = new LibrarySyncService(() => Settings, Persistence);
+            Recorder = new SignallingRecorder(Ledger);
             Library = new LibraryService(new MetadataService(), Persistence, new SqliteLibraryIndexService(Persistence),
-                new NoctisAccountLibraryTests.NoOpAudit(), syncRecorder: Ledger);
+                new NoctisAccountLibraryTests.NoOpAudit(), syncRecorder: Recorder);
             Adapter = new LibraryServerAdapter(Library, Persistence, new NoOpPlayHistory());
         }
 
@@ -105,6 +107,18 @@ public class ComputerLinkServiceTests : IAsyncLifetime
             var all = await Persistence.LoadPlaylistsAsync();
             all.RemoveAll(p => p.Id == id);
             await Persistence.SavePlaylistsAsync(all);
+        }
+    }
+
+    /// <summary>The ledger's recorder, as the library save calls it (in the background); then it
+    /// completes <see cref="Next"/>, so a test can wait for that background record.</summary>
+    private sealed class SignallingRecorder(LibrarySyncService ledger) : ITrackStateRecorder
+    {
+        public TaskCompletionSource? Next;
+        public void RecordTrackStates(IEnumerable<Track> tracks)
+        {
+            ledger.RecordTrackStates(tracks);
+            System.Threading.Interlocked.Exchange(ref Next, null)?.TrySetResult();
         }
     }
 
@@ -256,6 +270,38 @@ public class ComputerLinkServiceTests : IAsyncLifetime
         await link.SyncNowAsync(ct);
         Assert.Equal(4, _a.Song("One").Rating);
         Assert.Equal(4, _b.Song("One").Rating);
+    }
+
+    [Fact]
+    public async Task AChangeFromTheOtherComputer_IsAppliedAsOne_TheLedgerKeepsItsStamp()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await _a.AddSongsAsync("One");
+        var edited = new TaskCompletionSource();
+        _a.Recorder.Next = edited;
+        await _a.EditAsync("One", t => t.Rating = 2);
+        await edited.Task.WaitAsync(TimeSpan.FromSeconds(10), ct); // the edit's background record is done
+        await Tick();
+        var stamp = DateTime.UtcNow;
+        var theirs = new TrackSyncState(Favorite: true, Rating: 5, Disliked: true, PlayCount: 3, LastPlayed: stamp.AddHours(-1), FavoritedAt: stamp);
+        var id = _a.Song("One").Id.ToString("N");
+        // The library save's background ledger record runs at the worst moment it can: the
+        // favourite's notice, right after the save, waits for it.
+        var recorded = new TaskCompletionSource();
+        _a.Recorder.Next = recorded;
+        _a.Library.FavoritesChanged += (_, _) => recorded.Task.Wait(TimeSpan.FromSeconds(10), ct);
+
+        await _a.Ledger.MergeAsync(new[] { new SyncItem(SyncKinds.Track, id, SyncJson.Serialize(theirs), stamp, "desktop-b-test", 0) }, _a.Adapter, ct);
+        await recorded.Task.WaitAsync(TimeSpan.FromSeconds(10), ct);
+
+        var song = _a.Song("One");
+        Assert.Equal((true, 5, true, 3), (song.IsFavorite, song.Rating, song.IsDisliked, song.PlayCount));
+        // Not a change of this computer's (a half-applied one, the old rating, newer than theirs,
+        // went back to the other computer on the next sync): their state under their stamp.
+        var row = (await _a.Ledger.LocalItemsAsync(ct)).Single(i => i.Kind == SyncKinds.Track && i.Id == id);
+        Assert.Equal(SyncJson.Serialize(theirs), row.Payload);
+        Assert.Equal(stamp, row.UpdatedUtc);
+        Assert.Equal("desktop-b-test", row.Device);
     }
 
     [Fact]
@@ -440,6 +486,183 @@ public class ComputerLinkServiceTests : IAsyncLifetime
         Assert.NotNull(await _a.PlaylistAsync(mix.Id));
     }
 
+    // ── Custom playlist covers (Discord 11-26: they reached phones, never the other computer) ──
+
+    private static readonly byte[] Png = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3 };
+    private static readonly byte[] Png2 = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 7, 8, 9 };
+    private static readonly byte[] Jpeg = { 0xFF, 0xD8, 0xFF, 0xE0, 4, 5, 6 };
+
+    /// <summary>The playlist's cover set in this computer's window (playlist_covers/&lt;id&gt;.ext, as
+    /// the Edit Playlist dialog writes it), or removed (null), with the edit's new ModifiedAt.</summary>
+    private static async Task SetCoverAsync(Pc pc, Guid playlistId, byte[]? picture, string ext = ".png")
+    {
+        var playlist = (await pc.PlaylistAsync(playlistId))!;
+        var dir = PlaylistCovers.CoversDirectory(pc.Persistence.DataDirectory);
+        Directory.CreateDirectory(dir);
+        foreach (var old in Directory.EnumerateFiles(dir, $"{playlistId}*")) File.Delete(old);
+        playlist.CoverArtPath = null;
+        if (picture is not null)
+        {
+            playlist.CoverArtPath = Path.Combine(dir, playlistId + ext);
+            await File.WriteAllBytesAsync(playlist.CoverArtPath, picture);
+        }
+        playlist.ModifiedAt = DateTime.UtcNow;
+        await pc.SavePlaylistAsync(playlist);
+    }
+
+    private static async Task<string?> CoverAsync(Pc pc, Guid playlistId)
+    {
+        var playlist = await pc.PlaylistAsync(playlistId);
+        Assert.NotNull(playlist);
+        var cover = PlaylistCovers.CoverOf(playlist.CoverArtPath);
+        // Each computer's own file, under its own data folder.
+        if (cover is { Length: > 0 }) Assert.StartsWith(pc.Persistence.DataDirectory, playlist.CoverArtPath!);
+        return cover;
+    }
+
+    [Fact]
+    public async Task ACustomCover_SetChangedAndRemoved_ReachesTheOtherComputer_BothWays()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await _a.AddSongsAsync("One");
+        await _b.AddSongsAsync("One");
+        var mix = new Playlist { Name = "Mix", TrackIds = { _a.Song("One").Id }, ModifiedAt = DateTime.UtcNow };
+        await _a.SavePlaylistAsync(mix);
+        await SetCoverAsync(_a, mix.Id, Png);
+        var link = await LinkedAsync();
+
+        await link.SyncNowAsync(ct);
+        Assert.Equal(PlaylistCovers.Hash(Png), await CoverAsync(_b, mix.Id));
+
+        // Changed on A: B's is replaced.
+        await Tick();
+        await SetCoverAsync(_a, mix.Id, Jpeg, ".jpg");
+        await link.SyncNowAsync(ct);
+        Assert.Equal(PlaylistCovers.Hash(Jpeg), await CoverAsync(_b, mix.Id));
+
+        // Changed on B: A's is replaced (the picture is sent, not B's path).
+        await Tick();
+        await SetCoverAsync(_b, mix.Id, Png2);
+        await link.SyncNowAsync(ct);
+        Assert.Equal(PlaylistCovers.Hash(Png2), await CoverAsync(_a, mix.Id));
+        Assert.Equal(PlaylistCovers.Hash(Png2), await CoverAsync(_b, mix.Id));
+
+        // Removed on A: removed on B.
+        await Tick();
+        await SetCoverAsync(_a, mix.Id, null);
+        await link.SyncNowAsync(ct);
+        Assert.Equal("", await CoverAsync(_b, mix.Id));
+
+        // And settled: nothing more to send either way.
+        await Tick();
+        await SetCoverAsync(_b, mix.Id, Png);
+        await link.SyncNowAsync(ct);
+        Assert.Equal(PlaylistCovers.Hash(Png), await CoverAsync(_a, mix.Id));
+        await Task.Delay(300, ct);
+        await link.SyncNowAsync(ct);
+        var settled = await link.SyncNowAsync(ct);
+        Assert.Equal(0, settled.Received);
+        Assert.Equal(0, settled.Sent);
+        Assert.Equal(PlaylistCovers.Hash(Png), await CoverAsync(_a, mix.Id));
+        Assert.Equal(PlaylistCovers.Hash(Png), await CoverAsync(_b, mix.Id));
+    }
+
+    [Fact]
+    public async Task APlaylistPairedByName_GetsTheOthersCover_AndAnEditOnTheOtherSideKeepsIt()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await _a.AddSongsAsync("One");
+        await _b.AddSongsAsync("One");
+        var onA = new Playlist { Name = "Mix", TrackIds = { _a.Song("One").Id }, ModifiedAt = DateTime.UtcNow };
+        await _a.SavePlaylistAsync(onA);
+        await SetCoverAsync(_a, onA.Id, Png);
+        await Tick();
+        // B's own "Mix" (another id), edited later, without a cover.
+        var onB = new Playlist { Name = "Mix", TrackIds = { _b.Song("One").Id }, ModifiedAt = DateTime.UtcNow };
+        await _b.SavePlaylistAsync(onB);
+        var link = await LinkedAsync();
+
+        await link.SyncNowAsync(ct);
+
+        Assert.Equal(PlaylistCovers.Hash(Png), await CoverAsync(_b, onB.Id));
+        Assert.Equal(PlaylistCovers.Hash(Png), await CoverAsync(_a, onA.Id));
+
+        await Tick();
+        var rename = (await _b.PlaylistAsync(onB.Id))!;
+        rename.Name = "Mix 2";
+        rename.ModifiedAt = DateTime.UtcNow;
+        await _b.SavePlaylistAsync(rename);
+        await link.SyncNowAsync(ct);
+
+        Assert.Equal("Mix 2", (await _a.PlaylistAsync(onA.Id))!.Name);
+        Assert.Equal(PlaylistCovers.Hash(Png), await CoverAsync(_a, onA.Id));
+    }
+
+    /// <summary>A cover B could not get (here: not a picture, which the other computer never serves)
+    /// is no removal: B's later edit of the playlist leaves A's cover where it is.</summary>
+    [Fact]
+    public async Task ACoverThatNeverArrived_IsNotRemovedByTheOthersNextEdit()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await _a.AddSongsAsync("One");
+        await _b.AddSongsAsync("One");
+        var mix = new Playlist { Name = "Mix", TrackIds = { _a.Song("One").Id }, ModifiedAt = DateTime.UtcNow };
+        await _a.SavePlaylistAsync(mix);
+        await SetCoverAsync(_a, mix.Id, Encoding.UTF8.GetBytes("not a picture"));
+        var aCover = await CoverAsync(_a, mix.Id);
+        var link = await LinkedAsync();
+        await link.SyncNowAsync(ct);
+        Assert.Equal("", await CoverAsync(_b, mix.Id));
+
+        await Tick();
+        var rename = (await _b.PlaylistAsync(mix.Id))!;
+        rename.Name = "Mix 2";
+        rename.ModifiedAt = DateTime.UtcNow;
+        await _b.SavePlaylistAsync(rename);
+        await link.SyncNowAsync(ct);
+
+        Assert.Equal("Mix 2", (await _a.PlaylistAsync(mix.Id))!.Name);
+        Assert.Equal(aCover, await CoverAsync(_a, mix.Id));
+    }
+
+    /// <summary>Playlists synced before covers travelled: both ledgers hold the same change (one
+    /// stamp), each with its own computer's cover. The cover one computer lacks is filled in.</summary>
+    [Fact]
+    public async Task PlaylistsSyncedBeforeCoversTravelled_GetTheCoverTheyLack()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await _a.AddSongsAsync("One");
+        await _b.AddSongsAsync("One");
+        var at = DateTime.UtcNow.AddHours(-1);
+        var fromA = new Playlist { Name = "Cover on A", ModifiedAt = at };
+        var fromB = new Playlist { Name = "Cover on B", ModifiedAt = at };
+        foreach (var pc in new[] { _a, _b })
+        {
+            await pc.SavePlaylistAsync(new Playlist { Id = fromA.Id, Name = fromA.Name, ModifiedAt = at });
+            await pc.SavePlaylistAsync(new Playlist { Id = fromB.Id, Name = fromB.Name, ModifiedAt = at });
+        }
+        await SetCoverAsync(_a, fromA.Id, Png);
+        await SetCoverAsync(_b, fromB.Id, Jpeg, ".jpg");
+        foreach (var pc in new[] { _a, _b })
+        {
+            // Back to the old stamp, and both ledgers as the old sync left them: one change (A's), own covers.
+            var all = await pc.Persistence.LoadPlaylistsAsync();
+            foreach (var p in all) p.ModifiedAt = at;
+            await pc.Persistence.SavePlaylistsAsync(all);
+            var store = new SyncStore(Path.Combine(pc.Persistence.DataDirectory, "sync", "sync.db"));
+            foreach (var p in all)
+                store.Upsert(SyncKinds.Playlist, p.Id.ToString("N"), SyncJson.Serialize(PlaylistSyncState.From(p)), at, "desktop-a-test");
+        }
+        var link = await LinkedAsync();
+
+        await link.SyncNowAsync(ct);
+
+        Assert.Equal(PlaylistCovers.Hash(Png), await CoverAsync(_b, fromA.Id));
+        Assert.Equal(PlaylistCovers.Hash(Jpeg), await CoverAsync(_a, fromB.Id));
+        Assert.Equal(PlaylistCovers.Hash(Png), await CoverAsync(_a, fromA.Id));
+        Assert.Equal(PlaylistCovers.Hash(Jpeg), await CoverAsync(_b, fromB.Id));
+    }
+
     // ── Sign-in, offline, sign-out ───────────────────────────────────────
 
     [Fact]
@@ -596,7 +819,7 @@ public class ComputerLinkServiceTests : IAsyncLifetime
         var vm = new Noctis.ViewModels.SettingsViewModel(_b.Persistence, new FakeLibraryService(), new NoOpPlayHistory()) { ComputerLink = Link(_b) };
         Assert.True(vm.IsComputerLinkFormVisible);
         // The steps name the other computer's switches as its Settings shows them.
-        Assert.Equal("On the other computer, turn on “Noctis on your phone” and “Sync with your phone”, then open Connect a phone › Enter manually. Type its address and your account here.",
+        Assert.Equal("On the other computer, turn on “Noctis on your phone” and “Sync with your phone”, then enter the address shown under Connect a phone › Enter manually and your account here.",
             vm.ComputerLinkHelp);
 
         vm.ComputerLinkAddress = _url;
