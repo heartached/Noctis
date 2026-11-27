@@ -1,12 +1,12 @@
 # Noctis for Android — Privacy policy
 
-Last updated 4 November 2026. Published at https://noctisapp.cc/privacy/android
+Last updated 27 November 2026. Published at https://noctisapp.cc/privacy/android
 (source: `website/src/pages/privacy/android.astro` on `main`; keep the two identical).
 
 Noctis for Android does not collect, sell or share any personal data or usage data. The
 developer receives nothing from the app: there is no advertising, no analytics, no crash
 reporting and no developer server. The app's network connections are all described under
-Network: it asks Last.fm for album descriptions, sending only the album's artist and title; it
+Network: it asks Last.fm for album descriptions and artist biographies, sending only the album's artist and title or the artist's name; it
 asks Deezer for artist photos, sending only the artist's name; it asks LRCLIB for lyrics to
 songs that have none of their own, sending only the song's title, artist and length; it
 may ask MusicBrainz, fanart.tv and TheAudioDB for artists' logos, sending only the artist's name
@@ -31,6 +31,8 @@ desktop app.
   record of library changes and your settings are stored in the app's private storage.
 - **Album descriptions.** Descriptions fetched from Last.fm (see Network) are kept in the
   app's private storage so each album is looked up only once.
+- **Artist biographies.** Biographies fetched from Last.fm (see Network) are kept in the
+  app's private storage so each artist is looked up only once.
 - **Artist photos.** Photos fetched from Deezer (see Network) are kept in the app's private
   storage so each artist is looked up only once, with a note of the artists Deezer had no
   photo for, so those are not asked about again for a few days.
@@ -65,6 +67,13 @@ artist named) and Noctis's own application key. It contains no account, no devic
 nothing else about you, although, as with any website, Last.fm can see your device's IP
 address. The answers are stored on your phone so each album is looked up only once. Last.fm's
 privacy policy covers its service: https://www.last.fm/legal/privacy.
+
+**Last.fm, for artist biographies.** When you open an artist page, Noctis asks the same
+Last.fm web service, in the same way, for that artist's biography. The request contains only
+the artist's name (if Last.fm has nothing for a joint credit, Noctis asks once more with the
+first artist named) and Noctis's own application key; placeholders such as Unknown Artist and
+Various Artists are never asked. The answers are stored on your phone so each artist is looked
+up only once.
 
 **Deezer, for artist photos.** When you open an artist page, or artists come into view in the
 Artists list, in search results or among your pinned items, Noctis asks Deezer's public web
@@ -152,7 +161,7 @@ permissions.
 
 If you have Android backup turned on, Android may include the app's local data (your
 library index and artwork, including the song list and covers from your computer if you
-signed in, album descriptions, artist photos, artist logos, lyrics found online, favourites,
+signed in, album descriptions, artist biographies, artist photos, artist logos, lyrics found online, favourites,
 playlists, play history, play queue, your scrobbling connections and settings) in your device backup to your Google account. Google handles that backup under
 your account; the developer cannot see it. Your account link and downloaded songs are never
 included. Turn off backup in Android's settings to exclude the rest.
