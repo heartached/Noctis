@@ -14,6 +14,14 @@
              ClipToBounds="True">
 
     <UserControl.Styles>
+        <!-- The page scrolls under its scroll bar instead of beside it, so the hero (art, video)
+             reaches the window's right edge: with persistent bars Fluent gives the bar its own
+             16px column, which cut the hero short there (a strip of bare page down its side).
+             PageContent's right margin keeps everything else where it was; the hero and the
+             fade under it take the 16px back. -->
+        <Style Selector="ScrollViewer#PageScrollViewer /template/ ScrollContentPresenter#PART_ContentPresenter">
+            <Setter Property="Grid.ColumnSpan" Value="2"/>
+        </Style>
         <!-- Rank numerals: the theme's text colour at full strength (white on dark, ink on
              light) — no podium tints, no dimming (user ask 09-13). -->
         <Style Selector="TextBlock.rank-num">
@@ -685,10 +693,10 @@
                   HorizontalScrollBarVisibility="Disabled"
                   VerticalScrollBarVisibility="Auto"
                   SizeChanged="OnPageScrollViewerSizeChanged">
-        <StackPanel x:Name="PageContent" Margin="0,0,0,115">
+        <StackPanel x:Name="PageContent" Margin="0,0,16,115">
 
             <!-- ── Hero ─────────────────────────────────────────────── -->
-            <Grid x:Name="Hero" Height="400" ClipToBounds="True">
+            <Grid x:Name="Hero" Height="400" Margin="0,0,-16,0" ClipToBounds="True">
                 <!-- Colour wash from the backdrop art's edge colour (VM, off-thread): the
                      ground when there is no portrait, and what shows through the fades. -->
                 <Border Background="{Binding HeroBackgroundBrush}" />
@@ -991,7 +999,7 @@
             <!-- See-through page (Liquid Glass, Smoke): the hero ends in the opaque page colour;
                  this takes that colour back out over the first rows below it, behind the tabs
                  (code-behind, HeroAfterFadeBrush; no brush on an opaque page). Takes no room. -->
-            <Panel Height="0">
+            <Panel Height="0" Margin="0,0,-16,0">
                 <Border x:Name="HeroAfterFade" Height="180" VerticalAlignment="Top" IsHitTestVisible="False" />
             </Panel>
 
