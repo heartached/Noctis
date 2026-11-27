@@ -153,6 +153,7 @@ public class SettingsResetTests : IDisposable
         [nameof(AppSettings.AppIcon)] = _ => "ruby",
         [nameof(AppSettings.PlayCountThresholdPercent)] = _ => 75,
         [nameof(AppSettings.QueuePanelWidth)] = _ => 400.0,
+        [nameof(AppSettings.SidebarExpandedWidth)] = _ => 300.0, // the default * 0.9 + 0.01 is not on a whole pixel
         [nameof(AppSettings.QueueRowLine1)] = _ => nameof(QueueRowField.Album),
         [nameof(AppSettings.QueueRowLine1Extra)] = _ => nameof(QueueRowField.Composer),
         [nameof(AppSettings.QueueRowLine2)] = _ => nameof(QueueRowField.AlbumArtist),

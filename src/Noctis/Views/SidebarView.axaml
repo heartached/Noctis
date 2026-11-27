@@ -304,8 +304,7 @@
                         Command="{Binding TopBar.BackCommand}"
                         IsEnabled="{Binding TopBar.IsBackButtonVisible, FallbackValue=False}"
                         ToolTip.Tip="{loc:T Sidebar.BackTip}">
-                    <StackPanel Orientation="Horizontal" Spacing="14"
-                                HorizontalAlignment="{Binding IsExpanded, Converter={StaticResource BoolToAlignment}}">
+                    <DockPanel HorizontalAlignment="{Binding IsExpanded, Converter={StaticResource BoolToAlignment}}">
                         <Grid Width="28" Height="28">
                             <!-- Y nudge centers the chevron glyph in the circular button
                                  (the geometry sits slightly high in its viewbox). -->
@@ -319,9 +318,11 @@
                         <TextBlock x:Name="BackLabel"
                                    Text="{loc:T Sidebar.BackTip}"
                                    FontSize="15"
+                                   Margin="14,0,0,0"
+                                   TextTrimming="CharacterEllipsis"
                                    VerticalAlignment="Center"
                                    IsVisible="{Binding IsExpanded}"/>
-                    </StackPanel>
+                    </DockPanel>
                 </Button>
 
                 <Button x:Name="SearchButton"
@@ -330,8 +331,7 @@
                         IsEnabled="{Binding TopBar.IsSearchActionAvailable, FallbackValue=False}"
                         Click="OnSearchButtonClick"
                         ToolTip.Tip="{loc:T Sidebar.SearchCtrlFTip, MacKeys=True}">
-                    <StackPanel Orientation="Horizontal" Spacing="14"
-                                HorizontalAlignment="{Binding IsExpanded, Converter={StaticResource BoolToAlignment}}">
+                    <DockPanel HorizontalAlignment="{Binding IsExpanded, Converter={StaticResource BoolToAlignment}}">
                         <Grid x:Name="SearchIconHost" Width="28" Height="28">
                             <PathIcon Data="{StaticResource SearchIcon}" Width="16" Height="16"
                                       Foreground="{DynamicResource IslandForeground}"/>
@@ -347,9 +347,11 @@
                         <TextBlock x:Name="SearchLabel"
                                    Text="{loc:T Sidebar.Search}"
                                    FontSize="15"
+                                   Margin="14,0,0,0"
+                                   TextTrimming="CharacterEllipsis"
                                    VerticalAlignment="Center"
                                    IsVisible="{Binding IsExpanded}"/>
-                    </StackPanel>
+                    </DockPanel>
                 </Button>
 
                 <!-- Persistent search pill: a non-light-dismiss popup (unlike the old
@@ -590,9 +592,10 @@
                              Margin="6,0,6,4">
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="m:NavItem">
-                                <StackPanel Orientation="Horizontal" Spacing="14"
-                                            ToolTip.Tip="{Binding Label}"
-                                            HorizontalAlignment="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded, Converter={StaticResource BoolToAlignment}}">
+                                <!-- DockPanel, not a horizontal StackPanel: the label gets the width
+                                     left in the row and trims, at every dragged sidebar width. -->
+                                <DockPanel ToolTip.Tip="{Binding Label}"
+                                           HorizontalAlignment="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded, Converter={StaticResource BoolToAlignment}}">
                                     <Grid Width="28"
                                           Height="28"
                                           VerticalAlignment="Center">
@@ -620,11 +623,10 @@
                                                  Margin="0,-1,-1,0"
                                                  IsVisible="{Binding ShowBadge}" />
                                     </Grid>
-                                    <TextBlock Text="{Binding Label}"
-                                               VerticalAlignment="Center"
-                                               IsVisible="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded}" />
-                                    <!-- Inbox: songs waiting to be checked. -->
-                                    <TextBlock Text="{Binding Count}"
+                                    <!-- Inbox: songs waiting to be checked. Right of the label. -->
+                                    <TextBlock DockPanel.Dock="Right"
+                                               Text="{Binding Count}"
+                                               Margin="14,0,0,0"
                                                FontSize="12"
                                                Opacity="0.5"
                                                FontFeatures="+tnum"
@@ -636,7 +638,12 @@
                                             </MultiBinding>
                                         </TextBlock.IsVisible>
                                     </TextBlock>
-                                </StackPanel>
+                                    <TextBlock Text="{Binding Label}"
+                                               Margin="14,0,0,0"
+                                               TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center"
+                                               IsVisible="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded}" />
+                                </DockPanel>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
@@ -656,9 +663,8 @@
                              Margin="6,0,6,4">
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="m:NavItem">
-                                <StackPanel Orientation="Horizontal" Spacing="10"
-                                            ToolTip.Tip="{Binding Label}"
-                                            HorizontalAlignment="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded, Converter={StaticResource BoolToAlignment}}">
+                                <DockPanel ToolTip.Tip="{Binding Label}"
+                                           HorizontalAlignment="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded, Converter={StaticResource BoolToAlignment}}">
                                     <!-- Heart cover art thumbnail -->
                                     <Border Width="28" Height="28"
                                             CornerRadius="14"
@@ -681,12 +687,14 @@
                                             </Path.RenderTransform>
                                         </Path>
                                     </Border>
-                                    <StackPanel VerticalAlignment="Center" Spacing="1"
+                                    <StackPanel VerticalAlignment="Center" Spacing="1" Margin="10,0,0,0"
                                                 IsVisible="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded}">
                                         <TextBlock Text="{Binding Label}"
-                                                   FontSize="13" />
+                                                   FontSize="13"
+                                                   TextTrimming="CharacterEllipsis" />
                                         <TextBlock FontSize="11"
-                                                   Opacity="0.5">
+                                                   Opacity="0.5"
+                                                   TextTrimming="CharacterEllipsis">
                                             <TextBlock.Text>
                                                 <!-- The translation is bound only so a language change re-runs the count. -->
                                                 <MultiBinding Converter="{StaticResource CountLabel}" ConverterParameter="song">
@@ -696,7 +704,7 @@
                                             </TextBlock.Text>
                                         </TextBlock>
                                     </StackPanel>
-                                </StackPanel>
+                                </DockPanel>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
@@ -716,6 +724,7 @@
                         <TextBlock Margin="18,4,12,4"
                                    IsVisible="{Binding IsExpanded}"
                                    Text="{loc:T Sidebar.PLUGINS}"
+                                   TextTrimming="CharacterEllipsis"
                                    FontSize="12"
                                    FontWeight="SemiBold"
                                    Opacity="0.5"
@@ -728,9 +737,8 @@
                                  Margin="6,0,6,4">
                             <ListBox.ItemTemplate>
                                 <DataTemplate x:DataType="vm:PluginNavItem">
-                                    <StackPanel Orientation="Horizontal" Spacing="10"
-                                                ToolTip.Tip="{Binding Label}"
-                                                HorizontalAlignment="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded, Converter={StaticResource BoolToAlignment}}">
+                                    <DockPanel ToolTip.Tip="{Binding Label}"
+                                               HorizontalAlignment="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded, Converter={StaticResource BoolToAlignment}}">
                                         <!-- The plugin's icon (as on its Settings card), else its letter tile. -->
                                         <Panel Width="28" Height="28" VerticalAlignment="Center">
                                             <Border CornerRadius="8" Background="{Binding MonogramBrush}" IsVisible="{Binding ShowMonogram}">
@@ -742,11 +750,11 @@
                                         </Panel>
                                         <TextBlock Text="{Binding Label}"
                                                    FontSize="13"
+                                                   Margin="10,0,0,0"
                                                    VerticalAlignment="Center"
                                                    TextTrimming="CharacterEllipsis"
-                                                   MaxWidth="130"
                                                    IsVisible="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded}" />
-                                    </StackPanel>
+                                    </DockPanel>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
@@ -762,6 +770,7 @@
                                Margin="18,4,12,4"
                                IsVisible="{Binding IsExpanded}"
                                Text="{loc:T Sidebar.PLAYLISTS}"
+                               TextTrimming="CharacterEllipsis"
                                FontSize="12"
                                FontWeight="SemiBold"
                                Opacity="0.5"
@@ -816,10 +825,9 @@
                                 </Canvas>
 
                                 <!-- Folder header row -->
-                                <StackPanel Orientation="Horizontal" Spacing="10"
-                                            ToolTip.Tip="{Binding Label}"
-                                            IsVisible="{Binding IsFolder}"
-                                            HorizontalAlignment="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded, Converter={StaticResource BoolToAlignment}}">
+                                <DockPanel ToolTip.Tip="{Binding Label}"
+                                           IsVisible="{Binding IsFolder}"
+                                           HorizontalAlignment="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded, Converter={StaticResource BoolToAlignment}}">
                                     <Border Width="28" Height="28"
                                             CornerRadius="8"
                                             VerticalAlignment="Center"
@@ -837,15 +845,15 @@
                                               StrokeJoin="Round"
                                               Opacity="0.8" />
                                     </Border>
-                                    <StackPanel VerticalAlignment="Center" Spacing="1"
+                                    <StackPanel VerticalAlignment="Center" Spacing="1" Margin="10,0,0,0"
                                                 IsVisible="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded}">
                                         <TextBlock Text="{Binding Label}"
                                                    FontSize="13"
                                                    FontWeight="SemiBold"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   MaxWidth="120" />
+                                                   TextTrimming="CharacterEllipsis" />
                                         <TextBlock FontSize="11"
-                                                   Opacity="0.5">
+                                                   Opacity="0.5"
+                                                   TextTrimming="CharacterEllipsis">
                                             <TextBlock.Text>
                                                 <!-- The translation is bound only so a language change re-runs the count. -->
                                                 <MultiBinding Converter="{StaticResource CountLabel}" ConverterParameter="playlist">
@@ -855,19 +863,18 @@
                                             </TextBlock.Text>
                                         </TextBlock>
                                     </StackPanel>
-                                </StackPanel>
+                                </DockPanel>
 
                                 <!-- Playlist row. Reorder / move-to-folder is an in-app pointer drag
                                      handled by SidebarView (LiquidReorder). -->
-                                <StackPanel Orientation="Horizontal" Spacing="10"
-                                            ToolTip.Tip="{Binding Label}"
-                                            IsVisible="{Binding !IsFolder}"
-                                            Background="Transparent"
-                                            HorizontalAlignment="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded, Converter={StaticResource BoolToAlignment}}">
+                                <DockPanel ToolTip.Tip="{Binding Label}"
+                                           IsVisible="{Binding !IsFolder}"
+                                           Background="Transparent"
+                                           HorizontalAlignment="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded, Converter={StaticResource BoolToAlignment}}">
                                     <!-- Indent for playlists inside an expanded folder. Hidden in the
                                          collapsed rail: with it, the row is 52px (14+10 spacing+28 art)
                                          in a 28px slot, so the art rendered off-center and clipped. -->
-                                    <Border Width="14">
+                                    <Border Width="14" Margin="0,0,10,0">
                                         <Border.IsVisible>
                                             <MultiBinding Converter="{x:Static BoolConverters.And}">
                                                 <Binding Path="IsInFolder" />
@@ -933,20 +940,22 @@
                                     </Border>
 
                                     <!-- Playlist name and track count (only when expanded) -->
-                                    <StackPanel VerticalAlignment="Center" Spacing="1"
+                                    <StackPanel VerticalAlignment="Center" Spacing="1" Margin="10,0,0,0"
                                                 IsVisible="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).IsExpanded}">
-                                        <StackPanel Orientation="Horizontal" Spacing="4">
-                                            <TextBlock Text="{Binding Label}"
-                                                       FontSize="13"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       MaxWidth="120" />
-                                            <PathIcon Data="{StaticResource StarIcon}"
+                                        <!-- The star right after the name; the name trims to make room. -->
+                                        <DockPanel HorizontalAlignment="Left">
+                                            <PathIcon DockPanel.Dock="Right"
+                                                      Data="{StaticResource StarIcon}"
                                                       Width="11" Height="11"
+                                                      Margin="4,0,0,0"
                                                       Foreground="{DynamicResource StarGoldBrush}"
                                                       Opacity="0.9"
                                                       VerticalAlignment="Center"
                                                       IsVisible="{Binding IsPinned}" />
-                                        </StackPanel>
+                                            <TextBlock Text="{Binding Label}"
+                                                       FontSize="13"
+                                                       TextTrimming="CharacterEllipsis" />
+                                        </DockPanel>
                                         <TextBlock FontSize="11"
                                                    Opacity="0.5"
                                                    TextTrimming="CharacterEllipsis">
@@ -959,7 +968,7 @@
                                             </TextBlock.Text>
                                         </TextBlock>
                                     </StackPanel>
-                                </StackPanel>
+                                </DockPanel>
 
                                 </Panel>
                             </DataTemplate>

@@ -5805,6 +5805,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <value>بحث (Ctrl+F)</value>
     <comment>ToolTip.Tip in SidebarView.axaml</comment>
   </data>
+  <data name="Sidebar.GripTip" xml:space="preserve"><value>انقر للطي أو التوسيع (Ctrl+B)، واسحب لتغيير العرض</value><comment>ToolTip.Tip in MainWindow.axaml (sidebar edge)</comment></data>
   <data name="Sidebar.Search" xml:space="preserve">
     <value>بحث</value>
     <comment>Text in SidebarView.axaml</comment>

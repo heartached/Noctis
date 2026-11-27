@@ -18,7 +18,8 @@ namespace Noctis.Views;
 internal sealed class SidebarEdgePeek
 {
     public const double RailWidth = 60;
-    public const double ExpandedWidth = 220;
+    /// <summary>The stock expanded width; the live one comes from <see cref="ExpandedWidthSource"/>.</summary>
+    public const double ExpandedWidth = Noctis.Models.SidebarWidthMetrics.Default;
 
     private readonly Border _edge;
     private readonly Border _rail;
@@ -48,6 +49,9 @@ internal sealed class SidebarEdgePeek
     /// <summary>Animates the rail in and out (the shell's shared sidebar motion). Without it the
     /// rail snaps, and hides at once.</summary>
     public SidebarMotion? Motion { get; init; }
+
+    /// <summary>The expanded width to peek at (the user's dragged width, Discord 11-27).</summary>
+    public Func<double> ExpandedWidthSource { get; init; } = () => ExpandedWidth;
 
     /// <summary>Whether the hidden rail is currently slid in.</summary>
     public bool IsPeeking { get; private set; }
@@ -133,7 +137,7 @@ internal sealed class SidebarEdgePeek
         var expanded = _pinned() || ((_edge.IsPointerOver || _rail.IsPointerOver) && _hoverExpand());
         _rail.IsVisible = true;
         _setExpanded(expanded);
-        Move(expanded ? ExpandedWidth : RailWidth, null);
+        Move(expanded ? ExpandedWidthSource() : RailWidth, null);
     }
 
     private void Move(double width, Action? settled)

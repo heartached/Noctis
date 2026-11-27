@@ -5805,6 +5805,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <value>검색 (Ctrl+F)</value>
     <comment>ToolTip.Tip in SidebarView.axaml</comment>
   </data>
+  <data name="Sidebar.GripTip" xml:space="preserve"><value>클릭하여 접기/펼치기 (Ctrl+B), 끌어서 너비 조절</value><comment>ToolTip.Tip in MainWindow.axaml (sidebar edge)</comment></data>
   <data name="Sidebar.Search" xml:space="preserve">
     <value>검색</value>
     <comment>Text in SidebarView.axaml</comment>

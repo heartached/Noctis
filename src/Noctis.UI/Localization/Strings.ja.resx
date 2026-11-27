@@ -5805,6 +5805,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <value>検索 (Ctrl+F)</value>
     <comment>ToolTip.Tip in SidebarView.axaml</comment>
   </data>
+  <data name="Sidebar.GripTip" xml:space="preserve"><value>クリックで折りたたみ/展開 (Ctrl+B)、ドラッグで幅を変更</value><comment>ToolTip.Tip in MainWindow.axaml (sidebar edge)</comment></data>
   <data name="Sidebar.Search" xml:space="preserve">
     <value>検索</value>
     <comment>Text in SidebarView.axaml</comment>

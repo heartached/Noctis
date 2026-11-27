@@ -2177,6 +2177,7 @@ Al guardar se reemplazan por la letra en pantalla. Un archivo de letra que no es
   <data name="Sidebar.RemoveFolderKeepPlaylists" xml:space="preserve"><value>Quitar carpeta (conservar las playlists)</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.BackTip" xml:space="preserve"><value>Atrás</value><comment>ToolTip.Tip in SidebarView.axaml</comment></data>
   <data name="Sidebar.SearchCtrlFTip" xml:space="preserve"><value>Buscar (Ctrl+F)</value><comment>ToolTip.Tip in SidebarView.axaml</comment></data>
+  <data name="Sidebar.GripTip" xml:space="preserve"><value>Haz clic para contraer o expandir (Ctrl+B), arrastra para cambiar el tamaño</value><comment>ToolTip.Tip in MainWindow.axaml (sidebar edge)</comment></data>
   <data name="Sidebar.Search" xml:space="preserve"><value>Buscar</value><comment>Text in SidebarView.axaml</comment></data>
   <data name="Sidebar.SearchSyntaxTip" xml:space="preserve"><value>Las palabras pueden coincidir con cualquier campo: "radiohead ok computer", "rock 1994".
 Acota una palabra con una etiqueta: artist:madonna remix

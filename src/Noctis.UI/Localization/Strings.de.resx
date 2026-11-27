@@ -2178,6 +2178,7 @@ Speichern ersetzt sie durch den Songtext auf dem Bildschirm. Eine Songtextdatei,
   <data name="Sidebar.RemoveFolderKeepPlaylists" xml:space="preserve"><value>Ordner entfernen (Playlists behalten)</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.BackTip" xml:space="preserve"><value>Zurück</value><comment>ToolTip.Tip in SidebarView.axaml</comment></data>
   <data name="Sidebar.SearchCtrlFTip" xml:space="preserve"><value>Suchen (Strg+F)</value><comment>ToolTip.Tip in SidebarView.axaml</comment></data>
+  <data name="Sidebar.GripTip" xml:space="preserve"><value>Klicken zum Ein- oder Ausklappen (Strg+B), ziehen zum Ändern der Breite</value><comment>ToolTip.Tip in MainWindow.axaml (sidebar edge)</comment></data>
   <data name="Sidebar.Search" xml:space="preserve"><value>Suchen</value><comment>Text in SidebarView.axaml</comment></data>
   <data name="Sidebar.SearchSyntaxTip" xml:space="preserve"><value>Wörter können jedes Feld treffen: „radiohead ok computer“, „rock 1994“.
 Enge ein Wort mit einem Tag ein: artist:madonna remix

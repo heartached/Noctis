@@ -2184,6 +2184,7 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="Sidebar.RemoveFolderKeepPlaylists" xml:space="preserve"><value>Remove Folder (keep playlists)</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.BackTip" xml:space="preserve"><value>Back</value><comment>ToolTip.Tip in SidebarView.axaml</comment></data>
   <data name="Sidebar.SearchCtrlFTip" xml:space="preserve"><value>Search (Ctrl+F)</value><comment>ToolTip.Tip in SidebarView.axaml</comment></data>
+  <data name="Sidebar.GripTip" xml:space="preserve"><value>Click to collapse or expand (Ctrl+B), drag to resize</value><comment>ToolTip.Tip in MainWindow.axaml (sidebar edge)</comment></data>
   <data name="Sidebar.Search" xml:space="preserve"><value>Search</value><comment>Text in SidebarView.axaml</comment></data>
   <data name="Sidebar.SearchSyntaxTip" xml:space="preserve"><value>Words can match any field: "radiohead ok computer", "rock 1994".
 Narrow a word with a tag: artist:madonna remix

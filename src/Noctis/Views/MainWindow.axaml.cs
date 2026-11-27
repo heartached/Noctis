@@ -995,26 +995,18 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                         _sidebarGrip?.Sync();
                         if (!mainVm2.IsSidebarHidden)
                             mainVm2.Sidebar.IsExpanded = pinned; // a peek may have left it expanded
+                        var railWidth = mainVm2.IsSidebarHidden ? 0
+                            : pinned ? SidebarOpenWidth(mainVm2) : SidebarEdgePeek.RailWidth;
                         if (_sidebarWrapper != null)
                         {
-                            var width = mainVm2.IsSidebarHidden ? 0 : (pinned ? 220 : 60);
-                            if (_sidebarMotion != null) _sidebarMotion.Snap(width);
-                            else _sidebarWrapper.Width = width;
+                            if (_sidebarMotion != null) _sidebarMotion.Snap(railWidth);
+                            else _sidebarWrapper.Width = railWidth;
                             _sidebarWrapper.Background = null;
                             _sidebarWrapper.IsVisible = !mainVm2.IsSidebarHidden;
                         }
+                        // Drops an in-flight pin slide too.
                         if (_rootPanel != null)
-                        {
-                            _rootPanel.Margin = new Avalonia.Thickness(
-                                mainVm2.IsSidebarHidden ? 0 : (pinned ? 236 : 76), 0, 0, 0);
-                            if (_rootPanel.RenderTransform is TranslateTransform t)
-                            {
-                                var slide = t.Transitions;
-                                t.Transitions = null; // drop an in-flight pin slide
-                                t.X = 0;
-                                t.Transitions = slide;
-                            }
-                        }
+                            SidebarMotion.PlacePage(_rootPanel, mainVm2.IsSidebarHidden ? 0 : railWidth + SidebarPageInset);
                     }
                 };
                 vm.PropertyChanged += _mainVmPropertyChangedHandler;
@@ -1065,10 +1057,19 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                     // Discord (Luwi 11-25): drag the rail's right edge to pin / unpin it.
                     if (this.FindControl<Border>("SidebarResizeGrip") is { } grip)
                     {
+                        // Discord 11-27: and to resize the expanded sidebar, live, saved on release.
                         _sidebarGrip = new SidebarResizeGrip(grip,
                             () => vm.IsSidebarHidden,
                             () => vm.Settings.SidebarAlwaysExpanded,
-                            pinned => !vm.IsSidebarHidden && vm.Settings.TrySetSidebarPinned(pinned));
+                            pinned => !vm.IsSidebarHidden && vm.Settings.TrySetSidebarPinned(pinned),
+                            () => vm.Settings.SidebarExpandedWidth,
+                            width =>
+                            {
+                                // Follows the pointer directly: no animation to lag behind it.
+                                _sidebarMotion?.Snap(width);
+                                if (_rootPanel != null) SidebarMotion.PlacePage(_rootPanel, width + SidebarPageInset);
+                            },
+                            width => vm.Settings.SetSidebarExpandedWidth(width));
                         _sidebarGrip.Sync();
                     }
 
@@ -1084,7 +1085,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                         // The page takes its new margin in one layout and slides there with
                         // the rail's edge (render transform), instead of jumping at once.
                         if (_rootPanel != null)
-                            SidebarMotion.SlidePage(_rootPanel, pinned ? 236 : 76, opening: pinned);
+                            SidebarMotion.SlidePage(_rootPanel,
+                                (pinned ? SidebarOpenWidth(vm) : SidebarEdgePeek.RailWidth) + SidebarPageInset, opening: pinned);
                     };
                     vm.Settings.SidebarAlwaysExpandedChanged += _sidebarAlwaysExpandedHandler;
 
@@ -1107,6 +1109,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                             // few pixels does not snap it shut (GitHub #233 auto-hide).
                             CloseDelay = TimeSpan.FromMilliseconds(300),
                             Motion = _sidebarMotion,
+                            ExpandedWidthSource = () => SidebarOpenWidth(vm),
                         };
                         _sidebarPeek.SyncHidden();
                     }
@@ -1116,6 +1119,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                     {
                         if (e.PropertyName == nameof(SettingsViewModel.SidebarAutoHide))
                             UpdateImmersiveLyricsState();
+                        else if (e.PropertyName == nameof(SettingsViewModel.SidebarExpandedWidth))
+                            ApplySidebarWidth(vm);
                     };
                     vm.Settings.PropertyChanged += _sidebarAutoHideHandler;
                     UpdateImmersiveLyricsState();
@@ -1141,7 +1146,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         {
             rail.Background = overPage ? SidebarOverPageBacking(vm) : null;
             vm.Sidebar.IsExpanded = true;
-            _sidebarMotion.MoveTo(SidebarEdgePeek.ExpandedWidth);
+            _sidebarMotion.MoveTo(SidebarOpenWidth(vm));
             return;
         }
         if (vm.Sidebar.IsExpanded) rail.Background = SidebarOverPageBacking(vm);
@@ -1150,6 +1155,33 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             rail.Background = null;
             vm.Sidebar.IsExpanded = false;
         });
+    }
+
+    /// <summary>The page's left margin past the rail's width: the rail's 8 px margin and the
+    /// 8 px gap the resize grip fills.</summary>
+    private const double SidebarPageInset = Noctis.Views.SidebarResizeGrip.RailLeft + 8;
+
+    /// <summary>The width the sidebar opens to: a drag's live width, else the saved one
+    /// (Discord 11-27), for pin, hover expand and the hidden sidebar's peek alike.</summary>
+    private double SidebarOpenWidth(MainWindowViewModel vm) =>
+        _sidebarGrip?.ExpandedWidth ?? SidebarWidthMetrics.Clamp(vm.Settings.SidebarExpandedWidth);
+
+    /// <summary>The saved width changed (a drag's release on the sidebar's edge, a
+    /// settings reset): an open sidebar moves to it on the sidebar's curve, and a pinned one
+    /// takes the page along. The rail keeps its width; it opens at the new one next time.</summary>
+    private void ApplySidebarWidth(MainWindowViewModel vm)
+    {
+        _sidebarGrip?.Sync();
+        if (_sidebarWrapper == null || _sidebarMotion == null || vm.IsSidebarHidden
+            || _sidebarGrip?.IsDragging == true) return;
+        var pinned = vm.Settings.SidebarAlwaysExpanded;
+        // Not a rail, nor one closing (its labels stay up until it is narrow).
+        if (!pinned && !(vm.Sidebar.IsExpanded && _sidebarMotion.TargetWidth > SidebarEdgePeek.RailWidth)) return;
+        var width = SidebarOpenWidth(vm);
+        var opening = width > _sidebarMotion.TargetWidth;
+        MoveSidebar(vm, expanded: true, overPage: !pinned);
+        if (pinned && _rootPanel != null)
+            SidebarMotion.SlidePage(_rootPanel, width + SidebarPageInset, opening);
     }
 
     /// <summary>
