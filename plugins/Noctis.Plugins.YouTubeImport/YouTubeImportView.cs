@@ -1,4 +1,6 @@
 using Avalonia;
+using Avalonia.Animation;
+using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Templates;
@@ -9,6 +11,7 @@ using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Media;
+using Avalonia.Media.Transformation;
 using Avalonia.Platform.Storage;
 using Avalonia.Styling;
 
@@ -41,7 +44,13 @@ public sealed class YouTubeImportView : UserControl
     // right, because a play triangle centred by its box looks left-heavy.
     private static readonly Geometry PlayGlyph = Geometry.Parse("M 3.56,0 L 20.84,11 L 3.56,22 Z");
     private static readonly Geometry SearchGlyph = Geometry.Parse("M 10.5,3 A 7.5,7.5 0 1 0 15.6,16.1 L 20.3,20.8 L 21.7,19.4 L 17,14.7 A 7.5,7.5 0 0 0 10.5,3 Z M 10.5,5 A 5.5,5.5 0 1 1 10.5,16 A 5.5,5.5 0 1 1 10.5,5 Z");
+    // The tick's ink is 16 x 11.9 (of a 24 box). In a 13 x 13 box with Stretch.Uniform it was drawn
+    // 13 x 9.7 at the box's top (Avalonia's Uniform scales the geometry's bounds and places them
+    // at the top-left, as with PlayGlyph above), so it sat 1.7 px above the "In your library" text
+    // it is centred with (owner 11-27). Only a width now: the box is the ink, and centring the box
+    // centres the tick.
     private static readonly Geometry CheckGlyph = Geometry.Parse("M 4,12.5 L 9.5,18 L 20,7.5 L 18.6,6.1 L 9.5,15.2 L 5.4,11.1 Z");
+    internal const double CheckWidth = 13;
 
     public YouTubeImportViewModel ViewModel { get; }
 
@@ -270,8 +279,11 @@ public sealed class YouTubeImportView : UserControl
         install.Content = label;
         install.Bind(IsEnabledProperty, new Binding("!" + nameof(vm.IsInstallingTool)));
         AutomationName(install, "Install yt-dlp");
-        var bar = new ProgressBar { Width = 160, Height = 4, MinHeight = 0, MinWidth = 0, Minimum = 0, Maximum = 1, HorizontalAlignment = HorizontalAlignment.Center };
-        bar.Bind(RangeBase.ValueProperty, new Binding(nameof(vm.InstallProgress)));
+        var bar = PillBar();
+        bar.Width = 160;
+        bar.HorizontalAlignment = HorizontalAlignment.Center;
+        bar.Bind(PillProgressBar.ValueProperty, new Binding(nameof(vm.InstallProgress)));
+        bar.Bind(PillProgressBar.IsIndeterminateProperty, new Binding(nameof(vm.InstallProgress)) { Converter = new FuncValueConverter<double, bool>(p => p <= 0) });
         bar.Bind(IsVisibleProperty, new Binding(nameof(vm.IsInstallingTool)));
         var panel = new StackPanel
         {
@@ -327,7 +339,37 @@ public sealed class YouTubeImportView : UserControl
         return text;
     }
 
-    /// <summary>One result card: thumbnail, title, channel · duration, Download (or progress / done) on the right.</summary>
+    /// <summary>The card's third line (the bar and its stage, or the error): always laid out, so a card
+    /// is the same height idle, downloading, failed and done (owner 11-27: it jumped when the bar
+    /// came and went). Two lines of the error fit.</summary>
+    internal const double StatusLineHeight = 30;
+    private const double StatusLineGap = 6;
+    /// <summary>Idle and done, the title and artist sit this far down: centred on the cover, with
+    /// the empty third line below them. They glide up when the line is used.</summary>
+    internal const double HeadDrop = (StatusLineHeight + StatusLineGap) / 2;
+    internal const double BarHeight = 6;
+    private static readonly TimeSpan FadeTime = TimeSpan.FromMilliseconds(180);
+    private static readonly TimeSpan GlideTime = TimeSpan.FromMilliseconds(240);
+    /// <summary>Widest text beside the tick; the done side keeps this width, so nothing beside it moves.</summary>
+    internal const string LongestDoneText = "Already in your library";
+
+    /// <summary>The pill bar (Noctis's SmoothProgressBar look): grey track that shows on both
+    /// themes, accent fill.</summary>
+    private static PillProgressBar PillBar()
+    {
+        var bar = new PillProgressBar { Height = BarHeight, TrackBrush = PlaceholderBrush };
+        bar.Bind(PillProgressBar.FillBrushProperty, bar.GetResourceObservable("AccentColorBrush"));
+        return bar;
+    }
+
+    private static Binding Shown(string property) => new Binding(property) { Converter = new FuncValueConverter<bool, double>(on => on ? 1 : 0) };
+
+    /// <summary>
+    /// One result card: thumbnail, title, channel · duration, then the third line (bar and stage, or
+    /// the error); on the right Download, the percent, or the tick with "In your library" and Show.
+    /// Every state is laid out all the time and only fades (and the title glides), so the card keeps
+    /// its height and the title its width from Download to done.
+    /// </summary>
     private static Control BuildRow()
     {
         var thumb = new Image { Stretch = Stretch.UniformToFill };
@@ -339,37 +381,68 @@ public sealed class YouTubeImportView : UserControl
         title.Bind(ToolTip.TipProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.Title)));
         var subtitle = new TextBlock { FontSize = 11.5, Opacity = 0.6, TextTrimming = TextTrimming.CharacterEllipsis };
         subtitle.Bind(TextBlock.TextProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.Subtitle)));
-        var bar = new ProgressBar { Height = 4, MinHeight = 0, MinWidth = 0, Minimum = 0, Maximum = 1 };
-        bar.Bind(RangeBase.ValueProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.Progress)));
-        var stage = new TextBlock { FontSize = 11, Opacity = 0.55, TextTrimming = TextTrimming.CharacterEllipsis };
-        stage.Bind(TextBlock.TextProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.StatusText)));
-        var busy = new StackPanel { Spacing = 4, Margin = new Thickness(0, 4, 0, 0), Children = { bar, stage } };
-        busy.Bind(IsVisibleProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.IsBusy)));
-        var failed = new TextBlock { Foreground = FailedBrush, FontSize = 11.5, TextWrapping = TextWrapping.Wrap, MaxLines = 2, TextTrimming = TextTrimming.CharacterEllipsis };
-        failed.Bind(TextBlock.TextProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.StatusText)));
-        failed.Bind(IsVisibleProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.Failed)));
-        var text = new StackPanel { Spacing = 3, VerticalAlignment = VerticalAlignment.Center, Children = { title, subtitle, busy, failed } };
+        var head = new StackPanel { Name = "RowHead", Spacing = 3, Children = { title, subtitle } };
+        head.Bind(RenderTransformProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.HasStatusLine))
+        {
+            Converter = new FuncValueConverter<bool, ITransform>(used => TransformOperations.Parse(used ? "translateY(0px)" : $"translateY({HeadDrop.ToString(System.Globalization.CultureInfo.InvariantCulture)}px)")),
+        });
 
+        // Third line: the bar (sweeping until there is a number) and the stage, or the error.
+        var bar = PillBar();
+        bar.Name = "RowBar";
+        bar.Bind(PillProgressBar.ValueProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.Progress)));
+        bar.Bind(PillProgressBar.IsIndeterminateProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.IsIndeterminate)));
+        var stage = new TextBlock { FontSize = 11, Opacity = 0.55, TextTrimming = TextTrimming.CharacterEllipsis };
+        stage.Bind(TextBlock.TextProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.BusyText)));
+        var busy = new StackPanel { Spacing = 5, Children = { bar, stage } };
+        busy.Bind(OpacityProperty, Shown(nameof(YouTubeImportViewModel.ResultRow.IsBusy)));
+        var failed = new TextBlock { Foreground = FailedBrush, FontSize = 11, TextWrapping = TextWrapping.Wrap, MaxLines = 2, TextTrimming = TextTrimming.CharacterEllipsis };
+        failed.Bind(TextBlock.TextProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.FailedText)));
+        failed.Bind(OpacityProperty, Shown(nameof(YouTubeImportViewModel.ResultRow.Failed)));
+        var statusLine = new Panel { Name = "RowStatusLine", Height = StatusLineHeight, Margin = new Thickness(0, StatusLineGap, 0, 0), Children = { busy, failed } };
+        var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Children = { head, statusLine } };
+
+        // Right side: Download, the percent, or done; all laid out, one shown (cross-fade).
         var download = new Button { Content = "Download", MinHeight = 34, Padding = new Thickness(16, 0), FontSize = 12.5, VerticalContentAlignment = VerticalAlignment.Center };
         download.Classes.Add("pill-secondary");
         download.Bind(Button.CommandProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.DownloadCommand)));
-        download.Bind(IsVisibleProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.ShowDownload)));
-        var percent = new TextBlock { FontSize = 12.5, FontWeight = FontWeight.SemiBold, Opacity = 0.7, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
-        percent.Bind(TextBlock.TextProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.ProgressText)));
-        percent.Bind(IsVisibleProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.IsBusy)));
-        var check = new Avalonia.Controls.Shapes.Path { Data = CheckGlyph, Width = 13, Height = 13, Stretch = Stretch.Uniform, VerticalAlignment = VerticalAlignment.Center };
+        download.Bind(KeyboardNavigation.IsTabStopProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.ShowDownload)));
+        // The buttons fade in a holder: their pill style has transitions of its own.
+        var downloadHolder = new Border { Child = download, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
+        downloadHolder.Bind(OpacityProperty, Shown(nameof(YouTubeImportViewModel.ResultRow.ShowDownload)));
+        downloadHolder.Bind(IsHitTestVisibleProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.ShowDownload)));
+
+        // The percent follows the drawn fill (it counts up with the glide), in digits of one width
+        // in a box of fixed width: it neither jitters nor moves what is beside it.
+        var percent = new TextBlock
+        {
+            Name = "RowPercent", Text = "0%", FontSize = 12.5, FontWeight = FontWeight.SemiBold, Opacity = 0.7, Width = 44,
+            TextAlignment = TextAlignment.Right, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center,
+            FontFeatures = new FontFeatureCollection { FontFeature.Parse("+tnum") },
+        };
+        bar.ShownPercentChanged += p => percent.Text = p.ToString(System.Globalization.CultureInfo.InvariantCulture) + "%";
+        var percentHolder = new Border { Child = percent, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false };
+        percentHolder.Bind(OpacityProperty, Shown(nameof(YouTubeImportViewModel.ResultRow.ShowPercent)));
+
+        var check = new Avalonia.Controls.Shapes.Path { Name = "DoneCheck", Data = CheckGlyph, Width = CheckWidth, Stretch = Stretch.Uniform, VerticalAlignment = VerticalAlignment.Center };
         check.Bind(Avalonia.Controls.Shapes.Shape.FillProperty, check.GetResourceObservable("AccentColorBrush"));
-        var doneText = new TextBlock { FontSize = 12.5, Opacity = 0.8, VerticalAlignment = VerticalAlignment.Center };
-        doneText.Bind(TextBlock.TextProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.StatusText)));
-        var show = new Button { Content = "Show", MinHeight = 0, Padding = new Thickness(12, 4), FontSize = 12, Margin = new Thickness(4, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        var doneText = new TextBlock { Name = "DoneText", FontSize = 12.5, Opacity = 0.8, VerticalAlignment = VerticalAlignment.Center };
+        doneText.Bind(TextBlock.TextProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.DoneText)));
+        var doneSizer = new TextBlock { Text = LongestDoneText, FontSize = 12.5, Opacity = 0, IsHitTestVisible = false, VerticalAlignment = VerticalAlignment.Center };
+        var doneTextCell = new Panel { VerticalAlignment = VerticalAlignment.Center, Children = { doneSizer, doneText } };
+        var show = new Button { Name = "ShowButton", Content = "Show", MinHeight = 0, Padding = new Thickness(12, 4), FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
         show.Classes.Add("pill-secondary");
         show.Bind(Button.CommandProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.ShowCommand)));
-        show.Bind(IsVisibleProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.CanShow)));
+        show.Bind(KeyboardNavigation.IsTabStopProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.CanShow)));
         ToolTip.SetTip(show, "Show it in your library");
         AutomationName(show, "Show in library");
-        var done = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = { check, doneText, show } };
-        done.Bind(IsVisibleProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.IsDone)));
-        var actions = new Panel { VerticalAlignment = VerticalAlignment.Center, Children = { download, percent, done } };
+        var showHolder = new Border { Child = show, Margin = new Thickness(4, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        showHolder.Bind(OpacityProperty, Shown(nameof(YouTubeImportViewModel.ResultRow.CanShow)));
+        showHolder.Bind(IsHitTestVisibleProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.CanShow)));
+        var done = new StackPanel { Name = "DoneRow", Orientation = Orientation.Horizontal, Spacing = 6, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center, Children = { check, doneTextCell, showHolder } };
+        done.Bind(OpacityProperty, Shown(nameof(YouTubeImportViewModel.ResultRow.IsDone)));
+        done.Bind(IsHitTestVisibleProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.IsDone)));
+        var actions = new Panel { VerticalAlignment = VerticalAlignment.Center, Children = { downloadHolder, percentHolder, done } };
 
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("56,14,*,12,Auto") };
         grid.Children.Add(art);
@@ -392,6 +465,16 @@ public sealed class YouTubeImportView : UserControl
                 return list.Count == 2 && list[0] is true && list[1] is IBrush accent ? accent : Brushes.Transparent;
             }),
         });
+
+        // The motion starts once the card is on screen with its state: a card that arrives done
+        // (downloaded before) or mid-download shows that state at once instead of fading into it.
+        card.Loaded += (_, _) =>
+        {
+            var ease = new CubicEaseOut();
+            foreach (var faded in new Control[] { busy, failed, downloadHolder, percentHolder, done, showHolder })
+                faded.Transitions ??= new Transitions { new DoubleTransition { Property = OpacityProperty, Duration = FadeTime, Easing = ease } };
+            head.Transitions ??= new Transitions { new TransformOperationsTransition { Property = RenderTransformProperty, Duration = GlideTime, Easing = ease } };
+        };
         return card;
     }
 

@@ -7,8 +7,9 @@ namespace Noctis.Plugins.YouTubeImport;
 public sealed record RecentDownload(string Title, string Artist, string FilePath, DateTimeOffset When, bool InLibrary);
 
 /// <summary>A video downloaded before (by its YouTube id), so a later search does not download it again.</summary>
-/// <param name="AlbumId">The library album it landed in (for "Show"); empty when unknown.</param>
-public sealed record DownloadedVideo(string VideoId, string FilePath, string AlbumId, bool InLibrary);
+/// <param name="AlbumId">The library album it landed in (for "Show" before 1.0.4); empty when unknown.</param>
+/// <param name="TrackId">The library song (for "Show", 1.0.4); empty when unknown (a record from 1.0.3).</param>
+public sealed record DownloadedVideo(string VideoId, string FilePath, string AlbumId, bool InLibrary, string TrackId = "");
 
 /// <summary>
 /// What the window remembers between sessions, in the plugin's data folder (state.json): the
@@ -153,7 +154,7 @@ public sealed class ImportState
                 _recent.AddRange(recent.Where(r => r is not null && !string.IsNullOrWhiteSpace(r.FilePath)).Take(MaxRecent));
             if (dto.Downloaded is { } downloaded)
                 _downloaded.AddRange(downloaded.Where(d => d is not null && !string.IsNullOrEmpty(d.VideoId) && !string.IsNullOrWhiteSpace(d.FilePath))
-                    .TakeLast(MaxDownloaded).Select(d => d with { AlbumId = d.AlbumId ?? "" }));
+                    .TakeLast(MaxDownloaded).Select(d => d with { AlbumId = d.AlbumId ?? "", TrackId = d.TrackId ?? "" }));
         }
         catch { /* a broken file starts fresh */ }
     }

@@ -456,6 +456,14 @@ public static partial class YtDlpParsing
             : null;
     }
 
+    /// <summary>
+    /// yt-dlp started converting the download with ffmpeg (<c>[ExtractAudio] Destination: …</c>):
+    /// the download's percent is done and nothing reports how far the conversion is. Not the
+    /// <c>[ExtractAudio] Not converting audio …</c> line of a file already in the right format.
+    /// </summary>
+    public static bool IsConversionLine(string? line)
+        => line is not null && line.StartsWith("[ExtractAudio] Destination:", StringComparison.Ordinal);
+
     [GeneratedRegex(@"at\s+([\d.]+)(B|KiB|MiB|GiB)/s")]
     private static partial Regex SpeedRegex();
 

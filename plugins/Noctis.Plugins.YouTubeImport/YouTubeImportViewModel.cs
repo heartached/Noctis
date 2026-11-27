@@ -20,6 +20,7 @@ public partial class YouTubeImportViewModel : ObservableObject
     private readonly ImportState _state;
     private readonly CancellationToken _lifetime;
     private readonly Func<string, bool>? _showAlbum;
+    private readonly Func<string, bool>? _showTrack;
     private CancellationTokenSource? _searchCts;
 
     [ObservableProperty] private string _query = string.Empty;
@@ -81,10 +82,12 @@ public partial class YouTubeImportViewModel : ObservableObject
 
     /// <param name="lifetime">Cancelled when the plugin stops: downloads still running end then.</param>
     /// <param name="showAlbum">Shows a library album in Noctis (<see cref="IPluginHost.ShowAlbum"/>); null = no Show button.</param>
+    /// <param name="showTrack">Shows a library song in Noctis, scrolled to (<see cref="IPluginHost.ShowTrack"/>, API 1.10).</param>
     public YouTubeImportViewModel(IYouTubeImporter service, HttpClient http, ImportState state, CancellationToken lifetime = default, string? initialQuery = null,
-        Func<string, bool>? showAlbum = null)
+        Func<string, bool>? showAlbum = null, Func<string, bool>? showTrack = null)
     {
         _showAlbum = showAlbum;
+        _showTrack = showTrack;
         _service = service;
         _http = http;
         _state = state;
@@ -299,17 +302,35 @@ public partial class YouTubeImportViewModel : ObservableObject
         row.IsDone = true;
         row.Failed = false;
         row.AlbumId = earlier.AlbumId;
+        row.TrackId = earlier.TrackId;
         row.StatusText = earlier.InLibrary ? "Already in your library" : "Already downloaded";
     }
 
-    internal bool ShowAlbum(string albumId)
+    internal const string NotInLibraryMessage = "Couldn't find it in your library. It may have been moved or removed.";
+
+    /// <summary>
+    /// Show: the song itself (API 1.10: its album page, scrolled to it), else its album (a record
+    /// from 1.0.3 has no song id). Before 1.0.4 a false answer was dropped, so a Show that found
+    /// nothing looked like a dead button: it now says so.
+    /// </summary>
+    internal bool ShowInLibrary(ResultRow row)
     {
-        if (_showAlbum is null || string.IsNullOrEmpty(albumId)) return false;
-        try { return _showAlbum(albumId); }
-        catch (Exception ex) { StatusMessage = "Couldn't show it — " + ex.Message; return false; }
+        Exception? error = null;
+        if (row.TrackId.Length > 0 && TryShow(_showTrack, row.TrackId, ref error)) return true;
+        if (row.AlbumId.Length > 0 && TryShow(_showAlbum, row.AlbumId, ref error)) return true;
+        StatusMessage = error is null ? NotInLibraryMessage : "Couldn't show it — " + error.Message;
+        return false;
     }
 
-    internal bool CanShowAlbums => _showAlbum is not null;
+    private static bool TryShow(Func<string, bool>? show, string id, ref Exception? error)
+    {
+        if (show is null) return false;
+        // A host without the call (MissingMethodException when the lambda compiles) falls through to the album.
+        try { return show(id); }
+        catch (Exception ex) { error ??= ex; return false; }
+    }
+
+    internal bool CanShowInLibrary => _showAlbum is not null || _showTrack is not null;
 
     internal async Task DownloadAsync(ResultRow row)
     {
@@ -327,23 +348,25 @@ public partial class YouTubeImportViewModel : ObservableObject
             StatusMessage = "This video is already downloading.";
             return;
         }
-        row.IsBusy = true;
-        row.Failed = false;
-        row.Progress = 0;
-        row.StatusText = "Starting…";
-        var progress = new Progress<YouTubeImportProgress>(p => Dispatcher.UIThread.Post(() =>
+        var run = row.BeginRun();
+        // Reports come from yt-dlp's reader thread: onto the UI thread, and only into this run
+        // while it is still running. Before, each one took two hops (Progress<T> posted, then
+        // Dispatcher.Post again), so the import's last "Done" could land after the card had
+        // finished and overwrite "In your library".
+        var progress = new InlineProgress<YouTubeImportProgress>(p =>
         {
-            row.Progress = p.Fraction;
-            row.StatusText = p.Stage;
-        }));
+            if (Dispatcher.UIThread.CheckAccess()) row.Report(run, p);
+            else Dispatcher.UIThread.Post(() => row.Report(run, p));
+        });
         try
         {
             var result = await _service.ImportAsync(row.Info, SelectedFormat ?? AudioFormat.Default, progress, _lifetime);
             row.IsDone = true;
             row.AlbumId = result.AlbumId;
+            row.TrackId = result.TrackId;
             row.Title = result.Title;
             row.Subtitle = result.Artist;
-            if (id.Length > 0) _state.AddDownloaded(new DownloadedVideo(id, result.FilePath, result.AlbumId, result.AddedToLibrary));
+            if (id.Length > 0) _state.AddDownloaded(new DownloadedVideo(id, result.FilePath, result.AlbumId, result.AddedToLibrary, result.TrackId));
             if (result.AlreadyDownloaded)
                 row.StatusText = result.AddedToLibrary ? "Already in your library" : "Already downloaded";
             else
@@ -387,18 +410,22 @@ public partial class YouTubeImportViewModel : ObservableObject
             if (info.DurationText.Length > 0) parts.Add(info.DurationText);
             Subtitle = string.Join(" · ", parts);
             DownloadCommand = new AsyncRelayCommand(() => _owner.DownloadAsync(this));
-            ShowCommand = new RelayCommand(() => _owner.ShowAlbum(AlbumId));
+            ShowCommand = new RelayCommand(() => _owner.ShowInLibrary(this));
         }
 
-        /// <summary>Shows the album it is in (Noctis's album page).</summary>
+        /// <summary>Shows the song in Noctis (its album page, scrolled to it).</summary>
         public IRelayCommand ShowCommand { get; }
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(CanShow))]
         private string _albumId = string.Empty;
 
-        /// <summary>Done (or downloaded before) and its album is known.</summary>
-        public bool CanShow => IsDone && AlbumId.Length > 0 && _owner.CanShowAlbums;
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(CanShow))]
+        private string _trackId = string.Empty;
+
+        /// <summary>Done (or downloaded before) and the song or its album is known.</summary>
+        public bool CanShow => IsDone && (TrackId.Length > 0 || AlbumId.Length > 0) && _owner.CanShowInLibrary;
 
         public YouTubeTrackInfo Info { get; }
         public IAsyncRelayCommand DownloadCommand { get; }
@@ -409,20 +436,61 @@ public partial class YouTubeImportViewModel : ObservableObject
         [NotifyPropertyChangedFor(nameof(HasThumbnail))]
         private Bitmap? _thumbnail;
         [ObservableProperty]
-        [NotifyPropertyChangedFor(nameof(ShowDownload))]
+        [NotifyPropertyChangedFor(nameof(ShowDownload), nameof(IsIndeterminate), nameof(ShowPercent), nameof(HasStatusLine), nameof(BusyText))]
         private bool _isBusy;
         [ObservableProperty]
-        [NotifyPropertyChangedFor(nameof(ShowDownload), nameof(CanShow))]
+        [NotifyPropertyChangedFor(nameof(ShowDownload), nameof(CanShow), nameof(DoneText))]
         private bool _isDone;
-        [ObservableProperty] private bool _failed;
         [ObservableProperty]
-        [NotifyPropertyChangedFor(nameof(ProgressText))]
+        [NotifyPropertyChangedFor(nameof(HasStatusLine), nameof(FailedText))]
+        private bool _failed;
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(ProgressText), nameof(IsIndeterminate), nameof(ShowPercent))]
         private double _progress;
-        [ObservableProperty] private string _statusText = string.Empty;
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(DoneText), nameof(BusyText), nameof(FailedText))]
+        private string _statusText = string.Empty;
 
         public bool ShowDownload => !IsBusy && !IsDone;
         public bool HasThumbnail => Thumbnail is not null;
         /// <summary>"42%" on the card while it downloads.</summary>
         public string ProgressText => $"{(int)Math.Round(Math.Clamp(Progress, 0, 1) * 100)}%";
+        /// <summary>Busy with no number yet (reading details, yt-dlp starting): the bar sweeps.</summary>
+        public bool IsIndeterminate => IsBusy && Progress <= 0;
+        /// <summary>The percent beside the bar: only once there is a number.</summary>
+        public bool ShowPercent => IsBusy && Progress > 0;
+        /// <summary>The card's third line is in use: the bar and its stage, or the error.</summary>
+        public bool HasStatusLine => IsBusy || Failed;
+        /// <summary>"In your library" beside the check: only when done (the stage line never shows there).</summary>
+        public string DoneText => IsDone ? StatusText : string.Empty;
+        /// <summary>The stage under the bar: only while busy (the error and "In your library" have their own places).</summary>
+        public string BusyText => IsBusy ? StatusText : string.Empty;
+        /// <summary>The error on the third line: only when it failed.</summary>
+        public string FailedText => Failed ? StatusText : string.Empty;
+
+        private int _run;
+
+        /// <summary>A download starts: busy, no number yet; reports of an earlier run are ignored from now.</summary>
+        internal int BeginRun()
+        {
+            IsBusy = true;
+            Failed = false;
+            Progress = 0;
+            StatusText = "Starting…";
+            return ++_run;
+        }
+
+        /// <summary>
+        /// One report of run <paramref name="run"/>: the stage line, and the bar only forward (a
+        /// retry's download starting over at 0%, or a stage without a number, holds it where it is).
+        /// Ignored once the run ended or another began.
+        /// </summary>
+        internal void Report(int run, YouTubeImportProgress p)
+        {
+            if (run != _run || !IsBusy || IsDone) return;
+            if (!string.IsNullOrEmpty(p.Stage)) StatusText = p.Stage;
+            var fraction = double.IsFinite(p.Fraction) ? Math.Clamp(p.Fraction, 0, 1) : 0;
+            if (fraction > Progress) Progress = fraction;
+        }
     }
 }
