@@ -103,7 +103,14 @@ public sealed class ShuffleController : IDisposable
         SetStatus("Preparing the shuffle…");
         try
         {
-            await EnsureCycleAsync();
+            try { await EnsureCycleAsync(); }
+            catch (Exception ex) when (ex is IOException or System.Text.Json.JsonException)
+            {
+                _host.Log("cycle.json: " + ex.Message);
+                if (generation == _generation)
+                    SetStatus("The remembered songs could not be read (" + ex.Message + "). Forget heard songs starts them over.");
+                return false;
+            }
             var queue = Playback.GetQueue();
             IReadOnlyList<PlaylistInfo>? playlists = null;
             if (source.Kind == SourceKind.Playlist || mode == ShuffleMode.ForYou)
@@ -161,10 +168,20 @@ public sealed class ShuffleController : IDisposable
     /// <summary>Forgets the remembered cycle (not Noctis's play counts or history).</summary>
     public async Task ResetCycleAsync()
     {
-        await EnsureCycleAsync();
-        _seen!.Clear();
+        // A damaged cycle.json must not block the one button that starts it over: forgetting
+        // needs nothing from the old file, and the save below replaces it.
+        try { await EnsureCycleAsync(); }
+        catch (Exception ex) { _host.Log("cycle.json unreadable, starting it over: " + ex.Message); }
+        _seen ??= new HashSet<string>(StringComparer.Ordinal);
+        _seen.Clear();
         _last = null;
-        await SaveNowAsync();
+        try { await SaveNowAsync(); }
+        catch (Exception ex)
+        {
+            _host.Log("cycle.json: " + ex.Message);
+            SetStatus("The remembered songs could not be cleared: " + ex.Message);
+            return;
+        }
         SetStatus("The remembered songs were cleared. Every song can come up again.");
     }
 

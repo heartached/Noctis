@@ -294,6 +294,27 @@ public class TrueShufflePluginTests : IDisposable
         Assert.True(File.Exists(Path.Combine(_box.DataRoot, TrueShufflePlugin.Id, "cycle.json")));
     }
 
+    /// <summary>A damaged cycle.json used to block every Shuffle ("could not be prepared") and the
+    /// Forget button too, since forgetting first read the file: the user could never get out.</summary>
+    [AvaloniaFact]
+    public async Task DamagedCycleFile_SaysHowToFixIt_AndForgetHeardSongsStartsItOver()
+    {
+        var rig = NewRig(20);
+        var file = Path.Combine(_box.DataRoot, TrueShufflePlugin.Id, "cycle.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+        File.WriteAllText(file, "{ not json");
+        rig.Player.ReplaceQueueAndPlay(new List<Track> { rig.Tracks[0] }, 0);
+
+        Assert.False(await rig.Shuffle.StartAsync(ShuffleMode.NoRepeats, ShuffleSource.Library, false));
+        Assert.Contains("Forget heard songs", rig.Shuffle.Status);
+
+        await rig.Shuffle.ResetCycleAsync();
+        Assert.StartsWith("The remembered songs were cleared", rig.Shuffle.Status);
+        Assert.Equal(0, (await new CycleStore(Path.GetDirectoryName(file)!).LoadAsync()).Seen.Length);
+        Assert.True(await rig.Shuffle.StartAsync(ShuffleMode.NoRepeats, ShuffleSource.Library, false));
+        Assert.Equal(PluginStatus.Running, rig.Host.Plugins.Single().Status);
+    }
+
     [AvaloniaFact]
     public async Task NeverPlayed_ThroughThePlayer_QueuesOnlyUnplayedSongs()
     {
@@ -420,7 +441,7 @@ public class TrueShufflePluginTests : IDisposable
     [AvaloniaFact]
     public void ReleaseZip_InstallsFromFile_AndRuns()
     {
-        var zip = PluginSandbox.RepoFile("plugins/Noctis.Plugins.TrueShuffle/bin/Release/Noctis.Plugins.TrueShuffle-1.0.0.zip");
+        var zip = PluginSandbox.RepoFile("plugins/Noctis.Plugins.TrueShuffle/bin/Release/Noctis.Plugins.TrueShuffle-1.0.1.zip");
         if (!File.Exists(zip)) Assert.Skip("build it first: dotnet build plugins/Noctis.Plugins.TrueShuffle -c Release");
         using (var archive = ZipFile.OpenRead(zip))
         {
@@ -439,7 +460,7 @@ public class TrueShufflePluginTests : IDisposable
         var result = host.InstallPackage(zip, allowUpdate: false);
         Assert.Equal(PluginInstallOutcome.Installed, result.Outcome);
         var plugin = result.Plugin!;
-        Assert.Equal(("True Shuffle", "1.0.0", "Alfamin"), (plugin.Name, plugin.Version, plugin.Manifest?.Author));
+        Assert.Equal(("True Shuffle", "1.0.1", "Alfamin"), (plugin.Name, plugin.Version, plugin.Manifest?.Author));
         Assert.Equal(TrueShufflePlugin.About, plugin.Manifest!.Description); // no "By Alfamin." (the card says by X)
         Assert.DoesNotContain("Alfamin", plugin.Manifest.Description);
         Assert.Equal(PluginStatus.Disabled, plugin.Status); // waits for the user's approval
