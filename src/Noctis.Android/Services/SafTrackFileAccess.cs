@@ -77,9 +77,12 @@ public sealed class SafTrackFileAccess : ITrackFileAccess
         }
     }
 
-    // Folders already looked in for an animated cover (folder document id → the loop's URI, or null):
-    // a whole album plays from one folder, and the lookup runs on every track change. Bounded.
-    private readonly Dictionary<string, string?> _siblings = new(StringComparer.Ordinal);
+    // Folders already looked in for an animated cover (folder document id → the loop's URI, or null,
+    // and when): a whole album plays from one folder, and the lookup runs on every track change.
+    // Bounded. A "none" is looked at again after NoSiblingRecheck: kept for the whole run, a
+    // cover.mp4 copied in beside the music never showed until the app was restarted.
+    private readonly Dictionary<string, (string? Found, DateTime At)> _siblings = new(StringComparer.Ordinal);
+    private static readonly TimeSpan NoSiblingRecheck = TimeSpan.FromMinutes(1);
 
     /// <summary>
     /// A document beside the song whose name is one of <paramref name="names"/> (any case), as a
@@ -97,7 +100,9 @@ public sealed class SafTrackFileAccess : ITrackFileAccess
             var docId = DocumentsContract.GetDocumentId(uri);
             if (docId == null || ParentDocumentId(uri, docId) is not { } parentId) return null;
             lock (_siblings)
-                if (_siblings.TryGetValue(parentId, out var known)) return known;
+                if (_siblings.TryGetValue(parentId, out var known)
+                    && (known.Found is not null || DateTime.UtcNow - known.At < NoSiblingRecheck))
+                    return known.Found;
 
             string? found = null;
             var children = ListChildren(uri, parentId);
@@ -111,7 +116,7 @@ public sealed class SafTrackFileAccess : ITrackFileAccess
             lock (_siblings)
             {
                 if (_siblings.Count >= 256) _siblings.Clear();
-                _siblings[parentId] = found;
+                _siblings[parentId] = (found, DateTime.UtcNow);
             }
             return found;
         }
