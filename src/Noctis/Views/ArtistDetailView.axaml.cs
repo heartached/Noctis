@@ -40,6 +40,9 @@ public partial class ArtistDetailView : UserControl
         HeroVideo.PropertyChanged += (_, e) =>
         {
             if (e.Property == VideoBackdrop.HasFrameProperty) ApplyHeroVideoFrame(HeroVideo.HasFrame);
+            // An old 1080p file: the page fetches the hero-size one in the background.
+            else if (e.Property == VideoBackdrop.ClipPixelSizeProperty && HeroVideo.ClipPixelSize is { Width: > 0 } clip)
+                (DataContext as ArtistDetailViewModel)?.OnArtistVideoClipSize(clip.Width, clip.Height);
         };
         PageScrollViewer.ScrollChanged += (_, _) => UpdateHeroVideoPause();
         // Follows a theme or accent tint swapping the page colour.

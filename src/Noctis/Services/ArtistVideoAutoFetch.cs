@@ -29,14 +29,17 @@ public sealed class ArtistVideoAutoFetcher
     private readonly string? _indexPath;
     private readonly object _indexLock = new();
     private Dictionary<Guid, long>? _index;
+    private readonly string? _shrinkPath;
+    private HashSet<long>? _shrinkTried;
 
     /// <summary>The cache files; its block list holds the artists not to fetch for.</summary>
     public AnimatedArtworkCache Cache { get; }
 
     internal ArtistVideoAutoFetcher(
         LookupFunc lookup, DownloadFunc download, AnimatedArtworkCache cache, string? missLedgerPath, string? indexPath,
-        PoliteGate gate, SemaphoreSlim one, Func<DateTime>? clock = null)
+        PoliteGate gate, SemaphoreSlim one, Func<DateTime>? clock = null, string? shrinkLedgerPath = null)
     {
+        _shrinkPath = shrinkLedgerPath;
         _lookup = lookup;
         _download = download;
         Cache = cache;
@@ -56,12 +59,21 @@ public sealed class ArtistVideoAutoFetcher
             Path.Combine(persistence.DataDirectory, MissLedgerFile),
             Path.Combine(persistence.DataDirectory, IndexFile),
             albums?.Gate ?? new PoliteGate(AnimatedArtworkAutoFetcher.RequestInterval),
-            albums?.Turn ?? new SemaphoreSlim(1, 1));
+            albums?.Turn ?? new SemaphoreSlim(1, 1),
+            shrinkLedgerPath: Path.Combine(persistence.DataDirectory, ShrinkLedgerFile));
 
     // Data folder files (Settings › Reset Everything deletes them).
     internal const string BlockListFile = "artist_video_no_autofetch.json";
     internal const string MissLedgerFile = "artist_video_autofetch_ledger.json";
     internal const string IndexFile = "artist_video_index.json";
+    internal const string ShrinkLedgerFile = "artist_video_shrink_tried.json";
+
+    /// <summary>A cached clip wider than this was saved before the picker took the hero-size
+    /// stream (1080p): it is fetched again at the size picked now (<see cref="ShrinkAsync"/>).</summary>
+    internal const int ShrinkAboveWidth = 1100;
+
+    /// <summary>The smaller replacement waiting for the old file to be let go of.</summary>
+    internal static string NextPathFor(string path) => Path.ChangeExtension(path, ".next.mp4");
 
     /// <summary>The Apple artist id this artist resolved to before, 0 when none.</summary>
     public long KnownAppleId(Guid artistId)
@@ -76,9 +88,126 @@ public sealed class ArtistVideoAutoFetcher
         var appleId = KnownAppleId(artistId);
         if (appleId <= 0) return null;
         var path = Cache.ArtistVideoPathFor(appleId);
+        TrySwapIn(path); // a smaller one fetched while the old one played
         if (!File.Exists(path)) return null;
         Cache.TouchFile(path);
         return path;
+    }
+
+    /// <summary>Puts a waiting smaller replacement in place of <paramref name="path"/>, unless the
+    /// old file is held open (playing): then it waits for the next start.</summary>
+    private bool TrySwapIn(string path)
+    {
+        var next = NextPathFor(path);
+        if (!File.Exists(next)) return false;
+        try
+        {
+            Cache.CommitFile(path, next);
+            return true;
+        }
+        catch (IOException) { return false; }
+        catch (UnauthorizedAccessException) { return false; }
+    }
+
+    /// <summary>
+    /// The hero started a cached clip of <paramref name="clipWidth"/>x<paramref name="clipHeight"/>.
+    /// One saved before the picker took the hero-size stream (wider than <see cref="ShrinkAboveWidth"/>)
+    /// is looked up again and the variant picked now downloaded in the shared one-at-a-time turn;
+    /// it replaces the old file at once when it can, else at the next start (the old one keeps
+    /// playing meanwhile). Asked once per artist (remembered on disk), unless Apple did not answer
+    /// (offline: the old file stays, asked again next time). Never throws except for cancellation.
+    /// True when a smaller file was saved.
+    /// </summary>
+    public async Task<bool> ShrinkAsync(Guid artistId, string artistName, int clipWidth, int clipHeight, long capBytes, CancellationToken ct)
+    {
+        if (clipWidth <= ShrinkAboveWidth) return false;
+        var appleId = KnownAppleId(artistId);
+        if (appleId <= 0 || Cache.IsBlocked(artistId) || ShrinkTried(appleId)) return false;
+
+        await _one.WaitAsync(ct).ConfigureAwait(false);
+        string? part = null;
+        try
+        {
+            if (Cache.IsBlocked(artistId) || ShrinkTried(appleId)) return false;
+            var path = Cache.ArtistVideoPathFor(appleId);
+            if (!File.Exists(path)) return false;
+
+            ArtistVideoLookup found;
+            try
+            {
+                found = await _lookup(artistName, appleId, _gate, ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+            catch (Exception ex)
+            {
+                DebugLog.Write(ITunesArtworkService.LogSource, $"artist video shrink: {artistName}: {ex.Message}");
+                return false;
+            }
+            if (found.Outcome == ArtistVideoOutcome.Failed) return false; // offline: keep it, ask next time
+            if (found.Outcome != ArtistVideoOutcome.Found || found.Variant is not { } variant
+                || found.ArtistId != appleId || variant.Width >= clipWidth)
+            {
+                RecordShrinkTried(appleId); // nothing smaller: never asked again
+                return false;
+            }
+
+            part = Path.ChangeExtension(path, ".shrink.part");
+            await _gate.WaitTurnAsync(ct).ConfigureAwait(false);
+            if (!await _download(variant, part, ct).ConfigureAwait(false)) return false;
+            if (Cache.IsBlocked(artistId)) return false; // removed on the page meanwhile
+
+            File.Move(part, NextPathFor(path), overwrite: true);
+            part = null;
+            RecordShrinkTried(appleId);
+            DebugLogger.Info(DebugLogger.Category.Playback, "ArtistVideo.Shrink",
+                $"artist_{appleId}: {clipWidth}x{clipHeight} -> {variant.Width}x{variant.Height}");
+            TrySwapIn(path);
+            Cache.Trim(capBytes);
+            return true;
+        }
+        finally
+        {
+            try { if (part != null && File.Exists(part)) File.Delete(part); } catch { /* best effort */ }
+            _one.Release();
+        }
+    }
+
+    private bool ShrinkTried(long appleId)
+    {
+        lock (_indexLock) return ShrinkSet().Contains(appleId);
+    }
+
+    private void RecordShrinkTried(long appleId)
+    {
+        lock (_indexLock)
+        {
+            if (!ShrinkSet().Add(appleId) || _shrinkPath == null) return;
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(_shrinkPath)!);
+                File.WriteAllText(_shrinkPath, JsonSerializer.Serialize(_shrinkTried));
+            }
+            catch (Exception ex)
+            {
+                DebugLog.Write(ITunesArtworkService.LogSource, $"artist video: shrink list not saved: {ex.Message}");
+            }
+        }
+    }
+
+    private HashSet<long> ShrinkSet()
+    {
+        if (_shrinkTried != null) return _shrinkTried;
+        _shrinkTried = new HashSet<long>();
+        try
+        {
+            if (_shrinkPath != null && File.Exists(_shrinkPath))
+                _shrinkTried = JsonSerializer.Deserialize<HashSet<long>>(File.ReadAllText(_shrinkPath)) ?? new();
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write(ITunesArtworkService.LogSource, $"artist video: shrink list unreadable: {ex.Message}");
+        }
+        return _shrinkTried;
     }
 
     /// <summary>
@@ -152,6 +281,7 @@ public sealed class ArtistVideoAutoFetcher
         var appleId = KnownAppleId(artistId);
         if (appleId <= 0) return;
         var path = Cache.ArtistVideoPathFor(appleId);
+        try { File.Delete(NextPathFor(path)); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         for (var attempt = 0; attempt < 20 && File.Exists(path); attempt++)
         {
             try
