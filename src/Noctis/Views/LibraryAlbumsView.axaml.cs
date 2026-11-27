@@ -352,6 +352,7 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
         _albumMenuBuilder.BindFindLyrics(album, vm.FindLyricsAlbumCommand); // GitHub #195
         _albumMenuBuilder.BindDiscogsGenres(album, vm.DiscogsGenresAlbumCommand); // GitHub #267
         _albumMenuBuilder.BindGroupAlbums(album, vm.GroupIntoOneAlbumCommand); // GitHub #178
+        _albumMenuBuilder.BindUndoGroupAlbums(album, vm.CanUndoGrouping(album) ? vm.UndoGroupingCommand : null);
         _albumMenuBuilder.BindCarouselStyle(album, AlbumCarouselStyleOverrides.For(album), vm.IsCarouselAvailable); // GitHub #233
 
         OpenMenu(_albumMenuBuilder.Menu, tile);

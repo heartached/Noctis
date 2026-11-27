@@ -4499,10 +4499,14 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="GroupAlbums.Title" xml:space="preserve"><value>Tek Albümde Birleştir</value><comment>Dialog title</comment></data>
   <data name="GroupAlbums.AlbumName" xml:space="preserve"><value>Albüm</value><comment>Field label</comment></data>
   <data name="GroupAlbums.AlbumArtist" xml:space="preserve"><value>Albüm Sanatçısı</value><comment>Field label</comment></data>
-  <data name="GroupAlbums.Hint" xml:space="preserve"><value>{0} albüm, {1} şarkı. Dosyaların Albüm ve Albüm Sanatçısı etiketlerine kaydedilir.</value><comment>{0} album count, {1} song count</comment></data>
+  <data name="GroupAlbums.Hint" xml:space="preserve"><value>{0} albüm, {1} şarkı tek albüm olur. Dosyaların Albüm ve Albüm Sanatçısı etiketleri değiştirilir. Geri almak için albümün menüsündeki “Birleştirmeyi Geri Al” seçeneğini kullan.</value><comment>{0} album count, {1} song count</comment></data>
   <data name="GroupAlbums.Confirm" xml:space="preserve"><value>Birleştir</value><comment>Confirm button</comment></data>
   <data name="GroupAlbums.SelectHint" xml:space="preserve"><value>Bu adda başka albüm yok. Albümler ızgarasında birbirine ait albümlere Ctrl tuşuyla tıkla, ardından birine sağ tıkla.</value><comment>Shown when only one album is chosen</comment></data>
   <data name="GroupAlbums.NotWritten" xml:space="preserve"><value>Noctis'te birleştirildi, ancak bazı dosyalar ({0}) kaydedilemedi (salt okunur veya başka bir uygulamada açık). Böyle bir dosya değişirse sonraki taramada eski albümüne döner.</value><comment>{0} file count; list of file names follows</comment></data>
+  <data name="GroupAlbums.Undo" xml:space="preserve"><value>Birleştirmeyi Geri Al</value><comment>Album menu row and dialog title: puts back what Group into One Album / Move to Album changed</comment></data>
+  <data name="GroupAlbums.UndoConfirm" xml:space="preserve"><value>{0} şarkı birleştirmeden önceki albümlerine döner ve dosyaları eski etiketlerine kavuşur:</value><comment>{0} song count; a list of 'Album — Album Artist' lines follows</comment></data>
+  <data name="GroupAlbums.UndoButton" xml:space="preserve"><value>Geri Al</value><comment>Confirm button of the Undo Grouping dialog</comment></data>
+  <data name="GroupAlbums.UndoNotWritten" xml:space="preserve"><value>Noctis'te geri alındı, ancak bazı dosyalar ({0}) kaydedilemedi (salt okunur veya başka bir uygulamada açık). Noctis bir sonraki açılışta yeniden deneyecek.</value><comment>{0} file count; list of file names follows</comment></data>
   <!-- LyricShareDialog Lyrics Page -->
   <data name="LyricShare.LyricsPage" xml:space="preserve"><value>Söz Sayfası</value><comment>Share style option</comment></data>
   <data name="LyricShare.LyricsPageTip" xml:space="preserve"><value>Söz sayfası gibi tam ekran hareketli sözler</value></data>

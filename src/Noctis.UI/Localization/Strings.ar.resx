@@ -9447,10 +9447,14 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="GroupAlbums.Title" xml:space="preserve"><value>التجميع في ألبوم واحد</value><comment>Dialog title</comment></data>
   <data name="GroupAlbums.AlbumName" xml:space="preserve"><value>الألبوم</value><comment>Field label</comment></data>
   <data name="GroupAlbums.AlbumArtist" xml:space="preserve"><value>فنان الألبوم</value><comment>Field label</comment></data>
-  <data name="GroupAlbums.Hint" xml:space="preserve"><value>الألبومات: {0}، الأغاني: {1}. يُحفظ في وسمَي «الألبوم» و«فنان الألبوم» في الملفات.</value><comment>{0} album count, {1} song count</comment></data>
+  <data name="GroupAlbums.Hint" xml:space="preserve"><value>الألبومات: {0}، الأغاني: {1} — ستصبح ألبومًا واحدًا. يتغيّر وسما «الألبوم» و«فنان الألبوم» في الملفات. للتراجع، استخدم «التراجع عن التجميع» في قائمة الألبوم.</value><comment>{0} album count, {1} song count</comment></data>
   <data name="GroupAlbums.Confirm" xml:space="preserve"><value>تجميع</value><comment>Confirm button</comment></data>
   <data name="GroupAlbums.SelectHint" xml:space="preserve"><value>لا يوجد ألبوم آخر بهذا الاسم. انقر مع Ctrl على الألبومات التي تنتمي معًا في شبكة الألبومات، ثم انقر بزر الماوس الأيمن على أحدها.</value><comment>Shown when only one album is chosen</comment></data>
   <data name="GroupAlbums.NotWritten" xml:space="preserve"><value>جُمّعت في Noctis، لكن تعذّر حفظ بعض الملفات ({0}) (للقراءة فقط أو مفتوحة في تطبيق آخر). إذا تغيّر أحد هذه الملفات، فسيعود إلى ألبومه القديم في الفحص التالي.</value><comment>{0} file count; list of file names follows</comment></data>
+  <data name="GroupAlbums.Undo" xml:space="preserve"><value>التراجع عن التجميع</value><comment>Album menu row and dialog title: puts back what Group into One Album / Move to Album changed</comment></data>
+  <data name="GroupAlbums.UndoConfirm" xml:space="preserve"><value>الأغاني: {0}. ستعود إلى الألبومات التي كانت فيها قبل التجميع، وتستعيد ملفاتها وسومها السابقة:</value><comment>{0} song count; a list of 'Album — Album Artist' lines follows</comment></data>
+  <data name="GroupAlbums.UndoButton" xml:space="preserve"><value>تراجع</value><comment>Confirm button of the Undo Grouping dialog</comment></data>
+  <data name="GroupAlbums.UndoNotWritten" xml:space="preserve"><value>تم التراجع في Noctis، لكن تعذّر حفظ بعض الملفات ({0}) (للقراءة فقط أو مفتوحة في تطبيق آخر). سيحاول Noctis مرة أخرى عند تشغيله التالي.</value><comment>{0} file count; list of file names follows</comment></data>
   <!-- LyricShareDialog Lyrics Page -->
   <data name="LyricShare.LyricsPage" xml:space="preserve"><value>صفحة الكلمات</value><comment>Share style option</comment></data>
   <data name="LyricShare.LyricsPageTip" xml:space="preserve"><value>كلمات متحركة بملء الشاشة، مثل صفحة الكلمات</value></data>

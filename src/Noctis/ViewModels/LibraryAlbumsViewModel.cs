@@ -1575,6 +1575,40 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
                 Details: result.UnwrittenFiles.Take(8).ToList(), InfoOnly: true));
     }
 
+    /// <summary>Undo Grouping: whether the album (or the Ctrl-selection it is in) holds songs a
+    /// Group into One Album / Move to Album changed that can be put back (<see cref="AlbumUndo"/>).</summary>
+    public bool CanUndoGrouping(Album album) =>
+        SelectionOr(album).Any(a => a?.Tracks is { Count: > 0 } tracks && tracks.Any(AlbumUndo.Applies));
+
+    /// <summary>
+    /// Undo Grouping (Discord 11-27): the album's (or the Ctrl-selection's) songs a grouping
+    /// changed go back to the albums and tags they had before, in the library and the files,
+    /// after a confirmation naming how many songs go back to which albums.
+    /// </summary>
+    [RelayCommand]
+    private async Task UndoGrouping(Album album)
+    {
+        var tracks = AlbumUndo.UndoableSongs(SelectionOr(album).SelectMany(a => a?.Tracks ?? new()));
+        ConsumeCtrlSelection();
+        if (tracks.Count == 0) return;
+
+        var albums = tracks
+            .Select(t => t.GroupUndo!.Before)
+            .Select(b => $"{b.Album} — {b.AlbumArtist}")
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var answer = await ShowGroupNotice(new Views.ConfirmationRequest(
+            Loc.T("GroupAlbums.UndoConfirm", tracks.Count), Loc.T("GroupAlbums.Undo"),
+            Details: albums.Take(8).ToList(), ConfirmText: Loc.T("GroupAlbums.UndoButton")));
+        if (!answer.Confirmed) return;
+
+        var result = await _library.UndoAlbumGroupingAsync(tracks);
+        if (result.UnwrittenFiles.Count > 0)
+            await ShowGroupNotice(new Views.ConfirmationRequest(
+                Loc.T("GroupAlbums.UndoNotWritten", result.UnwrittenFiles.Count), Loc.T("GroupAlbums.Undo"),
+                Details: result.UnwrittenFiles.Take(8).ToList(), InfoOnly: true));
+    }
+
     private Action<string>? _viewArtistAction;
     public void SetViewArtistAction(Action<string> action) => _viewArtistAction = action;
 

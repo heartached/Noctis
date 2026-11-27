@@ -260,6 +260,17 @@ public interface ILibraryService
     Task<AlbumGroupResult> MoveToAlbumAsync(IReadOnlyList<Track> tracks, string album, string albumArtist,
         CancellationToken ct = default) => Task.FromResult(new AlbumGroupResult(Guid.Empty, 0, Array.Empty<string>()));
 
+    /// <summary>
+    /// Undo Grouping (Discord 11-27): puts the songs of <paramref name="tracks"/> that a
+    /// <see cref="GroupIntoAlbumAsync"/> or <see cref="MoveToAlbumAsync"/> changed back on what
+    /// they had before (<see cref="AlbumUndo"/>), in the library and in the files. Songs edited
+    /// since, or grouped by older builds, are left alone. Failures, cover carry, rebuild, save and
+    /// LibraryUpdated as <see cref="GroupIntoAlbumAsync"/>; the result's Grouped is how many songs
+    /// went back.
+    /// </summary>
+    Task<AlbumGroupResult> UndoAlbumGroupingAsync(IReadOnlyList<Track> tracks, CancellationToken ct = default)
+        => Task.FromResult(new AlbumGroupResult(Guid.Empty, 0, Array.Empty<string>()));
+
     /// <summary>GitHub #193: whether the automatic album grouping (#178) is on.</summary>
     bool AlbumGroupingEnabled => true;
 

@@ -9444,10 +9444,14 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="GroupAlbums.Title" xml:space="preserve"><value>合并为一张专辑</value><comment>Dialog title</comment></data>
   <data name="GroupAlbums.AlbumName" xml:space="preserve"><value>专辑</value><comment>Field label</comment></data>
   <data name="GroupAlbums.AlbumArtist" xml:space="preserve"><value>专辑艺人</value><comment>Field label</comment></data>
-  <data name="GroupAlbums.Hint" xml:space="preserve"><value>{0} 张专辑，{1} 首歌曲。将保存到文件的“专辑”和“专辑艺人”标签中。</value><comment>{0} album count, {1} song count</comment></data>
+  <data name="GroupAlbums.Hint" xml:space="preserve"><value>{0} 张专辑、{1} 首歌曲将合并为一张专辑。文件的“专辑”和“专辑艺人”标签会被修改。如需还原，请使用专辑菜单中的“撤销合并”。</value><comment>{0} album count, {1} song count</comment></data>
   <data name="GroupAlbums.Confirm" xml:space="preserve"><value>合并</value><comment>Confirm button</comment></data>
   <data name="GroupAlbums.SelectHint" xml:space="preserve"><value>没有其他专辑使用此名称。请在“专辑”网格中按住 Ctrl 点击属于同一张专辑的各项，然后右键点击其中一个。</value><comment>Shown when only one album is chosen</comment></data>
   <data name="GroupAlbums.NotWritten" xml:space="preserve"><value>已在 Noctis 中合并，但部分文件（{0}）无法保存（只读或在其他应用中打开）。如果此类文件发生变化，下次扫描时会回到原来的专辑。</value><comment>{0} file count; list of file names follows</comment></data>
+  <data name="GroupAlbums.Undo" xml:space="preserve"><value>撤销合并</value><comment>Album menu row and dialog title: puts back what Group into One Album / Move to Album changed</comment></data>
+  <data name="GroupAlbums.UndoConfirm" xml:space="preserve"><value>{0} 首歌曲将回到合并前所在的专辑，文件也会恢复原来的标签：</value><comment>{0} song count; a list of 'Album — Album Artist' lines follows</comment></data>
+  <data name="GroupAlbums.UndoButton" xml:space="preserve"><value>撤销</value><comment>Confirm button of the Undo Grouping dialog</comment></data>
+  <data name="GroupAlbums.UndoNotWritten" xml:space="preserve"><value>已在 Noctis 中撤销，但部分文件（{0}）无法保存（只读或在其他应用中打开）。Noctis 下次启动时会再试一次。</value><comment>{0} file count; list of file names follows</comment></data>
   <!-- LyricShareDialog Lyrics Page -->
   <data name="LyricShare.LyricsPage" xml:space="preserve"><value>歌词页面</value><comment>Share style option</comment></data>
   <data name="LyricShare.LyricsPageTip" xml:space="preserve"><value>全屏动态歌词，与歌词页面一样</value></data>

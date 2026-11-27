@@ -32,6 +32,8 @@ public sealed class AlbumContextMenuBuilder
     public MenuItem Metadata { get; private set; } = null!;
     /// <summary>GitHub #178: the album (or the Ctrl-selection) → one album. Bound by <see cref="BindGroupAlbums"/>.</summary>
     public MenuItem GroupAlbums { get; private set; } = null!;
+    /// <summary>Undo Grouping: puts back what Group into One Album / Move to Album changed. Bound by <see cref="BindUndoGroupAlbums"/>.</summary>
+    public MenuItem UndoGroupAlbums { get; private set; } = null!;
     public MenuItem EditDescription { get; private set; } = null!;
     public MenuItem Convert { get; private set; } = null!;
     public MenuItem ScanReplayGain { get; private set; } = null!;
@@ -129,6 +131,9 @@ public sealed class AlbumContextMenuBuilder
         GroupAlbums.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis.UI/Assets/Icons/Metadata%20ICON.png");
         items.Add(GroupAlbums);
 
+        UndoGroupAlbums = MenuV2.Row(resourceHost, Loc.T("GroupAlbums.Undo"), "MenuLineHistory", visible: false);
+        items.Add(UndoGroupAlbums);
+
         EditDescription = new MenuItem { Header = "Update Description", IsVisible = false };
         EditDescription.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis.UI/Assets/Icons/Metadata%20ICON.png");
         items.Add(EditDescription);
@@ -225,6 +230,8 @@ public sealed class AlbumContextMenuBuilder
         items.Add(Metadata);
         GroupAlbums = MenuV2.Row(host, Loc.T("GroupAlbums.Menu"), "MenuLineAlbum", visible: false);
         items.Add(GroupAlbums);
+        UndoGroupAlbums = MenuV2.Row(host, Loc.T("GroupAlbums.Undo"), "MenuLineHistory", visible: false);
+        items.Add(UndoGroupAlbums);
         EditDescription = MenuV2.Row(host, Loc.T("AlbumDetail.EditDescription"), null, visible: false);
         items.Add(EditDescription);
         FindLyrics = MenuV2.Row(host, Loc.T("LibraryAlbums.FindLyrics"), "MenuLineLyricsBulk", visible: false);
@@ -358,6 +365,16 @@ public sealed class AlbumContextMenuBuilder
     public void BindGroupAlbums(Album album, ICommand? groupCommand)
     {
         BindOptional(GroupAlbums, groupCommand, album);
+        if (IsV2) MenuV2.RefreshLayout(Menu.Items);
+    }
+
+    /// <summary>
+    /// Undo Grouping, next to Group into One Album: shown only with a command, which the view
+    /// passes only when the album holds songs a grouping changed that can be put back.
+    /// </summary>
+    public void BindUndoGroupAlbums(Album album, ICommand? undoCommand)
+    {
+        BindOptional(UndoGroupAlbums, undoCommand, album);
         if (IsV2) MenuV2.RefreshLayout(Menu.Items);
     }
 

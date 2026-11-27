@@ -299,6 +299,15 @@ internal sealed class FakeLibraryService : ILibraryService
         return Task.FromResult(MoveResult);
     }
 
+    /// <summary>What UndoAlbumGroupingAsync was asked for (Undo Grouping).</summary>
+    public List<IReadOnlyList<Track>> UndoGroupCalls { get; } = new();
+    public AlbumGroupResult UndoGroupResult { get; set; } = new(Guid.Empty, 0, Array.Empty<string>());
+    public Task<AlbumGroupResult> UndoAlbumGroupingAsync(IReadOnlyList<Track> tracks, CancellationToken ct = default)
+    {
+        UndoGroupCalls.Add(tracks);
+        return Task.FromResult(UndoGroupResult);
+    }
+
     /// <summary>What Settings asked of the album grouping (GitHub #193 / #190).</summary>
     public List<bool> AlbumGroupingCalls { get; } = new();
     public List<bool> AlbumGroupingWriteTagsCalls { get; } = new();

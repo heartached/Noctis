@@ -2682,6 +2682,9 @@ public class LibraryService : ILibraryService
             // does not depend on what is shown. A no-op once the library is grouped.
             // GitHub #193: switched off (or no longer a candidate), a grouped song goes back to
             // the album it had before; a no-op once nothing is grouped.
+            // Undo Grouping: a song edited since its grouping drops what it had before (it no
+            // longer applies, and Undo must never overwrite the newer edit).
+            AlbumUndo.Prune(allTracks);
             albumMoves = AlbumGrouping.Restore(allTracks, grouping);
             if (grouping)
             {
@@ -3257,6 +3260,19 @@ public class LibraryService : ILibraryService
                 .FirstOrDefault(i => i != null), CancellationToken.None);
         }
 
+        // The moved files' own identity tags, which the write replaces: kept for Undo Grouping.
+        Dictionary<Guid, AlbumIdentityTags>? own = null;
+        if (identity != null)
+            own = await Task.Run(() =>
+            {
+                var read = new Dictionary<Guid, AlbumIdentityTags>();
+                foreach (var t in moving)
+                    if (t.HasFilesystemPath && !t.IsRemoteStream && File.Exists(t.FilePath)
+                        && _metadata.ReadAlbumIdentity(t.FilePath) is { } tags)
+                        read[t.Id] = tags;
+                return read;
+            }, CancellationToken.None);
+
         var plans = AlbumMove.PlanMove(moving, target, album, albumArtist).ToDictionary(p => p.Track);
         return await ReAlbumAsync(moving, album, albumArtist,
             apply: t =>
@@ -3265,7 +3281,8 @@ public class LibraryService : ILibraryService
                 return true;
             },
             write: t => identity != null ? _metadata.WriteTrackMetadata(t, identity) : _metadata.WriteTrackMetadata(t),
-            logLabel: "Move to album (#239)");
+            logLabel: "Move to album (#239)",
+            identityOf: own);
     }
 
     /// <summary>
@@ -3274,10 +3291,13 @@ public class LibraryService : ILibraryService
     /// on the track and returns true) is written by <paramref name="write"/> and re-keyed to the
     /// album. A file that cannot be written still moves in the library, is listed in the result
     /// and is tried again later (Album and Album Artist only). Cached covers follow, then the
-    /// library is rebuilt, saved and LibraryUpdated raised.
+    /// library is rebuilt, saved and LibraryUpdated raised. Each changed song keeps what it had
+    /// before (<see cref="AlbumUndo"/>) for Undo Grouping; <paramref name="identityOf"/> gives a
+    /// song's file's album identity tags when <paramref name="write"/> replaces them.
     /// </summary>
     private async Task<AlbumGroupResult> ReAlbumAsync(List<Track> targets, string album, string albumArtist,
-        Func<Track, bool> apply, Func<Track, bool> write, string logLabel)
+        Func<Track, bool> apply, Func<Track, bool> write, string logLabel,
+        IReadOnlyDictionary<Guid, AlbumIdentityTags>? identityOf = null)
     {
         var albumId = Track.ComputeAlbumId(albumArtist, album);
         var moves = new List<AlbumGrouping.Move>();
@@ -3288,6 +3308,7 @@ public class LibraryService : ILibraryService
         {
             foreach (var t in targets)
             {
+                var undo = AlbumUndo.Begin(t, identityOf?.GetValueOrDefault(t.Id));
                 if (!apply(t)) continue;
                 grouped++;
                 // Through the metadata editor's writer, so every other tag is kept as the
@@ -3309,6 +3330,7 @@ public class LibraryService : ILibraryService
                 if (t.AlbumId != albumId)
                     moves.Add(new AlbumGrouping.Move(t.Id, t.AlbumId, albumId));
                 t.AlbumId = albumId;
+                AlbumUndo.Finish(t, undo);
             }
         }, CancellationToken.None);
 
@@ -3327,6 +3349,57 @@ public class LibraryService : ILibraryService
             (unwritten.Count > 0 ? $", {unwritten.Count} file(s) not written" : ""));
         LibraryUpdated?.Invoke(this, EventArgs.Empty);
         return new AlbumGroupResult(albumId, grouped, unwritten);
+    }
+
+    /// <inheritdoc />
+    public async Task<AlbumGroupResult> UndoAlbumGroupingAsync(IReadOnlyList<Track> tracks, CancellationToken ct = default)
+    {
+        var targets = AlbumUndo.UndoableSongs(tracks ?? Array.Empty<Track>());
+        if (targets.Count == 0)
+            return new AlbumGroupResult(Guid.Empty, 0, Array.Empty<string>());
+
+        var moves = new List<AlbumGrouping.Move>();
+        var unwritten = new List<string>();
+        await Task.Run(() =>
+        {
+            foreach (var t in targets)
+            {
+                var undo = t.GroupUndo!;
+                var extra = AlbumUndo.RestoreTags(t, undo);
+                // Through the same writer as the grouping (ReAlbumAsync), so every other tag is
+                // kept as the editor would. Streams and phone documents have no file to write here.
+                var written = false;
+                if (t.HasFilesystemPath && !t.IsRemoteStream)
+                {
+                    try { written = _metadata.WriteAlbumUndo(t, extra); }
+                    catch (Exception ex) { DebugLog.Write("Library", $"Undo grouping: write failed for '{t.FilePath}': {ex.Message}"); }
+                }
+                if (!written)
+                    unwritten.Add(t.HasFilesystemPath ? Path.GetFileName(t.FilePath) : t.Title);
+                // As a grouping (GitHub #201): a file that can be written later is tried again by
+                // the next pass (Album and Album Artist only).
+                t.AlbumGroupingUnwritten = !written && t.HasFilesystemPath && !t.IsRemoteStream
+                                           && t.SourceType is SourceType.Local or SourceType.Smb;
+                var from = t.AlbumId;
+                AlbumUndo.RestoreState(t, undo, written);
+                if (from != t.AlbumId)
+                    moves.Add(new AlbumGrouping.Move(t.Id, from, t.AlbumId));
+            }
+        }, CancellationToken.None);
+
+        // Cached covers and pins go back the way ReAlbumAsync carried them forward.
+        await Task.Run(() => CarryAlbumKeyedFiles(_persistence, moves), CancellationToken.None);
+        foreach (var t in targets) t.NotifyMetadataUpdated();
+        await RebuildIndexesAsync();
+        await SaveAsync();
+        try { await _sqliteIndex.UpsertTracksAsync(targets, CancellationToken.None); }
+        catch (Exception ex) { DebugLog.Write("Library", $"Undo grouping: index update failed: {ex.Message}"); }
+        if (moves.Count > 0)
+            await RepointPinnedAlbumsAsync(moves, _tracks);
+        DebugLog.Write("Library", $"Undo grouping: {targets.Count} song(s) back on their own album" +
+            (unwritten.Count > 0 ? $", {unwritten.Count} file(s) not written" : ""));
+        LibraryUpdated?.Invoke(this, EventArgs.Empty);
+        return new AlbumGroupResult(Guid.Empty, targets.Count, unwritten);
     }
 
     /// <summary>
@@ -3503,6 +3576,9 @@ public class LibraryService : ILibraryService
         target.AddedIndividually = source.AddedIndividually;
         // A song re-tagged while it waits in the Inbox stays there.
         target.IsInInbox = source.IsInInbox;
+        // Undo Grouping: a grouped file reads back as grouped (every tag save re-imports it), and
+        // keeps what it had before; one re-tagged elsewhere since does not.
+        AlbumUndo.Carry(source, target);
 
         // Analysis results are expensive to produce (a full ffmpeg decode per track) and
         // are not always round-trippable through file tags, so carry them across a

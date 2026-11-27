@@ -4455,11 +4455,15 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="GroupAlbums.Title" xml:space="preserve"><value>Объединить в один альбом</value><comment>Dialog title</comment></data>
   <data name="GroupAlbums.AlbumName" xml:space="preserve"><value>Альбом</value><comment>Field label</comment></data>
   <data name="GroupAlbums.AlbumArtist" xml:space="preserve"><value>Исполнитель альбома</value><comment>Field label</comment></data>
-  <data name="GroupAlbums.Hint" xml:space="preserve"><value>Альбомов: {0}, песен: {1}. Сохраняется в теги «Альбом» и «Исполнитель альбома» файлов.</value><comment>{0} album count, {1} song count</comment></data>
+  <data name="GroupAlbums.Hint" xml:space="preserve"><value>Альбомов: {0}, песен: {1} — они станут одним альбомом. Теги «Альбом» и «Исполнитель альбома» в файлах изменятся. Отменить это можно пунктом «Отменить объединение» в меню альбома.</value><comment>{0} album count, {1} song count</comment></data>
   <data name="GroupAlbums.Confirm" xml:space="preserve"><value>Объединить</value><comment>Confirm button</comment></data>
   <data name="GroupAlbums.SelectHint" xml:space="preserve"><value>Других альбомов с таким названием нет. В сетке альбомов выделите нужные альбомы щелчком с Ctrl, затем щёлкните правой кнопкой по одному из них.</value><comment>Shown when only one album is chosen</comment></data>
   <data name="GroupAlbums.SelectHintMac" xml:space="preserve"><value>Других альбомов с таким названием нет. В сетке альбомов выделите нужные альбомы щелчком с ⌘, затем щёлкните правой кнопкой по одному из них.</value><comment>GroupAlbums.SelectHint on macOS, where Ctrl-click is a right-click and ⌘-click adds to the selection</comment></data>
   <data name="GroupAlbums.NotWritten" xml:space="preserve"><value>Объединено в Noctis, но не удалось сохранить файлов: {0} (только для чтения или открыты в другом приложении). Если такой файл изменится, при следующем сканировании он вернётся в прежний альбом.</value><comment>{0} file count; list of file names follows</comment></data>
+  <data name="GroupAlbums.Undo" xml:space="preserve"><value>Отменить объединение</value><comment>Album menu row and dialog title: puts back what Group into One Album / Move to Album changed</comment></data>
+  <data name="GroupAlbums.UndoConfirm" xml:space="preserve"><value>Песен: {0}. Они вернутся в альбомы, в которых были до объединения, а их файлам вернутся прежние теги:</value><comment>{0} song count; a list of 'Album — Album Artist' lines follows</comment></data>
+  <data name="GroupAlbums.UndoButton" xml:space="preserve"><value>Вернуть</value><comment>Confirm button of the Undo Grouping dialog</comment></data>
+  <data name="GroupAlbums.UndoNotWritten" xml:space="preserve"><value>Отменено в Noctis, но не удалось сохранить файлов: {0} (только для чтения или открыты в другом приложении). Noctis попробует снова при следующем запуске.</value><comment>{0} file count; list of file names follows</comment></data>
   <!-- LyricShareDialog Lyrics Page -->
   <data name="LyricShare.LyricsPage" xml:space="preserve"><value>Lyrics Page</value><comment>Share style option</comment></data>
   <data name="LyricShare.LyricsPageTip" xml:space="preserve"><value>Full-screen moving lyrics, like the lyrics page</value></data>
