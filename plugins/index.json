@@ -56,8 +56,8 @@
       "type": "dotnet",
       "platforms": ["windows", "macos", "linux"],
       "download": "https://github.com/heartached/Noctis/releases/download/plugin-youtubeimport-v1.0.3/Noctis.Plugins.YouTubeImport-1.0.3.zip",
-      "sha256": "0a57011f3712734324fd4a09b589cdef423240334aba27554d2f698e27712c51",
-      "size": 82311,
+      "sha256": "e979325ed64e98c8782a6ab76df266743868b548c8f95e5315dc096273aa3575",
+      "size": 82309,
       "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.YouTubeImport",
       "icon": "Noctis.Plugins.YouTubeImport/icon.png"
     },

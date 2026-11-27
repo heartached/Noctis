@@ -18,6 +18,9 @@
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <DebugType>none</DebugType>
     <DebugSymbols>false</DebugSymbols>
+    <!-- The compiler names file-local types (every [GeneratedRegex] helper is one) after a hash
+         of the source file's full path, so without this the DLL differs per checkout folder. -->
+    <PathMap>$(MSBuildProjectDirectory)=/_/$(MSBuildProjectName)</PathMap>
   </PropertyGroup>
 
   <UsingTask TaskName="NoctisReproducibleZip" TaskFactory="RoslynCodeTaskFactory"
