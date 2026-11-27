@@ -6,6 +6,10 @@ namespace Noctis.Plugins.YouTubeImport;
 /// <summary>One finished download in the window's "Recent downloads" list.</summary>
 public sealed record RecentDownload(string Title, string Artist, string FilePath, DateTimeOffset When, bool InLibrary);
 
+/// <summary>A video downloaded before (by its YouTube id), so a later search does not download it again.</summary>
+/// <param name="AlbumId">The library album it landed in (for "Show"); empty when unknown.</param>
+public sealed record DownloadedVideo(string VideoId, string FilePath, string AlbumId, bool InLibrary);
+
 /// <summary>
 /// What the window remembers between sessions, in the plugin's data folder (state.json): the
 /// download folder the user chose (empty = the default next to the music folders), the format,
@@ -15,6 +19,8 @@ public sealed class ImportState
 {
     public const string FileName = "state.json";
     public const int MaxRecent = 20;
+    /// <summary>How many downloaded videos the index remembers (oldest go first).</summary>
+    public const int MaxDownloaded = 5000;
 
     private static readonly JsonSerializerOptions Json = new()
     {
@@ -25,6 +31,8 @@ public sealed class ImportState
     private readonly string? _path;
     private readonly object _gate = new();
     private readonly List<RecentDownload> _recent = new();
+    private readonly List<DownloadedVideo> _downloaded = new();
+    private readonly HashSet<string> _downloading = new(StringComparer.Ordinal);
 
     /// <param name="legacyFolder">First run only (no state.json yet): the download folder set in
     /// Noctis before this was a plugin, so a custom folder is not silently dropped (owner 10-29).</param>
@@ -70,6 +78,45 @@ public sealed class ImportState
         RecentChanged?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>The earlier download of <paramref name="videoId"/> whose file is still there, or null
+    /// (a record whose file is gone is forgotten: downloading again is then right).</summary>
+    public DownloadedVideo? FindDownloaded(string? videoId)
+    {
+        if (string.IsNullOrEmpty(videoId)) return null;
+        DownloadedVideo? found;
+        lock (_gate) found = _downloaded.LastOrDefault(d => d.VideoId == videoId);
+        if (found is null) return null;
+        bool exists;
+        try { exists = File.Exists(found.FilePath); } catch { exists = false; }
+        if (exists) return found;
+        lock (_gate) _downloaded.RemoveAll(d => d.VideoId == videoId);
+        Save();
+        return null;
+    }
+
+    public void AddDownloaded(DownloadedVideo item)
+    {
+        if (string.IsNullOrEmpty(item.VideoId)) return;
+        lock (_gate)
+        {
+            _downloaded.RemoveAll(d => d.VideoId == item.VideoId);
+            _downloaded.Add(item);
+            if (_downloaded.Count > MaxDownloaded) _downloaded.RemoveRange(0, _downloaded.Count - MaxDownloaded);
+        }
+        Save();
+    }
+
+    /// <summary>Marks <paramref name="videoId"/> as downloading (any window of this plugin); false when it already is.</summary>
+    public bool TryStartDownload(string videoId)
+    {
+        lock (_gate) return _downloading.Add(videoId);
+    }
+
+    public void EndDownload(string videoId)
+    {
+        lock (_gate) _downloading.Remove(videoId);
+    }
+
     public void ClearRecent()
     {
         lock (_gate) _recent.Clear();
@@ -82,6 +129,7 @@ public sealed class ImportState
         public string? DownloadFolder { get; set; }
         public string? Format { get; set; }
         public List<RecentDownload>? Recent { get; set; }
+        public List<DownloadedVideo>? Downloaded { get; set; }
     }
 
     private void Load(Func<string?>? legacyFolder)
@@ -103,6 +151,9 @@ public sealed class ImportState
             Format = AudioFormat.FromKey(dto.Format).Key;
             if (dto.Recent is { } recent)
                 _recent.AddRange(recent.Where(r => r is not null && !string.IsNullOrWhiteSpace(r.FilePath)).Take(MaxRecent));
+            if (dto.Downloaded is { } downloaded)
+                _downloaded.AddRange(downloaded.Where(d => d is not null && !string.IsNullOrEmpty(d.VideoId) && !string.IsNullOrWhiteSpace(d.FilePath))
+                    .TakeLast(MaxDownloaded).Select(d => d with { AlbumId = d.AlbumId ?? "" }));
         }
         catch { /* a broken file starts fresh */ }
     }
@@ -113,7 +164,7 @@ public sealed class ImportState
         try
         {
             Dto dto;
-            lock (_gate) dto = new Dto { DownloadFolder = DownloadFolder, Format = Format, Recent = _recent.ToList() };
+            lock (_gate) dto = new Dto { DownloadFolder = DownloadFolder, Format = Format, Recent = _recent.ToList(), Downloaded = _downloaded.ToList() };
             Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
             var temp = _path + ".tmp";
             File.WriteAllText(temp, JsonSerializer.Serialize(dto, Json));

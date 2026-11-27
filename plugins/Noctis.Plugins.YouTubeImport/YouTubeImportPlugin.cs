@@ -80,7 +80,9 @@ public sealed class YouTubeImportPlugin : INoctisPlugin, IPluginViewProvider
     {
         if (_host is null || _http is null || _state is null || _importer is null || _lifetime is null)
             throw new InvalidOperationException("Add from YouTube is not running.");
-        var vm = new YouTubeImportViewModel(ImporterOverride ?? _importer, _http, _state, _lifetime.Token);
+        var host = _host;
+        var vm = new YouTubeImportViewModel(ImporterOverride ?? _importer, _http, _state, _lifetime.Token,
+            showAlbum: albumId => host.ShowAlbum(albumId));
         return new YouTubeImportView(vm);
     }
 
