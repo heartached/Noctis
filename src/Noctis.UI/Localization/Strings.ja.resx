@@ -9647,4 +9647,5 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Settings.ArtistVideos" xml:space="preserve"><value>アーティストビデオ</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ArtistVideosDesc" xml:space="preserve"><value>アーティストの Apple Music ビデオがあれば、ページの背景で再生します。開いたアーティストごとに検索します。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="ArtistDetail.RemoveArtistVideo" xml:space="preserve"><value>アーティストビデオを削除</value><comment>Header in ArtistDetailView.axaml</comment></data>
+  <data name="ArtistDetail.ArtistVideoLoading" xml:space="preserve"><value>ビデオを読み込み中…</value><comment>Text in ArtistDetailView.axaml</comment></data>
 </root>

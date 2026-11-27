@@ -4699,4 +4699,5 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="Settings.ArtistVideos" xml:space="preserve"><value>Sanatçı Videoları</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ArtistVideosDesc" xml:space="preserve"><value>Varsa sanatçının Apple Music videosunu sayfasının arkasında oynatır. Açtığın her sanatçıyı arar.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="ArtistDetail.RemoveArtistVideo" xml:space="preserve"><value>Sanatçı Videosunu Kaldır</value><comment>Header in ArtistDetailView.axaml</comment></data>
+  <data name="ArtistDetail.ArtistVideoLoading" xml:space="preserve"><value>Video yükleniyor…</value><comment>Text in ArtistDetailView.axaml</comment></data>
 </root>

@@ -48,7 +48,7 @@ public class ArtistVideoPerfTests : IDisposable
 
     private ArtistVideoAutoFetcher Fetcher()
         => new(
-            (name, _, _, _) => Task.FromResult(new ArtistVideoLookup(ArtistVideoOutcome.Found, 1000 + Math.Abs(name.GetHashCode() % 1000),
+            (name, _, _, _, _) => Task.FromResult(new ArtistVideoLookup(ArtistVideoOutcome.Found, 1000 + Math.Abs(name.GetHashCode() % 1000),
                 new AnimatedArtworkVariant("720p", "https://mvod.itunes.apple.com/w.m3u8", 1280, 720, "avc1.64001f", 3_000_000, true))),
             async (_, part, ct) =>
             {

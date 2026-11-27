@@ -4646,4 +4646,5 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.ArtistVideos" xml:space="preserve"><value>Видео исполнителей</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ArtistVideosDesc" xml:space="preserve"><value>Воспроизводит видео исполнителя из Apple Music за его страницей, если оно есть. Ищет каждого исполнителя, которого вы открываете.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="ArtistDetail.RemoveArtistVideo" xml:space="preserve"><value>Удалить видео исполнителя</value><comment>Header in ArtistDetailView.axaml</comment></data>
+  <data name="ArtistDetail.ArtistVideoLoading" xml:space="preserve"><value>Загрузка видео…</value><comment>Text in ArtistDetailView.axaml</comment></data>
 </root>

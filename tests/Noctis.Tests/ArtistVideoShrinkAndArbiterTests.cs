@@ -46,7 +46,7 @@ public class ArtistVideoShrinkAndArbiterTests : IDisposable
 
     private ArtistVideoAutoFetcher Fetcher()
         => new(
-            (_, _, _, _) => { _lookups++; return Task.FromResult(_answer); },
+            (_, _, _, _, _) => { _lookups++; return Task.FromResult(_answer); },
             async (_, part, ct) => { _downloads++; await File.WriteAllBytesAsync(part, new byte[_bytes], ct); return true; },
             new AnimatedArtworkCache(_persistence, Path.Combine(_dir, ArtistVideoAutoFetcher.BlockListFile), () => _clock),
             Path.Combine(_dir, ArtistVideoAutoFetcher.MissLedgerFile),

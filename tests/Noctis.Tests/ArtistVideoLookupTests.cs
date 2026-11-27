@@ -151,6 +151,63 @@ public class ArtistVideoLookupTests
         Assert.Equal(ArtistVideoOutcome.NoArtist, (await svc.FindArtistVideoAsync("Nirvana")).Outcome);
     }
 
+    // Owner 11-27: "Drake" and "Juice WRLD" never got a video on the official build; the log
+    // said "more than one artist named "Drake" in us; not guessing" (several store artists of
+    // exactly that name). The library's albums tell them apart.
+    private static ITunesArtworkService Namesakes(List<string> requests)
+    {
+        const string search = """
+            {"resultCount":2,"results":[
+            {"wrapperType":"artist","artistName":"Nirvana","artistLinkUrl":"https://music.apple.com/us/artist/nirvana/112018","artistId":112018},
+            {"wrapperType":"artist","artistName":"Nirvana","artistLinkUrl":"https://music.apple.com/us/artist/nirvana/5940196","artistId":5940196}]}
+            """;
+        static string Releases(long id, params string[] titles) => "{\"results\":[" + string.Join(",", titles.Select((t, i) =>
+            $"{{\"wrapperType\":\"collection\",\"collectionId\":{id * 10 + i},\"artistId\":{id},\"artistName\":\"Nirvana\",\"collectionName\":\"{t}\",\"artworkUrl100\":\"https://is1-ssl.mzstatic.com/a/100x100bb.jpg\"}}")) + "]}";
+        return new ITunesArtworkService(new HttpClient(new StubHandler(request =>
+        {
+            var url = request.RequestUri!.ToString();
+            lock (requests) requests.Add(url);
+            var body = url.Contains("entity=musicArtist", StringComparison.Ordinal) ? search
+                : url.Contains("id=112018", StringComparison.Ordinal) ? Releases(112018, "Nevermind (Remastered)", "In Utero", "Bleach")
+                : url.Contains("id=5940196", StringComparison.Ordinal) ? Releases(5940196, "Simon Simopath", "Bleach")
+                : "<html></html>";
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8) };
+        })))
+        { HomeStorefront = "us" };
+    }
+
+    [Fact]
+    public async Task TwoArtistsOfTheName_TheOneWithTheLibrarysAlbumsIsTaken()
+    {
+        var requests = new List<string>();
+        var found = await Namesakes(requests).FindArtistVideoAsync("Nirvana", libraryAlbums: new[] { "Nevermind", "In Utero" });
+
+        // Matched (its page was read; the stub page has no video), not "no artist".
+        Assert.Equal(ArtistVideoOutcome.NoVideo, found.Outcome);
+        Assert.Equal(112018, found.ArtistId);
+        Assert.Contains(requests, r => r.Contains("/artist/nirvana/112018", StringComparison.Ordinal));
+        Assert.DoesNotContain(requests, r => r.Contains("/artist/nirvana/5940196", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task TwoArtistsOfTheName_NoAlbumTellsThemApart_IsStillNoArtist()
+    {
+        var svc = Namesakes(new List<string>());
+        // An album both have, an album neither has, and no albums at all: never a guess.
+        Assert.Equal(ArtistVideoOutcome.NoArtist, (await svc.FindArtistVideoAsync("Nirvana", libraryAlbums: new[] { "Bleach" })).Outcome);
+        Assert.Equal(ArtistVideoOutcome.NoArtist, (await svc.FindArtistVideoAsync("Nirvana", libraryAlbums: new[] { "MTV Unplugged" })).Outcome);
+        Assert.Equal(ArtistVideoOutcome.NoArtist, (await svc.FindArtistVideoAsync("Nirvana", libraryAlbums: Array.Empty<string>())).Outcome);
+    }
+
+    [Fact]
+    public void AlbumsInCommon_CountsEqualTitlesAndEditions_NotLookalikes()
+    {
+        var store = new[] { "Take Care (Deluxe Version)", "Views", "Scorpion" };
+        Assert.Equal(2, CountAlbumsInCommon(new[] { "Take Care", "VIEWS", "Thank Me Later" }, store));
+        Assert.Equal(1, CountAlbumsInCommon(new[] { "Scorpion (Bonus Tracks)" }, store));
+        Assert.Equal(0, CountAlbumsInCommon(new[] { "View", "Scorpions" }, store));
+    }
+
     [Fact]
     public void Page_ReadsTheWideLoop_AndVideoArtworkNullIsNone()
     {

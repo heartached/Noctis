@@ -4646,4 +4646,5 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="Settings.ArtistVideos" xml:space="preserve"><value>Artist Videos</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ArtistVideosDesc" xml:space="preserve"><value>Plays an artist's Apple Music video behind their page when one exists. Looks up each artist you open.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="ArtistDetail.RemoveArtistVideo" xml:space="preserve"><value>Remove Artist Video</value><comment>Header in ArtistDetailView.axaml</comment></data>
+  <data name="ArtistDetail.ArtistVideoLoading" xml:space="preserve"><value>Loading video…</value><comment>Text in ArtistDetailView.axaml</comment></data>
 </root>

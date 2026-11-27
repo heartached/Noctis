@@ -9647,4 +9647,5 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Settings.ArtistVideos" xml:space="preserve"><value>فيديوهات الفنانين</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ArtistVideosDesc" xml:space="preserve"><value>يشغّل فيديو الفنان من Apple Music خلف صفحته عند توفره. يبحث عن كل فنان تفتحه.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="ArtistDetail.RemoveArtistVideo" xml:space="preserve"><value>إزالة فيديو الفنان</value><comment>Header in ArtistDetailView.axaml</comment></data>
+  <data name="ArtistDetail.ArtistVideoLoading" xml:space="preserve"><value>جارٍ تحميل الفيديو…</value><comment>Text in ArtistDetailView.axaml</comment></data>
 </root>

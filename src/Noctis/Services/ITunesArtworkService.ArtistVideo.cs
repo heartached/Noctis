@@ -116,7 +116,8 @@ public sealed partial class ITunesArtworkService
     /// <paramref name="gate"/> when given. Cancellation propagates; nothing else throws.
     /// </summary>
     public async Task<ArtistVideoLookup> FindArtistVideoAsync(
-        string artistName, long knownArtistId = 0, PoliteGate? gate = null, CancellationToken ct = default)
+        string artistName, long knownArtistId = 0, PoliteGate? gate = null, CancellationToken ct = default,
+        IReadOnlyList<string>? libraryAlbums = null)
     {
         var name = (artistName ?? string.Empty).Trim();
         if (name.Length == 0 && knownArtistId <= 0)
@@ -138,8 +139,14 @@ public sealed partial class ITunesArtworkService
                     var match = MatchArtistExactly(name, hits, out var ambiguous);
                     if (ambiguous)
                     {
-                        DebugLog.Write(LogSource, $"artist video: more than one artist named \"{name}\" in {sf}; not guessing");
-                        return new ArtistVideoLookup(ArtistVideoOutcome.NoArtist);
+                        // Namesakes ("Drake" is several store artists): the one whose releases
+                        // are the albums in the library, when exactly one stands out.
+                        match = await PickNamesakeByAlbumsAsync(name, hits, libraryAlbums, sf, gate, ct).ConfigureAwait(false);
+                        if (match == null)
+                        {
+                            DebugLog.Write(LogSource, $"artist video: more than one artist named \"{name}\" in {sf}; not guessing");
+                            return new ArtistVideoLookup(ArtistVideoOutcome.NoArtist);
+                        }
                     }
                     if (match == null) continue;
                     artistId = match.Id;
@@ -226,6 +233,73 @@ public sealed partial class ITunesArtworkService
             return null;
         }
         return exact.FirstOrDefault();
+    }
+
+    /// <summary>How many same-name store artists have their releases read to tell them apart.</summary>
+    internal const int MaxNamesakes = 5;
+
+    /// <summary>The store artists named exactly <paramref name="name"/>, one row per id.</summary>
+    internal static IReadOnlyList<ArtistHit> ExactNameHits(string name, IReadOnlyList<ArtistHit> hits)
+    {
+        var wanted = AnimatedArtworkMatcher.Normalize(name);
+        return hits
+            .Where(h => h.Id > 0 && AnimatedArtworkMatcher.Normalize(h.Name) == wanted)
+            .GroupBy(h => h.Id)
+            .Select(g => g.First())
+            .ToList();
+    }
+
+    /// <summary>
+    /// How many of the library's album titles are among a store artist's release titles. A
+    /// release counts when the titles are equal (<see cref="AnimatedArtworkMatcher.Normalize"/>)
+    /// or one is the other plus an edition ("Take Care" / "Take Care (Deluxe)").
+    /// </summary>
+    internal static int CountAlbumsInCommon(IReadOnlyList<string> libraryAlbums, IEnumerable<string> storeReleases)
+    {
+        var store = storeReleases.Select(AnimatedArtworkMatcher.Normalize).Where(t => t.Length > 0).Distinct().ToList();
+        var count = 0;
+        foreach (var title in libraryAlbums.Select(AnimatedArtworkMatcher.Normalize).Where(t => t.Length > 0).Distinct())
+        {
+            if (store.Any(r => r == title
+                               || (title.Length >= 4 && r.StartsWith(title + " ", StringComparison.Ordinal))
+                               || (r.Length >= 4 && title.StartsWith(r + " ", StringComparison.Ordinal))))
+                count++;
+        }
+        return count;
+    }
+
+    /// <summary>The namesake with the most library albums among its releases: at least one, and
+    /// more than every other namesake (a tie is no answer). Null otherwise.</summary>
+    internal static ArtistHit? PickNamesake(IReadOnlyList<(ArtistHit Hit, int InCommon)> scored)
+    {
+        var ranked = scored.OrderByDescending(s => s.InCommon).ToList();
+        if (ranked.Count == 0 || ranked[0].InCommon == 0) return null;
+        if (ranked.Count > 1 && ranked[1].InCommon == ranked[0].InCommon) return null;
+        return ranked[0].Hit;
+    }
+
+    /// <summary>
+    /// Several store artists share the name (owner 11-27: "Drake" and "Juice WRLD" never got a
+    /// video, the lookup would not guess between namesakes): each one's releases are read and
+    /// the artist whose releases are the library's albums is taken (<see cref="PickNamesake"/>).
+    /// Without library albums, or when no namesake stands out, null: still never a guess.
+    /// </summary>
+    private async Task<ArtistHit?> PickNamesakeByAlbumsAsync(
+        string name, IReadOnlyList<ArtistHit> hits, IReadOnlyList<string>? libraryAlbums,
+        string storefront, PoliteGate? gate, CancellationToken ct)
+    {
+        if (libraryAlbums is not { Count: > 0 }) return null;
+        var scored = new List<(ArtistHit Hit, int InCommon)>();
+        foreach (var hit in ExactNameHits(name, hits).Take(MaxNamesakes))
+        {
+            if (gate != null) await gate.WaitTurnAsync(ct).ConfigureAwait(false);
+            var releases = await LookupArtistReleasesAsync(hit.Id, storefront, ct).ConfigureAwait(false);
+            scored.Add((hit, CountAlbumsInCommon(libraryAlbums, releases.Select(r => r.CollectionName))));
+        }
+        var pick = PickNamesake(scored);
+        DebugLog.Write(LogSource, $"artist video: {scored.Count} artists named \"{name}\" in {storefront}; library albums in common: " +
+            string.Join(", ", scored.Select(x => $"{x.Hit.Id}={x.InCommon}")) + (pick == null ? "; none stands out" : $"; taking {pick.Id}"));
+        return pick;
     }
 
     /// <summary>The artist rows of a /search?entity=musicArtist answer, with their page links.</summary>
