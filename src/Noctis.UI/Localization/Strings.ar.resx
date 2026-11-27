@@ -2023,11 +2023,11 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.DeleteCachedArtworkWill" xml:space="preserve">
-    <value>يحذف الأغلفة المخزنة مؤقتًا. سيُعاد بناؤها في الفحص التالي.</value>
+    <value>حذف الأغلفة وصور الفنانين المحفوظة. تعود الأغلفة الموجودة في ملفات الأغاني والمجلدات فورًا، وتُنزَّل صور الفنانين من جديد.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.NoteRemovesAllArtwork" xml:space="preserve">
-    <value>ملاحظة: هذا يزيل كل الأغلفة من مكتبتك.</value>
+    <value>ملاحظة: تضيع صور الفنانين التي اخترتها والأغلفة الموجودة في Noctis فقط.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ClearCache" xml:space="preserve">

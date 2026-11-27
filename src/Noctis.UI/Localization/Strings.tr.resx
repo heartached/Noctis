@@ -764,8 +764,8 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
   <data name="Settings.AreYouSureAction" xml:space="preserve"><value>Emin misin? Bu işlem geri alınamaz.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ResetEverything" xml:space="preserve"><value>Her Şeyi Sıfırla</value><comment>Content in SettingsView.axaml</comment></data>
   <data name="Settings.ClearArtworkCache" xml:space="preserve"><value>Kapak Önbelleğini Temizle</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.DeleteCachedArtworkWill" xml:space="preserve"><value>Önbelleğe alınmış kapakları sil. Bir sonraki taramada yeniden oluşturulur.</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.NoteRemovesAllArtwork" xml:space="preserve"><value>Not: Bu, kitaplığındaki tüm kapakları kaldırır.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.DeleteCachedArtworkWill" xml:space="preserve"><value>Kayıtlı kapakları ve sanatçı fotoğraflarını sil. Şarkı dosyalarındaki ve klasörlerdeki kapaklar hemen geri gelir, sanatçı fotoğrafları yeniden indirilir.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.NoteRemovesAllArtwork" xml:space="preserve"><value>Not: Seçtiğin sanatçı fotoğrafları ve yalnızca Noctis'te olan kapaklar kaybolur.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ClearCache" xml:space="preserve"><value>Önbelleği Temizle</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeyboardShortcuts" xml:space="preserve"><value>Klavye kısayolları</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ClickKeyChangePress" xml:space="preserve"><value>Değiştirmek için bir tuşa tıkla. Esc iptal eder, Backspace temizler.</value><comment>Text in SettingsView.axaml</comment></data>

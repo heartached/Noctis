@@ -2023,11 +2023,11 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.DeleteCachedArtworkWill" xml:space="preserve">
-    <value>キャッシュされたアートワークを削除します。次回のスキャンで再構築されます。</value>
+    <value>保存されたカバーとアーティスト写真を削除します。曲ファイルやフォルダーにあるカバーはすぐに戻り、アーティスト写真は再ダウンロードされます。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.NoteRemovesAllArtwork" xml:space="preserve">
-    <value>注意: ライブラリのすべてのアートワークが削除されます。</value>
+    <value>注意: 自分で選んだアーティスト写真と、Noctis にだけあるカバーは失われます。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ClearCache" xml:space="preserve">

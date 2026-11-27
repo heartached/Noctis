@@ -9556,30 +9556,8 @@ public partial class SettingsViewModel : ViewModelBase
     {
         try
         {
-            var artworkDir = Path.Combine(_persistence.DataDirectory, "artwork");
-            // Task.Run: the recursive delete scales with library size (one file per
-            // album) and blocked the UI thread for its whole duration on large
-            // libraries or slow disks.
-            await Task.Run(() =>
-            {
-                if (Directory.Exists(artworkDir))
-                {
-                    Directory.Delete(artworkDir, true);
-                    Directory.CreateDirectory(artworkDir);
-                    // ArtistImageService creates artwork/artists once, in its constructor, so
-                    // recreating only the parent left every later artist-photo write throwing
-                    // DirectoryNotFoundException into a swallowing catch — artist images
-                    // silently stopped caching until the app was restarted. ConfirmResetLibrary
-                    // already got this right.
-                    Directory.CreateDirectory(Path.Combine(artworkDir, "artists"));
-                    // SimilarArtistsService likewise (artwork/similar): its pictures stopped saving.
-                    Directory.CreateDirectory(Path.Combine(artworkDir, "similar"));
-                }
-                // The downscaled copies of those covers (cache/artwork_thumbs) stayed behind,
-                // up to 512 MB of thumbnails of files that no longer exist.
-                ArtworkThumbnailCache.Clear();
-            });
-            _dirSizeCache.TryRemove(artworkDir, out _);
+            // What it deletes and what follows: SettingsViewModel.Reset.cs (ClearArtworkCacheAsync).
+            await ClearArtworkCacheAsync();
             RefreshStorageInfo();
             SetStorageStatus(Loc.T("Settings.ArtworkCacheCleared"));
         }

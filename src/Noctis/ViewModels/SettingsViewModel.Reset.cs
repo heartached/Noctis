@@ -36,7 +36,8 @@ namespace Noctis.ViewModels;
 ///     artist_video_autofetch_ledger.json, artist_video_index.json, artist_video_shrink_tried.json
 ///     (artist pages' video), *-backfill.progress,
 ///     mp3_decoder_fallback.txt, musixmatch_token (anonymous token, fetched again),
-///     whats_new_cache.json (About's What's new notes, fetched again when it opens)
+///     whats_new_cache.json (About's What's new notes, fetched again when it opens),
+///     music_video_choices.json (each song's music video, or "no video", picked or found)
 ///   tidal-auth.json (signed out, as the other services' sign-ins live in settings.json)
 ///   computers.json (each computer's own sign-ins and window/device/size settings, GitHub #230;
 ///     the default settings save writes this computer's part again)
@@ -64,7 +65,7 @@ namespace Noctis.ViewModels;
 public partial class SettingsViewModel
 {
     /// <summary>Files deleted outright (relative to the data folder).</summary>
-    private static readonly string[] ResetClearedFiles =
+    internal static readonly string[] ResetClearedFiles =
     {
         "indexes.json", "crash.log", "play_history.json", "play_history.recent.json",
         "wrap_archive.json", "favorite_artists.json", "phone_handoff.json", "playlist_folders.json",
@@ -79,23 +80,44 @@ public partial class SettingsViewModel
         // artist each library artist resolved to.
         "artist_video_no_autofetch.json", "artist_video_autofetch_ledger.json", "artist_video_index.json",
         "artist_video_shrink_tried.json",
+        // Settings › Lyrics › Music videos: each song's video (or "no video"), picked or found.
+        // The service holds them in memory (cleared below) and would save them straight back.
+        "music_video_choices.json",
     };
 
     /// <summary>File patterns deleted in the data folder itself (not below it).</summary>
-    private static readonly string[] ResetClearedPatterns = { "*-backfill.progress", "*.corrupt-*", "crashlog-*.log" };
+    internal static readonly string[] ResetClearedPatterns = { "*-backfill.progress", "*.corrupt-*", "crashlog-*.log" };
+
+    /// <summary>
+    /// Settings › Advanced › Clear Artwork Cache, and the first folders Reset Everything deletes:
+    /// artwork/ holds every album cover (taken from the songs' tags or folder images, or
+    /// downloaded / picked in Noctis), the covers of songs that differ from their album
+    /// (tracks/), the artist photos with the user's picks and "no photo" choices (artists/) and
+    /// the similar artists' photos (similar/). Each is made again empty: the services that write
+    /// into them created them once, at startup.
+    /// Not artwork caches, so kept by Clear Artwork Cache: animated_covers/ (its own Clear sits
+    /// under Settings › Artwork, and the saved ones are the user's picks), playlist_covers/ (the
+    /// user's own pictures), profile/ (the avatar) and server/covers/ (the phones' copies, keyed
+    /// by the cover's write time, so a rebuilt cover gets a new copy).
+    /// </summary>
+    internal static readonly string[] ArtworkCacheFolders =
+    {
+        "artwork", Path.Combine("artwork", "artists"), Path.Combine("artwork", "similar"),
+    };
 
     /// <summary>Folders deleted; <c>Recreate</c> when a service made it once at startup and
     /// writes into it without creating it again.</summary>
-    private static readonly (string Path, bool Recreate)[] ResetClearedFolders =
+    internal static readonly (string Path, bool Recreate)[] ResetClearedFolders =
     {
-        ("artwork", true), (Path.Combine("artwork", "artists"), true), (Path.Combine("artwork", "similar"), true),
+        // Clear Artwork Cache's folders (ArtworkCacheFolders).
+        (ArtworkCacheFolders[0], true), (ArtworkCacheFolders[1], true), (ArtworkCacheFolders[2], true),
         ("animated_covers", true), ("lyrics_cache", true), ("playlist_covers", true), ("cache", true),
         ("audit", true), ("artist_info", true), ("artist_bios", false), ("lyrics_store", false),
         ("lyrics_studio_drafts", false), ("organize_undo", false),
     };
 
     /// <summary>Cleared after the settings reset: their owners let go of them only then.</summary>
-    private static readonly string[] ResetClearedFoldersAfterSettings =
+    internal static readonly string[] ResetClearedFoldersAfterSettings =
     {
         "profile", "lyrics_background", Path.Combine("server", "covers"), Path.Combine("server", "transcode"),
     };
@@ -154,6 +176,7 @@ public partial class SettingsViewModel
         await StepSync("MP3 decoder list", () => (_audioPlayer as VlcAudioPlayer)?.ForgetDecoderFallbacks());
         await StepSync("lyrics store", () => _persistence.ClearLyricsStore());
         await StepSync("TIDAL sign-in", () => { _tidal?.Disconnect(); IsTidalConnected = false; });
+        await StepSync("music video choices", () => services?.GetService<Services.YouTube.MusicVideoStreamService>()?.ClearChoices());
         // Favorite artists are held by the Artists page: MainWindowViewModel clears them on SettingsReset.
 
         // Then the folder. Task.Run: recursive deletes scale with the library (one cover per
@@ -181,6 +204,8 @@ public partial class SettingsViewModel
             }
         });
         _dirSizeCache.Clear();
+        // Decoded covers and their colours: the files are gone, nothing may show them again.
+        await StepSync("artwork in memory", () => ArtworkCache.ForgetFolder(Path.Combine(root, "artwork")));
 
         // Preserved crash-session logs (crashlog-*.log) go with crash.log.
         await StepSync("crash logs", CrashJournal.ClearPreserved);
@@ -205,22 +230,97 @@ public partial class SettingsViewModel
         catch (Exception ex) { Debug.WriteLine($"[Settings] Reset: failed to clear app-icons: {ex.Message}"); }
     }
 
+    /// <summary>
+    /// Settings › Advanced › Clear Artwork Cache: empties <see cref="ArtworkCacheFolders"/> and
+    /// the covers' thumbnails, drops every decoded cover and colour held in memory, and has the
+    /// library rebuild its albums at once (the deleted covers go from every page) and then take
+    /// the covers in the songs' tags and folders again, as a scan would. Artist photos download
+    /// again when the Artists page sweeps, similar artists' photos when their artist page opens.
+    /// Throws when the folder could not be emptied (the rest still happens). Internal for tests.
+    /// </summary>
+    internal async Task ClearArtworkCacheAsync()
+    {
+        var root = _persistence.DataDirectory;
+        var artworkDir = Path.Combine(root, ArtworkCacheFolders[0]);
+
+        // The Artists tab's portrait sweep saves into artwork/artists as it goes; stopped, the
+        // page's next refresh starts a new one over the emptied folder.
+        try { await (App.Services?.GetService<ArtistImageService>()?.StopFetchesAsync() ?? Task.CompletedTask); }
+        catch (Exception ex) { Debug.WriteLine($"[Settings] Clear artwork: failed to stop artist photos: {ex.Message}"); }
+
+        try
+        {
+            // Task.Run: the recursive delete scales with the library (one file per album).
+            await Task.Run(() => DeleteWithRetry(artworkDir, isFolder: true));
+        }
+        finally
+        {
+            await Task.Run(() =>
+            {
+                foreach (var folder in ArtworkCacheFolders)
+                {
+                    try { Directory.CreateDirectory(Path.Combine(root, folder)); }
+                    catch (Exception ex) { Debug.WriteLine($"[Settings] Clear artwork: failed to recreate {folder}: {ex.Message}"); }
+                }
+                // The downscaled copies of those covers (cache/artwork_thumbs), up to 512 MB.
+                ArtworkThumbnailCache.Clear();
+            });
+            _dirSizeCache.TryRemove(artworkDir, out _);
+
+            // Memory: a cover saved again at the same path must not come back from before.
+            ArtworkCache.ForgetFolder(artworkDir);
+
+            // Albums rebuilt now drop the covers that are gone (their pages refresh on
+            // LibraryUpdated); the heal then takes back what the tags and folders hold.
+            _library.NotifyMetadataChanged();
+            _ = HealArtworkAsync();
+        }
+    }
+
+    private async Task HealArtworkAsync()
+    {
+        try { await _library.BackfillMissingArtworkAsync(); }
+        catch (Exception ex) { Debug.WriteLine($"[Settings] Clear artwork: cover heal failed: {ex.Message}"); }
+    }
+
+    /// <summary>
+    /// Deletes a file or a folder tree. A file still held open (a video that was playing a
+    /// moment ago, a cover being decoded) gets one more try after a short wait; whatever is
+    /// still held then is left and logged, never thrown.
+    /// </summary>
     private static void DeleteForReset(string path, bool isFolder)
     {
         try
         {
-            if (isFolder)
-            {
-                if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
-            }
-            else if (File.Exists(path))
-            {
-                File.Delete(path);
-            }
+            DeleteWithRetry(path, isFolder);
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"[Settings] Reset: failed to delete {Path.GetFileName(path)}: {ex.Message}");
+        }
+    }
+
+    /// <summary>The delete behind <see cref="DeleteForReset"/>, throwing what the retry left.</summary>
+    private static void DeleteWithRetry(string path, bool isFolder)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                if (isFolder)
+                {
+                    if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
+                }
+                else if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+                return;
+            }
+            catch (Exception ex) when (attempt == 0 && ex is IOException or UnauthorizedAccessException)
+            {
+                System.Threading.Thread.Sleep(300);
+            }
         }
     }
 }

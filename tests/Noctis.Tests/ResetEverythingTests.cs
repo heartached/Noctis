@@ -48,7 +48,7 @@ public class ResetEverythingTests : IDisposable
         "animated_artwork_bulk_ledger.json", "lyrics_bulk_ledger.json", "mp3_decoder_fallback.txt", "whats_new_cache.json",
         "animated_artwork_no_autofetch.json", "animated_artwork_autofetch_ledger.json",
         "artist_video_no_autofetch.json", "artist_video_autofetch_ledger.json", "artist_video_index.json",
-        "artist_video_shrink_tried.json", "musixmatch_token", "computers.json", "replaygain-backfill.progress", "label-backfill.progress",
+        "artist_video_shrink_tried.json", "music_video_choices.json", "musixmatch_token", "computers.json", "replaygain-backfill.progress", "label-backfill.progress",
         "genre-backfill.progress", "library.json.corrupt-20261101-120000", "settings.json.bak",
         "artwork/album.jpg", "artwork/artists/a.jpg", "artwork/similar/s.jpg", "animated_covers/a.mp4",
         "playlist_covers/p.jpg", "cache/artwork_thumbs/t.png", "cache/waveforms/w.bin",
@@ -169,6 +169,59 @@ public class ResetEverythingTests : IDisposable
         Assert.Equal(new[] { Path.Combine(_root, "Music", "New") }, (await persistence.LoadSettingsAsync()).HiddenLibraryFolders);
     }
 
+    /// <summary>
+    /// Every file name the desktop app writes, as a literal in its source, is classified for
+    /// Reset Everything (owner 11-27: the reset fell behind the features added after it). A new
+    /// data file fails here until it is put in SettingsViewModel.ResetClearedFiles (and cleared
+    /// by its owner if one holds it in memory) or listed below with the reason it stays.
+    /// </summary>
+    [Fact]
+    public void EveryDataFileName_InTheSource_IsClassifiedForTheReset()
+    {
+        var otherwise = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            // Written again by the reset itself, empty or with defaults.
+            ["settings.json"] = "rewritten", ["library.json"] = "rewritten", ["library.db"] = "rewritten",
+            ["playlists.json"] = "rewritten", ["queue.json"] = "rewritten",
+            // Emptied by their owners during the reset.
+            ["tidal-auth.json"] = "TidalService.Disconnect", ["pending_scrobbles.json"] = "ScrobbleQueue.Forget",
+            // Inside folders the reset deletes.
+            ["lastfm_album_descriptions.json"] = "cache/", ["lastfm_taste.json"] = "cache/",
+            ["lastfm_stats.json"] = "cache/", ["events.jsonl"] = "audit/",
+            // Kept on purpose (SettingsViewModel.Reset.cs, KEPT).
+            [".instance.lock"] = "kept", ["session.log"] = "kept", ["local-api.json"] = "kept",
+            ["auto-update.json"] = "kept", ["app_written_sidecars.json"] = "kept", ["users.db"] = "kept",
+            ["server.pfx"] = "kept", ["server.pfx.key"] = "kept", ["sync.db"] = "kept",
+            ["yt-dlp-update.json"] = "kept (tools/)", ["plugin.json"] = "kept (plugins/)",
+            ["ggml-tiny.bin"] = "kept (models/)", ["ggml-base.bin"] = "kept (models/)",
+            ["ggml-small.bin"] = "kept (models/)", ["ggml-medium.bin"] = "kept (models/)", ["lullaby.bin"] = "kept (models/)",
+            ["data-location.json"] = "kept: the data folder's location, in the home folder",
+            // Not in the data folder.
+            ["Noctis.Plugins.index.json"] = "embedded resource", ["Thumbs.db"] = "music folder junk",
+            ["checksums.txt"] = "release asset name", ["plugins.dat"] = "libvlc's folder in the app",
+            ["noctis_wasapi.log"] = "Desktop", ["noctis_vlc_diag.log"] = "Desktop", ["noctis_memtrace.log"] = "Desktop",
+        };
+        var cleared = new HashSet<string>(SettingsViewModel.ResetClearedFiles, StringComparer.Ordinal);
+        bool MatchesPattern(string name) => SettingsViewModel.ResetClearedPatterns.Any(p =>
+            System.Text.RegularExpressions.Regex.IsMatch(name,
+                "^" + System.Text.RegularExpressions.Regex.Escape(p).Replace("\\*", ".*") + "$"));
+
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+        while (root != null && !File.Exists(Path.Combine(root.FullName, "Noctis.sln"))) root = root.Parent;
+        Assert.NotNull(root);
+        var literal = new System.Text.RegularExpressions.Regex("\"([A-Za-z0-9_.-]+\\.(?:json|jsonl|db|txt|progress|log|dat|bin|key|pfx|lock))\"");
+        var names = new[] { "Noctis", "Noctis.Core", "Noctis.UI", "Noctis.Core.Server" }
+            .SelectMany(p => Directory.EnumerateFiles(Path.Combine(root!.FullName, "src", p), "*.cs", SearchOption.AllDirectories))
+            .Where(f => !f.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar)
+                        && !f.Contains(Path.DirectorySeparatorChar + "bin" + Path.DirectorySeparatorChar))
+            .SelectMany(f => literal.Matches(File.ReadAllText(f)).Select(m => m.Groups[1].Value))
+            .ToHashSet(StringComparer.Ordinal);
+
+        var unclassified = names.Where(n => !cleared.Contains(n) && !MatchesPattern(n) && !otherwise.ContainsKey(n)).OrderBy(n => n).ToList();
+        Assert.True(unclassified.Count == 0, "Not classified for Reset Everything: " + string.Join(", ", unclassified));
+        Assert.Contains("music_video_choices.json", names); // the scan itself works
+    }
+
     [Fact]
     public async Task ClearUserState_EmptiesTheJournal_ThatScansKeep()
     {
@@ -253,6 +306,30 @@ public class ResetEverythingTests : IDisposable
         Assert.False(list.Contains(mp3));
         Assert.False(File.Exists(store));
         Assert.False(new Mp3DecoderFallbackList(store).Contains(mp3));
+    }
+
+    /// <summary>Settings › Lyrics › Music videos: each song's video choice, held in memory by
+    /// the stream service, which saved them straight back after the reset deleted the file.</summary>
+    [Fact]
+    public void MusicVideoChoices_Clear_ForgetsTheLoadedChoicesAndTheFile()
+    {
+        Directory.CreateDirectory(_root);
+        var path = Path.Combine(_root, "music_video_choices.json");
+        var store = new Noctis.Services.YouTube.MusicVideoChoiceStore(path);
+        var old = Guid.NewGuid();
+        store.Set(new Noctis.Services.YouTube.MusicVideoChoice
+            { TrackKey = Noctis.Services.YouTube.MusicVideoChoiceStore.KeyFor(old), VideoId = "old" });
+        Assert.True(File.Exists(path));
+
+        store.Clear();
+
+        Assert.Null(store.Get(old));
+        Assert.False(File.Exists(path));
+        var other = Guid.NewGuid();
+        store.Set(new Noctis.Services.YouTube.MusicVideoChoice
+            { TrackKey = Noctis.Services.YouTube.MusicVideoChoiceStore.KeyFor(other), VideoId = "new" });
+        Assert.DoesNotContain("\"old\"", File.ReadAllText(path));
+        Assert.Null(new Noctis.Services.YouTube.MusicVideoChoiceStore(path).Get(old));
     }
 
     [Fact]
