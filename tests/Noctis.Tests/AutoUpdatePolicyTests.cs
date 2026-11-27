@@ -259,8 +259,8 @@ public class AutoUpdateLaunchActionTests
     };
 
     private static LaunchAction Decide(PendingInstall? p, Version? current = null,
-        AutoUpdateMode mode = AutoUpdateMode.InstallAtLaunch, bool files = false, bool fileOk = true)
-        => AutoUpdatePolicy.DecideLaunchAction(p, current ?? Current, mode, files, fileOk, Now, out _);
+        AutoUpdateMode mode = AutoUpdateMode.InstallAtLaunch, bool files = false, bool fileOk = true, bool autoOn = true)
+        => AutoUpdatePolicy.DecideLaunchAction(p, current ?? Current, mode, autoOn, files, fileOk, Now, out _);
 
     [Fact]
     public void NothingQueued_None() => Assert.Equal(LaunchAction.None, Decide(null));
@@ -282,6 +282,16 @@ public class AutoUpdateLaunchActionTests
 
     [Fact]
     public void ModeOff_Discard() => Assert.Equal(LaunchAction.Discard, Decide(Pending(), mode: AutoUpdateMode.Off));
+
+    /// <summary>"Update automatically" off: a queue is never installed, but a finished update still
+    /// settles as Completed ("Updated to X.") and an older one is still dropped.</summary>
+    [Fact]
+    public void SwitchOff_Discard_ButCompletedStillSettles()
+    {
+        Assert.Equal(LaunchAction.Discard, Decide(Pending(), autoOn: false));
+        Assert.Equal(LaunchAction.Discard, Decide(Pending(), mode: AutoUpdateMode.DownloadOnly, autoOn: false));
+        Assert.Equal(LaunchAction.Completed, Decide(Pending(to: "1.5.4"), autoOn: false));
+    }
 
     [Fact]
     public void DownloadOnly_None() => Assert.Equal(LaunchAction.None, Decide(Pending(), mode: AutoUpdateMode.DownloadOnly));

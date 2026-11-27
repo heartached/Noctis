@@ -10069,7 +10069,7 @@ public partial class SettingsViewModel : ViewModelBase
 
         var owned = UpdateService.IsOwnedInstallerFile(pending.InstallerPath);
         var action = AutoUpdatePolicy.DecideLaunchAction(pending, UpdateService.CurrentVersion,
-            UpdateService.AutoMode, hasFilesToOpen: false, owned, DateTimeOffset.UtcNow, out var reason);
+            UpdateService.AutoMode, AutoUpdateActive, hasFilesToOpen: false, owned, DateTimeOffset.UtcNow, out var reason);
         if (action == LaunchAction.Completed) return; // settled by the next launch's Program.Main
         if (action == LaunchAction.Discard)
         {

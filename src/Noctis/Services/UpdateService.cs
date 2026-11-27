@@ -888,6 +888,9 @@ public sealed class UpdateService : IReleaseNotesSource
 
     /// <param name="modeOverride">Tests only; the app uses <see cref="AutoMode"/>, resolved only
     /// when something is queued so an ordinary launch pays for one missing-file check.</param>
+    /// <remarks>The user's switch is read from the settings.json next to <paramref name="store"/> (both
+    /// live in the data folder), before settings load: a queue must never outlive the switch (Discord
+    /// 11-26, "i made it off and its still auto updating"), whatever left it behind.</remarks>
     internal bool TryInstallPendingUpdateAtLaunch(bool hasFilesToOpen, AutoUpdateStore store, AutoUpdateMode? modeOverride = null)
     {
         try
@@ -896,10 +899,13 @@ public sealed class UpdateService : IReleaseNotesSource
             if (state?.Pending is not { } pending) return false;
 
             var mode = modeOverride ?? AutoMode;
+            // Missing file, missing key or a damaged file read as off.
+            var autoOn = PersistenceService.ReadBoolSettingAtLaunch(
+                Path.GetDirectoryName(store.FilePath)!, nameof(Noctis.Models.AppSettings.AutoInstallUpdates));
             var path = pending.InstallerPath;
             var owned = IsOwnedInstallerFile(path);
             var now = DateTimeOffset.UtcNow;
-            var action = AutoUpdatePolicy.DecideLaunchAction(pending, CurrentVersion, mode, hasFilesToOpen, owned, now, out var reason);
+            var action = AutoUpdatePolicy.DecideLaunchAction(pending, CurrentVersion, mode, autoOn, hasFilesToOpen, owned, now, out var reason);
 
             switch (action)
             {
@@ -917,7 +923,7 @@ public sealed class UpdateService : IReleaseNotesSource
                     var exhausted = pending.LaunchAttempts >= AutoUpdatePolicy.MaxLaunchAttempts;
                     // A file that vanished (temp cleanup) counts as a failed download, so one that
                     // keeps vanishing ends up blocked instead of re-downloading after every launch.
-                    var vanished = !owned && mode != AutoUpdateMode.Off;
+                    var vanished = !owned && mode != AutoUpdateMode.Off && autoOn;
                     if (vanished) state = AutoUpdatePolicy.RecordDownloadFailure(state, pending.Tag, now, hard: false);
                     DiscardPending(store, state, pending, owned, reason, block: exhausted, notify: exhausted || (vanished && state.Blocked));
                     return false;
