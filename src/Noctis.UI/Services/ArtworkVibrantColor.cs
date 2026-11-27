@@ -30,6 +30,10 @@ public static class ArtworkVibrantColor
     private static readonly ConcurrentDictionary<string, Entry> _cache =
         new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Drops the colours of every file under <paramref name="folder"/> (Settings › Clear
+    /// Artwork Cache, through <see cref="ArtworkCache.ForgetFolder"/>).</summary>
+    internal static void ForgetUnder(string folder) => ArtworkCache.RemoveKeysUnder(_cache, folder);
+
     /// <summary>Whether <see cref="GetHex"/> / <see cref="GetAccentHex"/> would answer from cache (no decode).</summary>
     public static bool IsCached(string artworkPath) => _cache.ContainsKey(artworkPath);
 

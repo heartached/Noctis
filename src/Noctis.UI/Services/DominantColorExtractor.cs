@@ -1111,6 +1111,18 @@ public static class DominantColorExtractor
         }
     }
 
+    /// <summary>Drops every colour worked out from a file under <paramref name="folder"/>
+    /// (Settings › Clear Artwork Cache, through <see cref="ArtworkCache.ForgetFolder"/>).</summary>
+    internal static void ForgetUnder(string folder)
+    {
+        ArtworkCache.RemoveKeysUnder(ColorCache, folder);
+        ArtworkCache.RemoveKeysUnder(PaletteCache, folder);
+        ArtworkCache.RemoveKeysUnder(EdgeBackgroundCache, folder);
+        ArtworkCache.RemoveKeysUnder(AverageColorCache, folder);
+        ArtworkCache.RemoveKeysUnder(EdgeFileCache, folder);
+        ArtworkCache.RemoveKeysUnder(HeroFileCache, folder);
+    }
+
     /// <summary>Drops the cached edge (and hero) colours for a path (artwork replaced in place).</summary>
     public static void InvalidateEdgeColor(string? artworkPath)
     {

@@ -235,6 +235,7 @@ public class CachedImage : Image
         base.OnAttachedToVisualTree(e);
         _attached = true;
         ArtworkCache.Invalidated += OnArtworkInvalidated;
+        ArtworkCache.FolderInvalidated += OnArtworkFolderInvalidated;
         ArtworkCache.ClearingForTests += OnCacheClearingForTests;
         UiScale.Changed += OnUiScaleChanged;
         if (PixelExact)
@@ -251,6 +252,7 @@ public class CachedImage : Image
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         ArtworkCache.Invalidated -= OnArtworkInvalidated;
+        ArtworkCache.FolderInvalidated -= OnArtworkFolderInvalidated;
         ArtworkCache.ClearingForTests -= OnCacheClearingForTests;
         UiScale.Changed -= OnUiScaleChanged;
         _attached = false;
@@ -408,6 +410,16 @@ public class CachedImage : Image
         Dispatcher.UIThread.Post(() =>
         {
             if (string.Equals(SourcePath, path, StringComparison.Ordinal))
+                OnSourcePathChanged();
+        });
+    }
+
+    /// <summary>Settings › Clear Artwork Cache: every cover under the folder is gone at once.</summary>
+    private void OnArtworkFolderInvalidated(string folder)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (ArtworkCache.IsUnder(SourcePath, folder))
                 OnSourcePathChanged();
         });
     }

@@ -212,6 +212,9 @@ public static class ArtworkThumbnailCache
             if (pixmap == null) return;
             using var data = pixmap.Encode(new SKWebpEncoderOptions(SKWebpEncoderCompression.Lossless, LosslessEffort));
             if (data == null || data.Size == 0) return;
+            // Settings › Reset Everything deletes cache/ with this folder in it: without this
+            // every later thumbnail failed to save until the next launch.
+            System.IO.Directory.CreateDirectory(Path.GetDirectoryName(thumb)!);
             using (var stream = File.Create(temp))
                 data.SaveTo(stream);
             File.Move(temp, thumb, overwrite: true);
