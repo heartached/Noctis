@@ -110,13 +110,37 @@ public partial class WhatsNewViewModel : ViewModelBase
     /// <summary>The background refresh behind a cached copy (tests wait on it).</summary>
     internal Task Refresh { get; private set; } = Task.CompletedTask;
 
+    private bool _primed;
+    private WhatsNewCacheEntry? _primedEntry;
+
+    /// <summary>
+    /// Before the dialog opens: reads and parses the cached notes off the UI thread and fills
+    /// the rows, so the dialog's first frame already has them. Reading the file and building
+    /// every row inside OnOpened ran in the middle of the open animation and made it stutter
+    /// (owner 11-26).
+    /// </summary>
+    public async Task PrimeAsync()
+    {
+        if (_primed) return;
+        var (entry, sections) = await Task.Run(() =>
+        {
+            var e = _cache.Load(Tag);
+            return (e, e is null ? null : ReleaseNotesParser.Parse(e.Body));
+        });
+        _primed = true;
+        _primedEntry = entry;
+        if (entry is null || sections is null) return;
+        Show(entry.PublishedAt, sections);
+        IsLoading = false;
+    }
+
     /// <summary>Shows the cached notes at once, else fetches; a day-old cache refreshes behind.</summary>
     public async Task LoadAsync()
     {
-        var cached = _cache.Load(Tag);
+        var cached = _primed ? _primedEntry : _cache.Load(Tag);
         if (cached is not null)
         {
-            Show(cached.PublishedAt, cached.Body);
+            if (!_primed) Show(cached.PublishedAt, cached.Body);
             IsLoading = false;
             if (_now() - cached.FetchedUtc < WhatsNewCache.RefreshAfter) return;
             Refresh = FetchAsync(keepOnFailure: true);
@@ -140,10 +164,11 @@ public partial class WhatsNewViewModel : ViewModelBase
                 if (!keepOnFailure) Clear();
                 return;
             }
-            _cache.Save(new WhatsNewCacheEntry
+            var entry = new WhatsNewCacheEntry
             {
                 Tag = Tag, PublishedAt = doc.PublishedAt, Body = doc.Body, FetchedUtc = _now(),
-            });
+            };
+            await Task.Run(() => _cache.Save(entry)); // the file write stays off the UI thread
             Show(doc.PublishedAt, doc.Body);
         }
         catch (Exception ex)
@@ -153,9 +178,10 @@ public partial class WhatsNewViewModel : ViewModelBase
         }
     }
 
-    private void Show(DateTimeOffset? published, string body)
+    private void Show(DateTimeOffset? published, string body) => Show(published, ReleaseNotesParser.Parse(body));
+
+    private void Show(DateTimeOffset? published, IReadOnlyList<ReleaseNoteSection> sections)
     {
-        var sections = ReleaseNotesParser.Parse(body);
         Sections.Clear();
         foreach (var s in sections)
             Sections.Add(new WhatsNewSectionViewModel(s.Kind,
