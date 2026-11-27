@@ -4,7 +4,14 @@ namespace Noctis.Plugins.YouTubeImport;
 
 public sealed record YouTubeImportProgress(string Stage, double Fraction);
 
-public sealed record YouTubeImportResult(string FilePath, string Artist, string Title, bool AddedToLibrary);
+public sealed record YouTubeImportResult(string FilePath, string Artist, string Title, bool AddedToLibrary)
+{
+    /// <summary>The album the library put it in (<see cref="TrackInfo.AlbumId"/>), for "Show"; empty when unknown.</summary>
+    public string AlbumId { get; init; } = "";
+
+    /// <summary>Nothing was downloaded: the file of an earlier import of the same video is already in the folder.</summary>
+    public bool AlreadyDownloaded { get; init; }
+}
 
 public interface IYouTubeImporter
 {
@@ -136,6 +143,24 @@ public sealed class YouTubeImporter : IYouTubeImporter
             catch { /* tag from what we have */ }
         }
 
+        // An import from before the plugin kept its index of downloads (ImportState): the file it
+        // made is in the folder under the name this one would get, tagged with the video's link.
+        if (EarlierImport(folder, info) is { } earlier)
+        {
+            var (earlierArtist, earlierTitle) = YtDlpParsing.InferTags(info);
+            var known = Array.Empty<TrackInfo>() as IReadOnlyList<TrackInfo>;
+            try { known = await _library.ImportFilesAsync(new[] { earlier }, ct).ConfigureAwait(false); }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex) { Log("YouTube.ImportFailed: " + ex.Message); }
+            Log($"YouTube.AlreadyDownloaded: {info.Id} → {Path.GetFileName(earlier)}");
+            progress?.Report(new YouTubeImportProgress("Done", 1));
+            return new YouTubeImportResult(earlier, earlierArtist, earlierTitle, known.Count > 0)
+            {
+                AlbumId = known.Count > 0 ? known[0].AlbumId ?? "" : "",
+                AlreadyDownloaded = true,
+            };
+        }
+
         progress?.Report(new YouTubeImportProgress("Downloading", 0.05));
         // One report per (throttled) yt-dlp line, forwarded in order: percent and speed together,
         // so the row's text doesn't flip between "Downloading" and "Downloading · 4.2 MB/s".
@@ -181,10 +206,12 @@ public sealed class YouTubeImporter : IYouTubeImporter
             // In the library only when Noctis says so: before the move to a plugin, a file the
             // import skipped (a format Noctis doesn't play) still showed "In your library".
             var added = false;
+            var albumId = "";
             try
             {
                 var tracks = await _library.ImportFilesAsync(new[] { final }, ct).ConfigureAwait(false);
                 added = tracks.Count > 0;
+                if (added) albumId = tracks[0].AlbumId ?? "";
             }
             catch (OperationCanceledException) { throw; }
             catch (Exception ex)
@@ -193,7 +220,7 @@ public sealed class YouTubeImporter : IYouTubeImporter
             }
             progress?.Report(new YouTubeImportProgress("Done", 1));
             Log($"YouTube.Imported: {artist} - {title} → {Path.GetFileName(final)} ({format.Key}, in library: {added})");
-            return new YouTubeImportResult(final, artist, title, added);
+            return new YouTubeImportResult(final, artist, title, added) { AlbumId = albumId };
         }
         catch (OperationCanceledException)
         {
@@ -213,6 +240,40 @@ public sealed class YouTubeImporter : IYouTubeImporter
             YtDlpTool.CleanupScratch(produced);
             throw;
         }
+    }
+
+    /// <summary>The extensions a download can end up with (M4A, MP3, Opus; WebM when yt-dlp could not remux).</summary>
+    private static readonly string[] DownloadExtensions = { ".m4a", ".mp3", ".opus", ".webm" };
+
+    /// <summary>
+    /// The file an earlier import of this video left in <paramref name="folder"/>, or null: the
+    /// name this import would use (any format), whose comment tag is the video's link. A file of
+    /// another video with the same name does not count (it gets "(2)" as before).
+    /// </summary>
+    internal static string? EarlierImport(string folder, YouTubeTrackInfo info)
+    {
+        if (string.IsNullOrWhiteSpace(info.Id)) return null;
+        var (artist, title) = YtDlpParsing.InferTags(info);
+        foreach (var ext in DownloadExtensions)
+        {
+            var path = Path.Combine(folder, YtDlpParsing.BuildFileName(artist, title, ext));
+            if (!File.Exists(path)) continue;
+            try
+            {
+                using var file = TagLib.File.Create(path);
+                if (NamesVideo(file.Tag.Comment, info.Id)) return path;
+            }
+            catch { /* not readable as audio: not ours to judge */ }
+        }
+        return null;
+    }
+
+    /// <summary>The comment (the link the import wrote) names video <paramref name="id"/>.</summary>
+    private static bool NamesVideo(string? comment, string id)
+    {
+        if (string.IsNullOrWhiteSpace(comment)) return false;
+        var m = System.Text.RegularExpressions.Regex.Match(comment, @"(?:[?&]v=|youtu\.be/|shorts/)([A-Za-z0-9_-]+)");
+        return m.Success && string.Equals(m.Groups[1].Value, id, StringComparison.Ordinal);
     }
 
     private void Log(string line)

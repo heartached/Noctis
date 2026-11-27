@@ -2891,6 +2891,8 @@ Années : year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar s
   <data name="StudioPicker.OneSong" xml:space="preserve"><value>1 titre</value><comment>Choose songs: tag on an album row with one local song</comment></data>
   <data name="StudioPicker.SongCount" xml:space="preserve"><value>{0} titres</value><comment>Choose songs: tag on an album row ({0} = local songs on it)</comment></data>
   <data name="LyricsStudio.ReviewEmptyTitle" xml:space="preserve"><value>Rien à revoir pour le moment</value><comment>Review pane empty state</comment></data>
+  <data name="LyricsStudio.LoadingLyrics" xml:space="preserve"><value>Lecture des paroles du morceau…</value></data>
+  <data name="LyricsStudio.TagWriteFailed" xml:space="preserve"><value>Impossible d’écrire les paroles dans les tags de « {0} ».</value></data>
   <data name="LyricsStudio.ReviewEmptyBody" xml:space="preserve"><value>Choisissez un titre dans la liste. Les titres avec paroles sont synchronisés quand vous appuyez sur Démarrer ; pour les autres, une zone s'ouvre pour les coller.</value><comment>Review pane empty state</comment></data>
   <data name="LyricsStudio.Upgrade" xml:space="preserve"><value>Horodater chaque mot</value><comment>Review button, shown for line-level lyrics</comment></data>
   <data name="LyricsStudio.UpgradeTip" xml:space="preserve"><value>Horodate chaque mot de ces lignes. Le fichier par ligne est conservé.</value><comment>Review button tooltip</comment></data>

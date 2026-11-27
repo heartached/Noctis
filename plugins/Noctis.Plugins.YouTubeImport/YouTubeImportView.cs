@@ -361,7 +361,13 @@ public sealed class YouTubeImportView : UserControl
         check.Bind(Avalonia.Controls.Shapes.Shape.FillProperty, check.GetResourceObservable("AccentColorBrush"));
         var doneText = new TextBlock { FontSize = 12.5, Opacity = 0.8, VerticalAlignment = VerticalAlignment.Center };
         doneText.Bind(TextBlock.TextProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.StatusText)));
-        var done = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = { check, doneText } };
+        var show = new Button { Content = "Show", MinHeight = 0, Padding = new Thickness(12, 4), FontSize = 12, Margin = new Thickness(4, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        show.Classes.Add("pill-secondary");
+        show.Bind(Button.CommandProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.ShowCommand)));
+        show.Bind(IsVisibleProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.CanShow)));
+        ToolTip.SetTip(show, "Show it in your library");
+        AutomationName(show, "Show in library");
+        var done = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = { check, doneText, show } };
         done.Bind(IsVisibleProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.IsDone)));
         var actions = new Panel { VerticalAlignment = VerticalAlignment.Center, Children = { download, percent, done } };
 

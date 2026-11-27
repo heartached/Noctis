@@ -596,6 +596,42 @@ public class AlbumRoulettePluginTests
         Assert.DoesNotContain("Ember", f.Apply(songs, Now).Select(s => s.Title));
     }
 
+    /// <summary>Album mode picked albums whose songs are all ones Noctis's shuffle leaves out (not
+    /// liked, Skip when shuffling, snoozed), which song mode already skipped (owner 11-26).</summary>
+    private static IReadOnlyList<TrackInfo> HalfHiddenTracks() => new[]
+    {
+        T("Meh", "All Hidden", "Kite", 1996, albumId: "hidden") with { IsDisliked = true },
+        T("Skipped", "All Hidden", "Kite", 1996, albumId: "hidden", number: 2) with { SkipWhenShuffling = true },
+        T("Snoozed", "All Hidden", "Kite", 1996, albumId: "hidden", number: 3) with { SnoozedUntil = Now.AddDays(3) },
+        T("Meh too", "Mixed", "Ada", 2001, albumId: "mixed") with { IsDisliked = true },
+        T("Fine", "Mixed", "Ada", 2001, albumId: "mixed", number: 2),
+        T("Woke", "Woken", "Nova", 2010, albumId: "woken") with { SnoozedUntil = Now.AddDays(-3) },
+    };
+
+    [Fact]
+    public void AlbumMode_LeavesOutAlbumsWithNoPlayableSong_AsSongModeDoes()
+    {
+        var albums = AlbumCatalog.Group(HalfHiddenTracks(), Now);
+        Assert.Equal(new[] { "Mixed", "Woken" }, new RouletteFilter().Apply(albums, Now).Select(a => a.Title).OrderBy(t => t));
+        Assert.Equal(2, albums.Single(a => a.Title == "Mixed").TrackIds.Count); // the album itself is whole
+        for (var day = 0; day < 40; day++)
+            Assert.NotEqual("All Hidden", AlbumOfTheDay.Pick(albums, Now.AddDays(day), skipCompilations: false)!.Title);
+    }
+
+    [AvaloniaFact]
+    public void AlbumMode_OnlyHiddenAlbums_ShowsTheEmptyState_InsteadOfSpinning()
+    {
+        var view = new RouletteView(new FakeRouletteHost(), new Random(1), () => Now);
+        var window = new Window { Content = view, Width = RouletteView.WindowWidth, Height = RouletteView.WindowHeight };
+        window.Show();
+        view.SetAlbums(AlbumCatalog.Group(HalfHiddenTracks().Where(t => t.Album == "All Hidden"), Now));
+        Assert.True(view.IsEmptyStateShown);
+        Assert.False(view.SpinEnabled);
+        view.Spin();
+        Assert.Null(view.Pick);
+        window.Close();
+    }
+
     [AvaloniaFact]
     public void View_SongRoulette_SpinsASong_ThenPlayPlayNextAddToQueue()
     {

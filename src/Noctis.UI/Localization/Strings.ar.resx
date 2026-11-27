@@ -7287,6 +7287,8 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <value>لا شيء للمراجعة بعد</value>
     <comment>Review pane empty state</comment>
   </data>
+  <data name="LyricsStudio.LoadingLyrics" xml:space="preserve"><value>جارٍ قراءة كلمات الأغنية…</value></data>
+  <data name="LyricsStudio.TagWriteFailed" xml:space="preserve"><value>تعذّر كتابة الكلمات في وسوم «{0}».</value></data>
   <data name="LyricsStudio.ReviewEmptyBody" xml:space="preserve">
     <value>اختر أغنية من القائمة. تُوقَّت الأغاني التي لها كلمات عند الضغط على «بدء»؛ والأغاني التي بلا كلمات تفتح مربعًا للصقها.</value>
     <comment>Review pane empty state</comment>

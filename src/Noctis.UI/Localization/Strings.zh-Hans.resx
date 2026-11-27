@@ -7287,6 +7287,8 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <value>还没有要审查的内容</value>
     <comment>Review pane empty state</comment>
   </data>
+  <data name="LyricsStudio.LoadingLyrics" xml:space="preserve"><value>正在读取歌曲的歌词…</value></data>
+  <data name="LyricsStudio.TagWriteFailed" xml:space="preserve"><value>无法将歌词写入“{0}”的标签。</value></data>
   <data name="LyricsStudio.ReviewEmptyBody" xml:space="preserve">
     <value>在列表中选择一首歌曲。按“开始”后，有歌词的歌曲会被计时；没有歌词的歌曲会打开一个文本框供你粘贴歌词。</value>
     <comment>Review pane empty state</comment>

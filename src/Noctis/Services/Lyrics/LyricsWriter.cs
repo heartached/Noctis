@@ -78,7 +78,7 @@ public sealed class LyricsWriter
     /// .lrc; LRC only saves the line timings alone (word timings dropped, in the tags too) and removes an old .elrc,
     /// which the lyrics page reads first.</param>
     public LyricsSaveOutcome SaveDetailed(Track track, string? plain, string? synced, bool embedInTags, bool replaceForeignSidecar, string? ttml = null,
-        LyricsSaveTarget? target = null, LyricsStudioFiles files = LyricsStudioFiles.ElrcAndLrc)
+        LyricsSaveTarget? target = null, LyricsStudioFiles files = LyricsStudioFiles.ElrcAndLrc, Action? tagWriteFailed = null)
     {
         if (files == LyricsStudioFiles.LrcOnly && !string.IsNullOrWhiteSpace(synced)
             && LyricsFormatDetector.Detect(null, synced) == LyricsFormat.Elrc)
@@ -148,12 +148,12 @@ public sealed class LyricsWriter
         if (isLocal && mode.WritesTags())
         {
             var (tagPlain, tagSynced) = (plain, synced);
-            QueueTagWrite(path, () => _metadata.WriteLyrics(path, tagPlain, tagSynced));
+            QueueTagWrite(path, () => _metadata.WriteLyrics(path, tagPlain, tagSynced), tagWriteFailed);
             tagsQueued = true;
         }
         else if (embedInTags && isLocal)
         {
-            QueueTagWrite(path, () => _metadata.WriteTrackMetadata(track));
+            QueueTagWrite(path, () => _metadata.WriteTrackMetadata(track), tagWriteFailed);
         }
         return new LyricsSaveOutcome(true, sidecarWritten, replaced, kept, tagsQueued);
     }
@@ -164,13 +164,30 @@ public sealed class LyricsWriter
         catch { return LyricsSaveTarget.Sidecar; }
     }
 
-    /// <summary>Tag writes wait (deferred writer) until the file is not the one playing; one per file, the latest wins.</summary>
-    private void QueueTagWrite(string path, Func<bool> write)
+    /// <summary>Tag writes wait (deferred writer) until the file is not the one playing; one per file, the latest wins.
+    /// <paramref name="failed"/> runs (on a worker thread) when the write, once it runs, fails or throws.</summary>
+    private void QueueTagWrite(string path, Func<bool> write, Action? failed = null)
     {
+        void Run()
+        {
+            bool ok;
+            try { ok = write(); }
+            catch
+            {
+                Notify();
+                throw;
+            }
+            if (!ok) Notify();
+        }
+        void Notify()
+        {
+            DebugLogger.Warn(DebugLogger.Category.Lyrics, "Lyrics.TagWriteFailed", Path.GetFileName(path));
+            try { failed?.Invoke(); } catch { /* a notice must never break the writer */ }
+        }
         if (_tagWriter is not null)
-            _tagWriter.Enqueue(path, "lyrics", () => write());
+            _tagWriter.Enqueue(path, "lyrics", Run);
         else
-            Task.Run(() => { try { write(); } catch { } });
+            Task.Run(() => { try { Run(); } catch { } });
     }
 
     /// <summary>

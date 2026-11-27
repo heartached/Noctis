@@ -26,8 +26,8 @@
       "type": "dotnet",
       "platforms": ["windows", "macos", "linux"],
       "download": "https://github.com/heartached/Noctis/releases/download/plugin-albumroulette-v1.0.4/Noctis.Plugins.AlbumRoulette-1.0.4.zip",
-      "sha256": "523ab68a30eb04e695c46e6bbd95f4ffc77240219c6c089578f76ef30bb586a2",
-      "size": 61801,
+      "sha256": "8ef0f64b8a30e88ef48a61d77f6af31a99f7ee5a48fdddd97699d28199bcb5fe",
+      "size": 62139,
       "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.AlbumRoulette",
       "icon": "Noctis.Plugins.AlbumRoulette/icon.png"
     },
@@ -41,8 +41,8 @@
       "type": "dotnet",
       "platforms": ["windows", "macos", "linux"],
       "download": "https://github.com/heartached/Noctis/releases/download/plugin-abloop-v1.0.1/Noctis.Plugins.ABLoop-1.0.1.zip",
-      "sha256": "a7489a13fb91cd5e6a12846da763d1d7bb9c83f43d21e53f835a7268941b95b9",
-      "size": 33512,
+      "sha256": "41fc51dcfd461262b5d57703f142e6eca00ef3bd8bfd482b3113ebc26f28238f",
+      "size": 33803,
       "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.ABLoop",
       "icon": "Noctis.Plugins.ABLoop/icon.png"
     },
@@ -56,8 +56,8 @@
       "type": "dotnet",
       "platforms": ["windows", "macos", "linux"],
       "download": "https://github.com/heartached/Noctis/releases/download/plugin-youtubeimport-v1.0.3/Noctis.Plugins.YouTubeImport-1.0.3.zip",
-      "sha256": "3068dcac84a76bd048dfca4b2fe25ad833b1d43da13fb9e2b28838be3dff8641",
-      "size": 79172,
+      "sha256": "0a57011f3712734324fd4a09b589cdef423240334aba27554d2f698e27712c51",
+      "size": 82311,
       "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.YouTubeImport",
       "icon": "Noctis.Plugins.YouTubeImport/icon.png"
     },

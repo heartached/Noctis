@@ -2898,6 +2898,8 @@ Years: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar sear
   <data name="StudioPicker.OneSong" xml:space="preserve"><value>1 song</value><comment>Choose songs: tag on an album row with one local song</comment></data>
   <data name="StudioPicker.SongCount" xml:space="preserve"><value>{0} songs</value><comment>Choose songs: tag on an album row ({0} = local songs on it)</comment></data>
   <data name="LyricsStudio.ReviewEmptyTitle" xml:space="preserve"><value>Nothing to review yet</value><comment>Review pane empty state</comment></data>
+  <data name="LyricsStudio.LoadingLyrics" xml:space="preserve"><value>Reading the song’s lyrics…</value><comment>Review pane while the selected song's own lyrics are read</comment></data>
+  <data name="LyricsStudio.TagWriteFailed" xml:space="preserve"><value>Couldn’t write the lyrics into the tags of “{0}”.</value><comment>Studio notice and song status when writing lyrics into the audio file's tags failed; {0} = song title</comment></data>
   <data name="LyricsStudio.ReviewEmptyBody" xml:space="preserve"><value>Pick a song in the list. Songs with lyrics are timed when you press Start; songs without open a box to paste them.</value><comment>Review pane empty state</comment></data>
   <data name="LyricsStudio.Upgrade" xml:space="preserve"><value>Time every word</value><comment>Review button, shown for line-level lyrics</comment></data>
   <data name="LyricsStudio.UpgradeTip" xml:space="preserve"><value>Times every word of these lines. The line-level file is kept.</value><comment>Review button tooltip</comment></data>

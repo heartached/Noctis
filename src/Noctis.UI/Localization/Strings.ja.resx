@@ -7287,6 +7287,8 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <value>まだレビューするものはありません</value>
     <comment>Review pane empty state</comment>
   </data>
+  <data name="LyricsStudio.LoadingLyrics" xml:space="preserve"><value>曲の歌詞を読み込んでいます…</value></data>
+  <data name="LyricsStudio.TagWriteFailed" xml:space="preserve"><value>「{0}」のタグに歌詞を書き込めませんでした。</value></data>
   <data name="LyricsStudio.ReviewEmptyBody" xml:space="preserve">
     <value>リストから曲を選択してください。歌詞のある曲は「開始」を押すとタイミングを付けられます。歌詞のない曲は貼り付け用のボックスが開きます。</value>
     <comment>Review pane empty state</comment>

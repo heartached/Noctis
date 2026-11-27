@@ -2898,6 +2898,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="StudioPicker.OneSong" xml:space="preserve"><value>1 песня</value><comment>Choose songs: tag on an album row with one local song</comment></data>
   <data name="StudioPicker.SongCount" xml:space="preserve"><value>Песен: {0}</value><comment>Choose songs: tag on an album row ({0} = local songs on it)</comment></data>
   <data name="LyricsStudio.ReviewEmptyTitle" xml:space="preserve"><value>Пока нечего проверять</value><comment>Review pane empty state</comment></data>
+  <data name="LyricsStudio.LoadingLyrics" xml:space="preserve"><value>Чтение текста песни…</value></data>
+  <data name="LyricsStudio.TagWriteFailed" xml:space="preserve"><value>Не удалось записать текст в теги «{0}».</value></data>
   <data name="LyricsStudio.ReviewEmptyBody" xml:space="preserve"><value>Выберите песню в списке. Песни с текстом синхронизируются, когда вы нажмёте «Начать»; для песен без текста откроется поле, куда его можно вставить.</value><comment>Review pane empty state</comment></data>
   <data name="LyricsStudio.Upgrade" xml:space="preserve"><value>Расставить тайминг слов</value><comment>Review button, shown for line-level lyrics</comment></data>
   <data name="LyricsStudio.UpgradeTip" xml:space="preserve"><value>Расставляет время для каждого слова этих строк. Файл с таймингом по строкам сохраняется.</value><comment>Review button tooltip</comment></data>
