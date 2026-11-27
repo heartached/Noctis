@@ -267,7 +267,8 @@ public class PluginHostApiTests : IDisposable
         Assert.False(host.IsTrustedOfficial(copy));
         Assert.Equal(PluginStatus.Restricted, copy.Status);
 
-        _box.Settings.VerifiedOfficialPlugins[listed.Id] = listed.Version + "|" + listed.Sha256;
+        _box.Settings.VerifiedOfficialPlugins[listed.Id] = listed.Version + "|" + listed.Sha256 + "|"
+            + PluginPayloadHash.OfFolder(copy.Directory, keepsDataInFolder: false);
         Assert.True(host.IsTrustedOfficial(copy));
         Assert.True(host.IsVerifiedOfficial(copy, listed));
     }

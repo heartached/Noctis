@@ -148,6 +148,65 @@ public class ClearArtworkCacheTests : IDisposable
         Assert.True(DominantColorExtractor.ExtractEdgeBackgroundColorFromFile(kept).HasValue);
     }
 
+    /// <summary>
+    /// 11-27 follow-up: Clear Artwork Cache rebuilds the albums (NotifyMetadataChanged, on its
+    /// own task) while the heal is already writing the covers back. A cover written back before
+    /// that rebuild keeps the album's ArtworkPath the very same string, so a cover on screen
+    /// that the clear had reloaded as missing was never told the file was there again: the
+    /// binding re-sets an equal path, which is no change. Here the steps in that order.
+    /// </summary>
+    [AvaloniaFact]
+    public void CoverWrittenBackAtTheSamePath_AfterTheClearShowedItMissing_IsShownAgain()
+    {
+        var persistence = new PersistenceService(_root);
+        var albumId = Guid.NewGuid();
+        var path = persistence.GetArtworkPath(albumId);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var png = File.ReadAllBytes(WritePng("png-source.png"));
+        File.WriteAllBytes(path, png);
+
+        var image = new Noctis.Controls.CachedImage { Width = 64, Height = 64, DecodeWidth = 64, SourcePath = path };
+        var window = new Avalonia.Controls.Window { Width = 200, Height = 200, Content = image };
+        Action<string> written = ArtworkCache.FileWritten;
+        PersistenceService.ArtworkSaved += written; // what App.OnFrameworkInitializationCompleted wires
+        try
+        {
+            window.Show();
+            PumpUntil(() => image.Source is not null);
+            Assert.NotNull(image.Source);
+
+            // The clear: the file goes, the folder is forgotten, the control reloads and finds nothing.
+            File.Delete(path);
+            ArtworkCache.ForgetFolder(Path.GetDirectoryName(path)!);
+            PumpUntil(() => image.Source is null);
+            Assert.Null(image.Source);
+
+            // The heal writes the cover back before the albums are rebuilt; the rebuilt album
+            // hands the binding the same path.
+            persistence.SaveArtwork(albumId, png);
+            image.SourcePath = path;
+            PumpUntil(() => image.Source is not null, seconds: 3);
+
+            Assert.NotNull(image.Source);
+        }
+        finally
+        {
+            PersistenceService.ArtworkSaved -= written;
+            window.Close();
+        }
+    }
+
+    private static void PumpUntil(Func<bool> done, double seconds = 10)
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        while (!done() && sw.Elapsed < TimeSpan.FromSeconds(seconds))
+        {
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Thread.Sleep(10);
+        }
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+    }
+
     /// <summary>Reset Everything deletes cache/ with the thumbnail folder in it, which only a
     /// launch created: every later thumbnail failed to save.</summary>
     [Fact]

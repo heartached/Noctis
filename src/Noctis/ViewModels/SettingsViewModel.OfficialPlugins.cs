@@ -86,6 +86,44 @@ public partial class SettingsViewModel
             ShowOfficialPlugins(load.Catalog);
         }
         finally { IsOfficialPluginsLoading = false; }
+        await ConfirmPinnedOfficialPluginsAsync(client);
+    }
+
+    /// <summary>
+    /// Install records from 1.7.3 and older had no folder hash; the host pinned the folder it found
+    /// at first load (PluginHost.PinLegacyRecords). With the list in hand, each such copy's listed
+    /// zip is downloaded once (size and SHA-256 checked against the list, as for an install) and
+    /// settles it: the folder is the listed build, or it is a local copy from now on. A failed
+    /// download (offline) leaves it pinned and the next page open tries again.
+    /// </summary>
+    private async Task ConfirmPinnedOfficialPluginsAsync(PluginCatalogClient client)
+    {
+        if (Plugins is null) return;
+        var changed = false;
+        foreach (var item in OfficialPlugins.ToList())
+        {
+            if (item.Installed is not { } copy || item.IsBusy || !Plugins.NeedsPinnedConfirmation(copy, item.Entry)) continue;
+            string? zip = null;
+            try
+            {
+                zip = await Task.Run(() => client.DownloadAsync(item.Entry, null, CancellationToken.None));
+                Plugins.ConfirmPinnedInstall(copy, zip);
+                changed = true;
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                Services.DebugLogger.Warn(Services.DebugLogger.Category.State, "Plugins", $"confirm {item.Entry.Id}: {ex.Message}");
+            }
+            finally
+            {
+                if (zip is not null)
+                {
+                    try { File.Delete(zip); }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { /* temp folder */ }
+                }
+            }
+        }
+        if (changed) RefreshOfficialPluginStates();
     }
 
     private void ShowOfficialPlugins(PluginCatalog catalog)

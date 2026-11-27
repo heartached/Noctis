@@ -272,6 +272,34 @@ public static class ArtworkCache
         return dropped;
     }
 
+    /// <summary>
+    /// Paths a load found no file at (a cover not cached yet, or deleted by Clear Artwork Cache).
+    /// A control showing the placeholder for one keeps that path; when the file is written back
+    /// at the same path, <see cref="FileWritten"/> tells it to load. A hint, not a ledger: it is
+    /// emptied when it grows past <see cref="MaxMissingPaths"/>.
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, byte> MissingOnLoad = new(StringComparer.Ordinal);
+    internal const int MaxMissingPaths = 4096;
+
+    private static void NoteMissing(string path)
+    {
+        if (MissingOnLoad.Count >= MaxMissingPaths) MissingOnLoad.Clear();
+        MissingOnLoad.TryAdd(path, 0);
+    }
+
+    /// <summary>
+    /// A cover file was written (PersistenceService.ArtworkSaved, any thread). Clear Artwork Cache
+    /// rebuilds the albums while the heal is already writing covers back: one written first keeps
+    /// its album's path unchanged, so the control the clear reloaded (and found empty) was never
+    /// told and showed the placeholder until the page was rebuilt. Only a path a load found
+    /// missing is invalidated, so a first scan's thousands of new covers cost a lookup each.
+    /// </summary>
+    public static void FileWritten(string path)
+    {
+        if (!string.IsNullOrEmpty(path) && MissingOnLoad.TryRemove(path, out _))
+            Invalidate(path);
+    }
+
     /// <summary>Raised by <see cref="ForgetFolder"/>: controls showing a cover under the folder reload.</summary>
     public static event Action<string>? FolderInvalidated;
 
@@ -331,7 +359,10 @@ public static class ArtworkCache
         try
         {
             if (DecoderOverride is null && !File.Exists(path))
+            {
+                NoteMissing(path);
                 return null;
+            }
 
             var width = KeyWidth(decodeWidth, exact);
             var key = BuildKey(path, width, exact);
@@ -596,6 +627,7 @@ public static class ArtworkCache
         // First: a control still on screen (a window a test left open) must let go of its
         // cover, or its next layout reads a disposed bitmap and throws.
         ClearingForTests?.Invoke();
+        MissingOnLoad.Clear();
         foreach (var key in Cache.Keys.ToList())
         {
             if (Cache.TryRemove(key, out var removed))

@@ -133,9 +133,12 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Plugin id → setting key → value (invariant text) for settings declared in plugin.json.</summary>
     public Dictionary<string, Dictionary<string, string>> PluginSettingValues { get; set; } = new();
 
-    /// <summary>Plugin id → "version|sha256" of an installed copy whose zip matched its official
-    /// listing (plugins/index.json, author Noctis) at install time. Only these show the verified
-    /// mark in Settings → Plugins; written by the plugin host on install, dropped on remove.</summary>
+    /// <summary>Plugin id → "version|zip sha256|payload hash" of an installed copy whose zip matched
+    /// its official listing (plugins/index.json, author Noctis) at install time; the payload hash is
+    /// of the files installed (PluginPayloadHash), checked at every load. A fourth part "pinned"
+    /// marks a payload hash taken at first load from a record written by 1.7.3 or older, until the
+    /// listed zip confirms it. Only these show the verified mark in Settings → Plugins; written by
+    /// the plugin host on install, dropped on remove.</summary>
     public Dictionary<string, string> VerifiedOfficialPlugins { get; set; } = new();
 
     /// <summary>

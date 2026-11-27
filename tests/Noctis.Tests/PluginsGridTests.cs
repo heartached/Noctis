@@ -270,7 +270,8 @@ public class PluginsGridTests : IDisposable
         Assert.True(m.Vm.OfficialCards.Single().IsInstalled);
         Assert.True(m.Vm.OfficialCards.Single().IsOfficial);
         Assert.False(m.Vm.OfficialCards.Single().IsLocalCopy);
-        Assert.Equal("1.0.0|" + listing.Entry.Sha256, _box.Settings.VerifiedOfficialPlugins[OfficialId]);
+        Assert.Equal("1.0.0|" + listing.Entry.Sha256 + "|" + PluginPayloadHash.OfFolder(installed.Directory, keepsDataInFolder: false),
+            _box.Settings.VerifiedOfficialPlugins[OfficialId]);
 
         // Remove drops the record; the official zip installed by hand is verified again (same SHA).
         m.Host.Remove(installed, deleteData: true);
@@ -353,6 +354,34 @@ public class PluginsGridTests : IDisposable
         Assert.False(m.Host.IsTrustedOfficial(m.Host.FindById(OfficialId)!));
         m.Host.SetCommunityPluginsEnabled(false);
         Assert.True(m.Host.FindById(OfficialId)!.IsRestricted);
+    }
+
+    /// <summary>11-27 follow-up: a record from 1.7.3 (no folder hash) over a build copied in by hand.
+    /// The first load pins what it finds; opening the Plugins page downloads the listed zip once,
+    /// and the copy shows as a local copy from then on.</summary>
+    [AvaloniaFact]
+    public async Task PinnedRecord_TheListedZipIsDownloadedOnce_AndAHandCopiedBuildBecomesALocalCopy()
+    {
+        using var m = Mount();
+        var officialZip = File.ReadAllBytes(Zip("official.zip", OfficialId, "1.0.0", "Noctis"));
+        Publish(m, officialZip);
+        await m.Vm.LoadOfficialPluginsAsync();
+        var listing = m.Vm.OfficialPlugins.Single(o => o.Entry.Id == OfficialId);
+        await m.Vm.InstallOfficialPluginAsync(listing);
+        Assert.False(listing.HasUnverifiedCopy);
+
+        _box.Settings.VerifiedOfficialPlugins[OfficialId] = "1.0.0|" + listing.Entry.Sha256;
+        File.WriteAllBytes(Path.Combine(m.Host.FindById(OfficialId)!.Directory, "Test.Plugin.dll"), new byte[] { 7 });
+        m.Host.LoadAll();
+        Assert.EndsWith("|pinned", _box.Settings.VerifiedOfficialPlugins[OfficialId]);
+
+        await m.Vm.LoadOfficialPluginsAsync();
+
+        Assert.DoesNotContain("pinned", _box.Settings.VerifiedOfficialPlugins[OfficialId]);
+        listing = m.Vm.OfficialPlugins.Single(o => o.Entry.Id == OfficialId); // the list was shown anew
+        Assert.True(listing.HasUnverifiedCopy);
+        Assert.True(m.Vm.OfficialCards.Single(c => c.Id == OfficialId).IsLocalCopy);
+        Assert.Equal(Loc.T("Plugins.Get.Replace"), listing.ButtonText);
     }
 
     /// <summary>Every card has a state pill (owner 11-26: three official cards had none because
