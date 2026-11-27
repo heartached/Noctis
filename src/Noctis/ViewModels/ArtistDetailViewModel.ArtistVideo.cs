@@ -44,6 +44,31 @@ public partial class ArtistDetailViewModel
     /// <summary>How long the portrait waits for a cached video's first frame.</summary>
     internal static TimeSpan ArtistVideoPendingLimit { get; set; } = TimeSpan.FromSeconds(2.5);
 
+    /// <summary>
+    /// The artist's video is being looked up or downloaded (nothing cached yet): the hero shows
+    /// a small loading mark, so a first visit does not look like nothing is happening for the
+    /// seconds the download takes (owner 11-27). Only after <see cref="ArtistVideoLoadingDelay"/>,
+    /// so a quick "Apple has none" never flashes it; cleared when the fetch ends either way.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isArtistVideoLoading;
+
+    /// <summary>How long a fetch runs before the loading mark shows.</summary>
+    internal static TimeSpan ArtistVideoLoadingDelay { get; set; } = TimeSpan.FromMilliseconds(400);
+
+    private async Task ShowArtistVideoLoadingLaterAsync(CancellationToken ct)
+    {
+        try { await Task.Delay(ArtistVideoLoadingDelay, ct); }
+        catch (OperationCanceledException) { return; }
+        if (!ct.IsCancellationRequested && !HasArtistVideo && !ArtistVideoTask.IsCompleted)
+            IsArtistVideoLoading = true;
+    }
+
+    /// <summary>The artist's own album titles in the library: they tell Apple's artists of one
+    /// name apart (ITunesArtworkService.PickNamesakeByAlbumsAsync).</summary>
+    internal IReadOnlyList<string> LibraryAlbumTitles()
+        => _allReleases.Select(a => a.Name).Where(n => !string.IsNullOrWhiteSpace(n)).Distinct().ToList();
+
     private bool _artistVideoOnScreen;
 
     /// <summary>The hero's video put its first frame on screen (true) or went away (false): the view.</summary>
@@ -113,7 +138,10 @@ public partial class ArtistDetailViewModel
             ArtistVideoPending = true;
             _ = EndArtistVideoPendingLaterAsync(cts.Token);
         }
-        ArtistVideoTask = FetchArtistVideoAsync(fetcher, Artist.Id, ArtistName, _settings!.AnimatedArtworkCacheBytes, cts.Token);
+        var willAsk = fetcher.WouldFetch(Artist.Id);
+        ArtistVideoTask = FetchArtistVideoAsync(fetcher, Artist.Id, ArtistName, _settings!.AnimatedArtworkCacheBytes,
+            LibraryAlbumTitles(), cts.Token);
+        if (willAsk) _ = ShowArtistVideoLoadingLaterAsync(cts.Token);
     }
 
     /// <summary>The page left the screen (or closed): stop asking, and let the hero go of the file.</summary>
@@ -123,17 +151,20 @@ public partial class ArtistDetailViewModel
         _artistVideoCts = null;
         _artistVideoOnScreen = false;
         ArtistVideoPending = false;
+        IsArtistVideoLoading = false;
         ArtistVideoPath = null;
     }
 
-    private async Task FetchArtistVideoAsync(ArtistVideoAutoFetcher fetcher, Guid artistId, string name, long capBytes, CancellationToken ct)
+    private async Task FetchArtistVideoAsync(ArtistVideoAutoFetcher fetcher, Guid artistId, string name, long capBytes,
+        IReadOnlyList<string> libraryAlbums, CancellationToken ct)
     {
         try
         {
             // Off the UI thread: the cache's file checks, the lookup and the download.
-            var path = await Task.Run(() => fetcher.FetchAsync(artistId, name, capBytes, ct), ct);
+            var path = await Task.Run(() => fetcher.FetchAsync(artistId, name, capBytes, ct, libraryAlbums), ct);
             // Back on the caller's (UI) thread, as the album page's fetch.
             if (ct.IsCancellationRequested) return;
+            IsArtistVideoLoading = false;
             if (path is null)
             {
                 ArtistVideoPending = false;
@@ -148,7 +179,11 @@ public partial class ArtistDetailViewModel
         catch (Exception ex)
         {
             DebugLog.Write(ITunesArtworkService.LogSource, $"artist video: artist page: {ex.Message}");
-            if (!ct.IsCancellationRequested) ArtistVideoPending = false;
+            if (!ct.IsCancellationRequested)
+            {
+                ArtistVideoPending = false;
+                IsArtistVideoLoading = false;
+            }
         }
     }
 

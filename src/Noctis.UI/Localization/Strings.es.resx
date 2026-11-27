@@ -4646,4 +4646,5 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Settings.ArtistVideos" xml:space="preserve"><value>Vídeos de artistas</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ArtistVideosDesc" xml:space="preserve"><value>Reproduce el vídeo de Apple Music de un artista detrás de su página cuando existe. Busca cada artista que abres.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="ArtistDetail.RemoveArtistVideo" xml:space="preserve"><value>Quitar vídeo del artista</value><comment>Header in ArtistDetailView.axaml</comment></data>
+  <data name="ArtistDetail.ArtistVideoLoading" xml:space="preserve"><value>Cargando vídeo…</value><comment>Text in ArtistDetailView.axaml</comment></data>
 </root>

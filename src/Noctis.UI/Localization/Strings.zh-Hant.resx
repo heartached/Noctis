@@ -9647,4 +9647,5 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="Settings.ArtistVideos" xml:space="preserve"><value>藝人影片</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ArtistVideosDesc" xml:space="preserve"><value>如有藝人的 Apple Music 影片，在其頁面背後播放。會尋找你開啟的每位藝人。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="ArtistDetail.RemoveArtistVideo" xml:space="preserve"><value>移除藝人影片</value><comment>Header in ArtistDetailView.axaml</comment></data>
+  <data name="ArtistDetail.ArtistVideoLoading" xml:space="preserve"><value>正在載入影片…</value><comment>Text in ArtistDetailView.axaml</comment></data>
 </root>

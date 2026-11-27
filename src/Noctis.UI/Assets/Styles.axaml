@@ -1159,6 +1159,12 @@
     <Style Selector="ListBox.sidebar ListBoxItem:pointerover /template/ ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource SidebarHoverBrush}" />
     </Style>
+    <!-- Settings while its sheet is open (SidebarView sets the class): the row never takes the
+         selection, so it kept only the hover disc, which went the moment the pointer moved into
+         the sheet (owner 11-27). It holds the hover look until the sheet closes. -->
+    <Style Selector="ListBox.sidebar ListBoxItem.sheet-open /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SidebarHoverBrush}" />
+    </Style>
 
     <!-- Selected row = accent pill with accent-contrast content, same as the Settings rail's
          active item (GitHub #87: the sidebar didn't follow the accent / album-art accent). -->

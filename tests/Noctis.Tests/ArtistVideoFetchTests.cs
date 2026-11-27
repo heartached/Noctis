@@ -42,7 +42,7 @@ public class ArtistVideoFetchTests : IDisposable
 
     private ArtistVideoAutoFetcher Fetcher(PoliteGate? gate = null, SemaphoreSlim? one = null)
         => new(
-            (name, known, g, ct) => { _lookups++; return Task.FromResult(_answer(name, known)); },
+            (name, known, g, ct, _) => { _lookups++; return Task.FromResult(_answer(name, known)); },
             async (_, part, ct) => { _downloads++; await File.WriteAllBytesAsync(part, new byte[_bytes], ct); return true; },
             new AnimatedArtworkCache(_persistence, Path.Combine(_dir, ArtistVideoAutoFetcher.BlockListFile), () => _clock),
             Path.Combine(_dir, ArtistVideoAutoFetcher.MissLedgerFile),
@@ -185,6 +185,21 @@ public class ArtistVideoFetchTests : IDisposable
         Assert.Equal(new[] { AnimatedArtworkAutoFetcher.RequestInterval }, _waits);
     }
 
+    // Owner 11-27: the namesake misses recorded before the library's albums told namesakes
+    // apart ("Drake": generation 0 in the ledger file) are asked again by this lookup.
+    [Fact]
+    public async Task AMissFromBeforeNamesakesWereToldApart_IsAskedAgain()
+    {
+        var ledger = Path.Combine(_persistence.DataDirectory, ArtistVideoAutoFetcher.MissLedgerFile);
+        File.WriteAllText(ledger, $"{{\"{Chase}\":{{\"CheckedUtc\":\"{DateTime.UtcNow:O}\",\"Rank\":0,\"Generation\":0}}}}");
+
+        var fetcher = Fetcher();
+        Assert.True(fetcher.WouldFetch(Chase));
+        Assert.NotNull(await fetcher.FetchAsync(Chase, "Chase Atlantic", long.MaxValue, CancellationToken.None));
+        Assert.Equal(1, _lookups);
+        Assert.False(fetcher.WouldFetch(Chase)); // cached now
+    }
+
     // ── Settings ──
 
     [Fact]
@@ -265,6 +280,46 @@ public class ArtistVideoFetchTests : IDisposable
         await page.ArtistVideoTask;
         Assert.Null(page.ArtistVideoPath);
         Assert.Equal(1, _lookups);
+    }
+
+    // Owner 11-27 "add a loading icon so the user knows it's loading": the mark shows while a
+    // first visit looks the video up and downloads it, and goes when the fetch ends.
+    [AvaloniaFact]
+    public async Task FirstVisit_ShowsTheLoadingMarkUntilTheFetchEnds()
+    {
+        var was = ArtistDetailViewModel.ArtistVideoLoadingDelay;
+        ArtistDetailViewModel.ArtistVideoLoadingDelay = TimeSpan.Zero;
+        try
+        {
+            var (page, _) = await OpenAsync(true, true);
+            var gate = new TaskCompletionSource();
+            var fetcher = new ArtistVideoAutoFetcher(
+                async (name, known, g, ct, _) => { await gate.Task; return _answer(name, known); },
+                (v, part, ct) => { File.WriteAllBytes(part, new byte[100]); return Task.FromResult(true); },
+                new AnimatedArtworkCache(_persistence, Path.Combine(_persistence.DataDirectory, "no.json")),
+                null, null, new PoliteGate(TimeSpan.Zero), new SemaphoreSlim(1, 1));
+            page.ArtistVideoFetcherProvider = () => fetcher;
+
+            page.StartArtistVideo();
+            for (var i = 0; i < 200 && !page.IsArtistVideoLoading; i++)
+            {
+                await Task.Delay(10);
+                Dispatcher.UIThread.RunJobs();
+            }
+            Assert.True(page.IsArtistVideoLoading);
+
+            gate.SetResult();
+            await page.ArtistVideoTask;
+            Assert.False(page.IsArtistVideoLoading);
+            Assert.True(page.HasArtistVideo);
+
+            // A second visit plays from the cache: no mark.
+            page.StartArtistVideo();
+            Assert.False(page.IsArtistVideoLoading);
+            await page.ArtistVideoTask;
+            Assert.False(page.IsArtistVideoLoading);
+        }
+        finally { ArtistDetailViewModel.ArtistVideoLoadingDelay = was; }
     }
 
     // Owner 11-27: with the video already cached, the page showed the still portrait on the

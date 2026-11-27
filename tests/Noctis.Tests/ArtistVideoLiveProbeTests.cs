@@ -19,8 +19,10 @@ public class ArtistVideoLiveProbeTests
     public ArtistVideoLiveProbeTests(ITestOutputHelper output) => _out = output;
 
     [Theory]
-    [InlineData("Chase Atlantic")]
-    public async Task LookupAndDownload(string artist)
+    [InlineData("Chase Atlantic", "")]
+    // Namesakes (owner 11-27): told apart by the library's albums.
+    [InlineData("Drake", "Take Care|Views")]
+    public async Task LookupAndDownload(string artist, string albums)
     {
         if (Environment.GetEnvironmentVariable("NOCTIS_LIVE_ARTIST_VIDEO") != "1")
             return;
@@ -38,7 +40,8 @@ public class ArtistVideoLiveProbeTests
         var before = new HashSet<string>(DebugLog.Snapshot().Split('\n'));
         var sw = System.Diagnostics.Stopwatch.StartNew();
         var path = await fetcher.FetchAsync(LibraryService.ComputeArtistId(artist), artist,
-            new AppSettings().AnimatedArtworkCacheMb * 1024L * 1024L, CancellationToken.None);
+            new AppSettings().AnimatedArtworkCacheMb * 1024L * 1024L, CancellationToken.None,
+            albums.Split('|', StringSplitOptions.RemoveEmptyEntries));
 
         _out.WriteLine($"{artist}: {path ?? "(none)"} in {sw.ElapsedMilliseconds} ms" +
                        (path != null ? $", {new FileInfo(path).Length} bytes" : string.Empty));

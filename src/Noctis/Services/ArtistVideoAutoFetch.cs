@@ -15,8 +15,14 @@ namespace Noctis.Services;
 /// </summary>
 public sealed class ArtistVideoAutoFetcher
 {
-    /// <summary>The lookup: artist name, a known Apple id (0 = search), the shared gate.</summary>
-    internal delegate Task<ArtistVideoLookup> LookupFunc(string artistName, long knownArtistId, PoliteGate gate, CancellationToken ct);
+    /// <summary>The lookup: artist name, a known Apple id (0 = search), the shared gate, and the
+    /// artist's album titles in the library (they tell store artists of one name apart).</summary>
+    internal delegate Task<ArtistVideoLookup> LookupFunc(string artistName, long knownArtistId, PoliteGate gate, CancellationToken ct,
+        IReadOnlyList<string>? libraryAlbums);
+
+    /// <summary>The miss ledger's generation: 1 since namesakes are told apart by the library's
+    /// albums, so the "more than one artist of that name" misses recorded before are asked again.</summary>
+    internal const int MissGeneration = 1;
 
     /// <summary>The download of a picked variant to a part file.</summary>
     internal delegate Task<bool> DownloadFunc(ITunesArtworkService.AnimatedArtworkVariant variant, string partPath, CancellationToken ct);
@@ -46,14 +52,14 @@ public sealed class ArtistVideoAutoFetcher
         _indexPath = indexPath;
         _gate = gate;
         _one = one;
-        _misses = new BulkRunLedger(missLedgerPath, clock) { EntryLifetime = AnimatedArtworkAutoFetcher.MissLifetime };
+        _misses = new BulkRunLedger(missLedgerPath, clock) { EntryLifetime = AnimatedArtworkAutoFetcher.MissLifetime, Generation = MissGeneration };
     }
 
     /// <summary>The app's wiring; every file under the data folder. Queues and paces with
     /// <paramref name="albums"/> (the album pages' fetcher) when given.</summary>
     public static ArtistVideoAutoFetcher For(ITunesArtworkService itunes, IPersistenceService persistence, AnimatedArtworkAutoFetcher? albums)
         => new(
-            (name, id, gate, ct) => itunes.FindArtistVideoAsync(name, id, gate, ct),
+            (name, id, gate, ct, albums) => itunes.FindArtistVideoAsync(name, id, gate, ct, albums),
             (variant, part, ct) => itunes.DownloadHlsVariantAsMp4Async(variant, part, ct),
             new AnimatedArtworkCache(persistence, Path.Combine(persistence.DataDirectory, BlockListFile)),
             Path.Combine(persistence.DataDirectory, MissLedgerFile),
@@ -80,6 +86,11 @@ public sealed class ArtistVideoAutoFetcher
     {
         lock (_indexLock) return Index().TryGetValue(artistId, out var id) ? id : 0;
     }
+
+    /// <summary>Opening the artist's page will ask Apple (a lookup, maybe a download): nothing
+    /// cached, not blocked, and no recent miss. The page shows its loading mark only then.</summary>
+    public bool WouldFetch(Guid artistId)
+        => !HasCachedVideo(artistId) && !Cache.IsBlocked(artistId) && !_misses.CheckedRecently(artistId, 0);
 
     /// <summary>The artist's cached video (marked used), or null. No network.</summary>
     public string? CachedPath(Guid artistId)
@@ -147,7 +158,7 @@ public sealed class ArtistVideoAutoFetcher
             ArtistVideoLookup found;
             try
             {
-                found = await _lookup(artistName, appleId, _gate, ct).ConfigureAwait(false);
+                found = await _lookup(artistName, appleId, _gate, ct, null).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch (Exception ex)
@@ -227,7 +238,9 @@ public sealed class ArtistVideoAutoFetcher
     /// artist is blocked, was a miss recently, has no exact match or no video, or anything
     /// failed. Never throws except for cancellation.
     /// </summary>
-    public async Task<string?> FetchAsync(Guid artistId, string artistName, long capBytes, CancellationToken ct)
+    /// <param name="libraryAlbums">The artist's album titles in the library, for namesakes.</param>
+    public async Task<string?> FetchAsync(Guid artistId, string artistName, long capBytes, CancellationToken ct,
+        IReadOnlyList<string>? libraryAlbums = null)
     {
         if (CachedPath(artistId) is { } cached) return cached;
         if (Cache.IsBlocked(artistId) || _misses.CheckedRecently(artistId, 0)) return null;
@@ -243,7 +256,7 @@ public sealed class ArtistVideoAutoFetcher
             ArtistVideoLookup found;
             try
             {
-                found = await _lookup(artistName, KnownAppleId(artistId), _gate, ct).ConfigureAwait(false);
+                found = await _lookup(artistName, KnownAppleId(artistId), _gate, ct, libraryAlbums).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch (Exception ex)

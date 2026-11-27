@@ -23,6 +23,10 @@ public partial class SidebarViewModel : ViewModelBase
 
     [ObservableProperty] private NavItem? _selectedNavItem;
     [ObservableProperty] private bool _isExpanded;
+
+    /// <summary>The Settings sheet is open (MainWindowViewModel): the Settings row holds its
+    /// hover look meanwhile (the row never takes the selection, see <see cref="OpensSheet"/>).</summary>
+    [ObservableProperty] private bool _isSettingsSheetOpen;
     [ObservableProperty] private int _favoritesCount;
 
     /// <summary>Top-bar state mirrored by the rail's Back/Search actions.
