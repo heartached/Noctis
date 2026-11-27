@@ -96,25 +96,24 @@ public interface IMetadataService
     /// </summary>
     bool WriteTrackMetadata(Track track, string targetFilePath, string? titleOverride = null);
 
-    /// <summary>
-    /// GitHub #239 Move to Album: <see cref="WriteTrackMetadata(Track)"/> plus the album's
-    /// identity tags (sort names, MusicBrainz release ids) in the same save. The default writes
-    /// the track's tags only, so test stubs keep compiling.
-    /// </summary>
-    bool WriteTrackMetadata(Track track, AlbumIdentityTags albumIdentity) => WriteTrackMetadata(track);
-
     /// <summary>GitHub #239: the album identity tags of a file (see <see cref="AlbumIdentityTags"/>);
     /// null when it cannot be read. The default reads nothing.</summary>
     AlbumIdentityTags? ReadAlbumIdentity(string filePath) => null;
 
     /// <summary>
-    /// Undo Grouping (<see cref="AlbumUndo"/>): <see cref="WriteTrackMetadata(Track)"/> (with
-    /// <see cref="AlbumUndoWrite.Identity"/>'s tags when set, as Move to Album writes them) and,
-    /// in the same save, takes out the album artist, album and year tags the grouping wrote into
-    /// a file that had none. The default writes the track's tags only, so test stubs keep compiling.
+    /// Group into One Album, Move to Album and Undo Grouping (<see cref="AlbumFileWrite"/>):
+    /// first puts back <see cref="AlbumFileWrite.Restore"/>'s original values, then sets only
+    /// <see cref="AlbumFileWrite.Tags"/>' album tags; every other tag stays as the file has it.
+    /// <paramref name="replaced"/> is what the album tags replaced, as the file had it (for Undo).
+    /// <paramref name="background"/>: the player never lets go of the file for it, so a playing
+    /// file may fail and is retried later. Returns false when the file could not be written. The
+    /// default writes nothing, so test stubs keep compiling.
     /// </summary>
-    bool WriteAlbumUndo(Track track, AlbumUndoWrite write) =>
-        write.Identity != null ? WriteTrackMetadata(track, write.Identity) : WriteTrackMetadata(track);
+    bool WriteAlbumTags(string filePath, AlbumFileWrite write, bool background, out RawTagSnapshot? replaced)
+    {
+        replaced = null;
+        return false;
+    }
 
     /// <summary>
     /// Sets the embedded album artwork on an audio file.

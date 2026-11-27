@@ -218,6 +218,14 @@ public partial class Track : ObservableObject
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public AlbumGroupUndo? GroupUndo { get; set; }
 
+    /// <summary>
+    /// The Group into One Album / Move to Album / Undo Grouping write this song's file has not
+    /// taken yet (it was read-only or held open; <see cref="AlbumGroupingUnwritten"/> is set too).
+    /// The next pass writes exactly it, then clears both. Null when nothing is pending.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Services.AlbumFileWrite? PendingAlbumWrite { get; set; }
+
     /// <summary>File size in bytes, used for change detection during rescan.</summary>
     public long FileSize { get; set; }
 

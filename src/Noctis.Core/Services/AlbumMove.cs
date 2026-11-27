@@ -6,7 +6,7 @@ namespace Noctis.Services;
 /// GitHub #239 "Move to Album": the tags a song takes when it is moved into another album that
 /// already exists, or into a new album the user names. Albums come from the files' tags, so a
 /// "new album" exists once a song carries its name; the move writes these values into each file
-/// (through <see cref="IMetadataService.WriteTrackMetadata(Track, AlbumIdentityTags)"/>) so other
+/// (through <see cref="IMetadataService.WriteAlbumTags"/>, those tags only) so other
 /// players and DAPs show the song where Noctis does.
 ///
 /// Into an existing album the song takes the album-level tags its songs share, so no player

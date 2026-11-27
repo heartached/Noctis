@@ -711,17 +711,76 @@ public class MetadataService : IMetadataService
         => WriteTrackMetadataCore(track, targetFilePath, titleOverride, genreEdited: false);
 
     /// <inheritdoc />
-    public bool WriteTrackMetadata(Track track, AlbumIdentityTags albumIdentity)
-        => WriteTrackMetadataCore(track, track.FilePath, null, genreEdited: false, albumIdentity);
-
-    /// <inheritdoc />
-    public bool WriteAlbumUndo(Track track, AlbumUndoWrite write)
-        => WriteTrackMetadataCore(track, track.FilePath, null, genreEdited: false, write.Identity, file =>
+    public bool WriteAlbumTags(string filePath, AlbumFileWrite write, bool background, out RawTagSnapshot? replaced)
+    {
+        RawTagSnapshot? changed = null;
+        try
         {
-            if (write.RemoveAlbumArtist) file.Tag.AlbumArtists = Array.Empty<string>();
-            if (write.RemoveAlbum) file.Tag.Album = null;
-            if (write.RemoveYear) file.Tag.Year = 0; // as ClearYear
-        });
+            SaveTagsAtomicallyOrThrow(filePath, file =>
+            {
+                // A failed Undo Grouping first: the file is back as it was, and what this write
+                // replaces is recorded from there.
+                if (write.Restore != null)
+                {
+                    if (write.Restore.OtherBlocks && write.RestoreValues != null)
+                        foreach (var block in OtherTagBlocks(file))
+                            ApplyAlbumTags(block, null, write.RestoreValues);
+                    RawTagState.Restore(file, write.Restore);
+                }
+                if (write.Tags == null) return;
+                var before = RawTagState.Capture(file);
+                ApplyAlbumTags(file.Tag, file, write.Tags);
+                changed = RawTagState.Replaced(before, RawTagState.Capture(file));
+            }, releaseOpenFile: !background); // a background pass must not put a gap in the playing track
+            replaced = changed;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Metadata", $"Album tags write failed for '{filePath}': {ex.Message}");
+            replaced = null;
+            return false;
+        }
+    }
+
+    /// <summary>The tag blocks <see cref="RawTagState"/> keeps by value only (APE, ASF, RIFF INFO).</summary>
+    private static IEnumerable<TagLib.Tag> OtherTagBlocks(TagLib.File file)
+    {
+        foreach (var type in new[] { TagLib.TagTypes.Ape, TagLib.TagTypes.Asf, TagLib.TagTypes.RiffInfo,
+                     TagLib.TagTypes.MovieId, TagLib.TagTypes.DivX })
+            if ((file.TagTypes & type) != 0 && file.GetTag(type) is { } tag)
+                yield return tag;
+    }
+
+    /// <summary>
+    /// Sets only <paramref name="write"/>'s fields on <paramref name="tag"/> (the file's combined
+    /// tag, or one block); the compilation, release type and identity tags need the
+    /// <paramref name="file"/> and are left out without one.
+    /// </summary>
+    private static void ApplyAlbumTags(TagLib.Tag tag, TagLib.File? file, AlbumTagWrite write)
+    {
+        var f = write.Fields;
+        if (f.HasFlag(AlbumTagFields.Album))
+            tag.Album = string.IsNullOrEmpty(write.Album) ? null : write.Album;
+        if (f.HasFlag(AlbumTagFields.AlbumArtist))
+            tag.AlbumArtists = string.IsNullOrWhiteSpace(write.AlbumArtist) ? Array.Empty<string>() : SplitArtistList(write.AlbumArtist);
+        if (f.HasFlag(AlbumTagFields.Numbering))
+        {
+            tag.Track = (uint)Math.Max(0, write.TrackNumber);
+            tag.TrackCount = (uint)Math.Max(0, write.TrackCount);
+            tag.Disc = (uint)Math.Max(0, write.DiscNumber);
+            tag.DiscCount = (uint)Math.Max(0, write.DiscCount);
+        }
+        if (f.HasFlag(AlbumTagFields.Year))
+        {
+            tag.Year = (uint)Math.Max(0, write.Year);
+            if (write.Year > 0 && file != null) WriteFullReleaseDate(file, write.ReleaseDate, write.Year);
+        }
+        if (file == null) return;
+        if (f.HasFlag(AlbumTagFields.Compilation)) ExtendedTagIO.WriteIsCompilation(file, write.IsCompilation);
+        if (f.HasFlag(AlbumTagFields.ReleaseType)) ExtendedTagIO.WriteReleaseTypeOverride(file, write.ReleaseTypeOverride);
+        if (f.HasFlag(AlbumTagFields.Identity)) WriteAlbumIdentity(file, write.Identity ?? AlbumIdentityTags.None);
+    }
 
     /// <inheritdoc />
     public AlbumIdentityTags? ReadAlbumIdentity(string filePath)
@@ -754,35 +813,40 @@ public class MetadataService : IMetadataService
         tag.MusicBrainzReleaseId = identity.MusicBrainzReleaseId;
         tag.MusicBrainzReleaseGroupId = identity.MusicBrainzReleaseGroupId;
         if (identity.MusicBrainzReleaseArtistId != null) tag.MusicBrainzReleaseArtistId = identity.MusicBrainzReleaseArtistId;
-        else ClearReleaseArtistId(tag);
+        else ClearReleaseArtistId(file);
     }
 
     // TagLib# 2.3.0: XiphComment.MusicBrainzReleaseArtistId = null throws NullReferenceException
-    // (FLAC / Ogg), so the field is removed by name there; other tag types take the null.
-    private static void ClearReleaseArtistId(TagLib.Tag tag)
+    // (FLAC / Ogg), so the field is removed by name there; AppleTag throws too and takes an empty
+    // value (which removes the atom). Each block is reached on its own: Ogg's grouped comment is
+    // no CombinedTag, so a Move to Album into an album without that id failed on every Ogg,
+    // Opus and M4A file ("Object reference not set", the file kept its old album).
+    private static void ClearReleaseArtistId(TagLib.File file)
     {
-        switch (tag)
+        foreach (var type in new[] { TagLib.TagTypes.Id3v2, TagLib.TagTypes.Xiph, TagLib.TagTypes.Apple,
+                     TagLib.TagTypes.Ape, TagLib.TagTypes.Asf })
         {
-            case TagLib.Ogg.XiphComment xiph:
-                xiph.RemoveField("MUSICBRAINZ_ALBUMARTISTID");
-                break;
-            case TagLib.CombinedTag combined:
-                foreach (var inner in combined.Tags) ClearReleaseArtistId(inner);
-                break;
-            default:
-                tag.MusicBrainzReleaseArtistId = null;
-                break;
+            if ((file.TagTypes & type) == 0 || file.GetTag(type) is not { } tag) continue;
+            switch (tag)
+            {
+                case TagLib.Ogg.XiphComment xiph:
+                    xiph.RemoveField("MUSICBRAINZ_ALBUMARTISTID");
+                    break;
+                case TagLib.Mpeg4.AppleTag apple:
+                    apple.MusicBrainzReleaseArtistId = string.Empty;
+                    break;
+                default:
+                    tag.MusicBrainzReleaseArtistId = null;
+                    break;
+            }
         }
     }
 
-    /// <param name="finish">Runs last in the same save (Undo Grouping takes tags out there).</param>
-    private bool WriteTrackMetadataCore(Track track, string targetFilePath, string? titleOverride, bool genreEdited,
-        AlbumIdentityTags? albumIdentity = null, Action<TagLib.File>? finish = null)
+    private bool WriteTrackMetadataCore(Track track, string targetFilePath, string? titleOverride, bool genreEdited)
     {
         var ok = SaveTagsAtomically(targetFilePath, file =>
         {
             var tag = file.Tag;
-            if (albumIdentity != null) WriteAlbumIdentity(file, albumIdentity);
 
             tag.Title = string.IsNullOrEmpty(titleOverride) ? track.Title : titleOverride;
             tag.Performers = SplitArtistList(track.Artist);
@@ -846,7 +910,6 @@ public class MetadataService : IMetadataService
             // clearing a version on purpose goes through ClearVersion, like the year.
             if (!string.IsNullOrWhiteSpace(track.Version))
                 ExtendedTagIO.WriteVersion(file, track.Version);
-            finish?.Invoke(file);
         });
         // The album artist is now in the file's own tag (written above), so the album-grouping
         // pass must treat it as a real tag from here on, as the next scan of the file will
@@ -856,6 +919,7 @@ public class MetadataService : IMetadataService
         {
             track.AlbumArtistFromTag = true;
             track.AlbumGroupingUnwritten = false; // the file names its album now (GitHub #201)
+            track.PendingAlbumWrite = null;       // ...and every other tag a pending write held
         }
         // Likewise the album name: a folder name written above is the file's album tag now.
         if (ok && Track.IsRealAlbumName(track.Album)
