@@ -65,6 +65,37 @@ public class LyricVoiceToTextAlignmentConverter : IValueConverter
         throw new NotImplementedException();
 }
 
+/// <summary>
+/// [Voice, IsRightToLeft] → a plain-text line's alignment, mirrored for a right-to-left line like
+/// <see cref="LyricLineAlignmentConverter"/>: a wrapped Persian line's rows sit against the right
+/// edge, as its word rows do (LyricWrapPanel).
+/// </summary>
+public class LyricLineTextAlignmentConverter : IMultiValueConverter
+{
+    public object? Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var voice = values.Count > 0 && values[0] is LyricVoice v ? v : LyricVoice.Default;
+        var rtl = values.Count > 1 && values[1] is true;
+        return voice switch
+        {
+            LyricVoice.Group => TextAlignment.Center,
+            LyricVoice.Voice2 => rtl ? TextAlignment.Left : TextAlignment.Right,
+            _ => rtl ? TextAlignment.Right : TextAlignment.Left,
+        };
+    }
+}
+
+/// <summary>IsRightToLeft → the line's paragraph direction, so a Persian line with an English word
+/// in it orders its runs from the right and keeps its punctuation at its end.</summary>
+public class LyricLineFlowDirectionConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is true ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotImplementedException();
+}
+
 /// <summary>Karaoke word rows inside the WrapPanel follow the line's edge the same way.</summary>
 public class LyricVoiceToItemsAlignmentConverter : IValueConverter
 {
