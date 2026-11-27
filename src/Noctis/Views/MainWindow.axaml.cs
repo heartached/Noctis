@@ -237,6 +237,9 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     /// </summary>
     private void ScheduleBackgroundTrim()
     {
+        // Behind the mini player the app is still in use (its play button is right there),
+        // so only a hidden or minimized window with no mini player lets a blocking trim run.
+        MemoryTrim.SetAppInBackground(IsInBackground && _miniPlayer == null);
         var generation = ++_backgroundTrimGeneration;
         if (!IsInBackground) return;
         DispatcherTimer.RunOnce(() =>
@@ -1318,6 +1321,9 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
         // Minimized, in the tray or behind the mini player for a while: let go of what only
         // pages nobody is looking at hold (see ScheduleBackgroundTrim).
+        // From here on the desktop reports its windows, and a blocking compacting trim waits
+        // for the app to be in the background (see MemoryTrim.MayBlock).
+        MemoryTrim.SetAppInBackground(false);
         PropertyChanged += (_, e) =>
         {
             if (e.Property == WindowStateProperty || e.Property == IsVisibleProperty)
