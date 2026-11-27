@@ -103,8 +103,8 @@ public class TrackQualityTests
         Assert.True(rig.Shell.IsNowPlayingOpen);
         // Another menu takes its place; nothing loaded, nothing to show.
         rig.Shell.ShowQualityCardCommand.Execute(null);
-        rig.Shell.OpenCurrentLinksCommand.Execute(null);
-        Assert.IsType<TrackLinksMenuViewModel>(rig.Shell.PopMenu);
+        rig.Shell.OpenNowPlayingMenuCommand.Execute(null);
+        Assert.IsType<ContextSheetViewModel>(rig.Shell.PopMenu);
         Assert.Null(rig.Shell.QualityCard);
     }
 }

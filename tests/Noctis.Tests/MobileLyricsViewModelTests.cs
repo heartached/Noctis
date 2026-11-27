@@ -252,4 +252,85 @@ public class MobileLyricsViewModelTests : IDisposable
         vm.FontScale = 1.1;
         Assert.Equal(expected * 1.2 * 1.1, vm.LineFontSize, 3);
     }
+
+    /// <summary>Beta 6 (#mobile-beta, online lookup off): after a song change the page went blank,
+    /// showed "No Lyrics" for a moment, then the lyrics. The empty state never shows while the new
+    /// song is still being looked up, not even between two of the load's own writes, from the
+    /// switch to the lyrics; and a song with none says so only once its lookup is done.</summary>
+    [Fact]
+    public async Task ASongChange_NeverShowsTheEmptyState_BeforeTheLookupEnds()
+    {
+        var pending = new List<(Func<LoadedLyrics> Work, TaskCompletionSource<LoadedLyrics> Done)>();
+        var (vm, np, _, files, _) = Make(work =>
+        {
+            var done = new TaskCompletionSource<LoadedLyrics>();
+            pending.Add((work, done));
+            return done.Task;
+        });
+        np.PlayTracks(new[] { NewTrack("none"), NewTrack("with"), NewTrack("none2") }, 0);
+        pending[^1].Done.SetResult(pending[^1].Work());
+        await WaitForAsync(() => vm.ShowsEmptyState);          // the first song has none
+
+        var shown = new List<bool>();
+        vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(LyricsPageViewModel.ShowsEmptyState) or nameof(LyricsPageViewModel.HasLyrics)
+                or nameof(LyricsPageViewModel.IsLoading))
+                shown.Add(vm.ShowsEmptyState);
+        };
+        files.Sidecars[".lrc"] = "[00:01.00]found";
+        np.NextCommand.Execute(null);
+        Assert.False(vm.ShowsEmptyState);
+        Assert.True(vm.IsLoading);
+        pending[^1].Done.SetResult(pending[^1].Work());
+        await WaitForAsync(() => vm.HasLyrics);
+        Assert.DoesNotContain(true, shown);
+
+        // To a song with none: blank while it is looked up, "No Lyrics" once that is done.
+        shown.Clear();
+        files.Sidecars.Clear();
+        np.NextCommand.Execute(null);
+        Assert.False(vm.ShowsEmptyState);
+        Assert.DoesNotContain(true, shown);
+        pending[^1].Done.SetResult(pending[^1].Work());
+        await WaitForAsync(() => vm.ShowsEmptyState);
+        Assert.False(vm.IsLoading);
+    }
+
+    /// <summary>The page remembers what each song's lookup found (no sidecar, the tags' text), so
+    /// playing it again does no file work; a finished rescan forgets it all, folder listings too.</summary>
+    [Fact]
+    public async Task ReplayingASong_SkipsTheLookup_UntilARescanFinishes()
+    {
+        var player = new FakeAudioPlayer();
+        var persistence = new PersistenceService(_root);
+        var library = new FakeLibraryService();
+        var np = new NowPlayingViewModel(player, library, persistence, marshal: a => a());
+        var files = new FakeTrackFiles { Audio = new byte[] { 1, 2, 3 } };
+        var vm = new LyricsPageViewModel(player, np, files, persistence, work => Task.FromResult(work()));
+        var shell = new ShellViewModel(new LibraryViewModel(library, persistence, new NoFolders(), marshal: a => a()), np, vm);
+        var song = NewTrack("again", lyrics: "plain words");
+
+        np.PlayTracks(new[] { song, NewTrack("other") }, 0);
+        await WaitForAsync(() => vm.HasLyrics);
+        np.NextCommand.Execute(null);
+        np.PreviousCommand.Execute(null);
+        await WaitForAsync(() => vm.HasLyrics);
+        Assert.Equal("plain words", Assert.Single(vm.Lines).Text);
+        Assert.Equal(2, files.SidecarReads);                    // once per song, not again for the replay
+        Assert.Equal(2, files.AudioOpens);
+
+        shell.Library.IsScanning = true;
+        shell.Library.IsScanning = false;                       // a rescan finished
+        Assert.Equal(0, vm.Lookups.Count);
+        Assert.Equal(1, files.FolderForgets);
+        np.NextCommand.Execute(null);
+        await WaitForAsync(() => !vm.HasLyrics && !vm.IsLoading);
+        Assert.Equal(3, files.SidecarReads);
+    }
+
+    private sealed class NoFolders : Noctis.Mobile.Services.IFolderPicker
+    {
+        public Task<string?> PickFolderAsync() => Task.FromResult<string?>(null);
+    }
 }

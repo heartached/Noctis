@@ -27,6 +27,11 @@ public sealed partial class ShellViewModel : ObservableObject
         Player.PropertyChanged += OnPlayerChanged;
         Player.PlayRecorded += OnPlayRecorded;
         Player.PlayCountThresholdPercent = () => PlayCountThresholdPercent;
+        // A finished scan may have brought or taken sidecars: lyrics are looked up afresh.
+        Library.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(LibraryViewModel.IsScanning) && !Library.IsScanning) Lyrics.ForgetLookups();
+        };
         Search = new SearchPageViewModel(this);
     }
 
@@ -1732,17 +1737,33 @@ public sealed partial class ShellViewModel : ObservableObject
         if (Player.CurrentTrack is { } track) Sheet = ContextSheetViewModel.ForTrack(this, track);
     }
 
-    /// <summary>Now Playing's artist line (Apple's): a glass bubble out of the artist with Go to
-    /// Album and Go to Artist, each opening its page (Navigate closes the player).</summary>
+    /// <summary>Now Playing's artist line (beta 6, #mobile-beta): straight to the artist page, the
+    /// one the ⋯ menu's Go to Artist opens (Navigate closes the player). A song credited to several
+    /// artists asks which first, on a glass bubble out of the artist (<see cref="TrackLinksMenuViewModel"/>).</summary>
     [RelayCommand]
-    private void OpenCurrentLinks()
+    private void GoToCurrentArtist()
     {
         if (Player.CurrentTrack is not { } track) return;
+        var artists = TrackLinksMenuViewModel.ArtistsOf(track);
+        if (artists.Count < 2)
+        {
+            OpenArtist(track.GroupingArtist);
+            return;
+        }
         Sheet = null;
         LibraryMenu = null;
         OptionsMenu = null;
         QualityCard = null;
-        LinksMenu = new TrackLinksMenuViewModel(this, track);
+        LinksMenu = new TrackLinksMenuViewModel(this, track, artists);
+    }
+
+    /// <summary>Now Playing's title (beta 6, #mobile-beta): straight to the song's album. A song
+    /// with no album of its own (the shared "Unknown Album" bucket) has none to open: nothing happens.</summary>
+    [RelayCommand]
+    private void GoToCurrentAlbum()
+    {
+        if (Player.CurrentTrack is not { } track || !Track.IsRealAlbumName(track.Album)) return;
+        OpenAlbum(Library.Service.GetAlbumById(track.AlbumId));
     }
 
     /// <summary>Now Playing's quality badge: what the playing file is, on a glass card out of the

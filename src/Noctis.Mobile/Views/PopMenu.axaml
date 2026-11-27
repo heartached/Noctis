@@ -368,29 +368,24 @@
                                             </Button>
                                         </StackPanel>
                                     </DataTemplate>
-                                    <!-- Now Playing's artist line (Apple's bubble): the ⋯ menu's two
-                                         rows, out of the artist, nothing else (no hairline, as Apple's). -->
+                                    <!-- Now Playing's artist line on a song with several artists (Apple's
+                                         bubble): one row per artist, out of the artist, nothing else (no
+                                         hairline, as Apple's). A row opens that artist. -->
                                     <DataTemplate DataType="vm:TrackLinksMenuViewModel">
-                                        <StackPanel Name="LinkRows" Margin="0,6,0,6">
-                                            <Button Name="LinkGoToAlbum" Classes="row np-row" Command="{Binding GoToAlbumCommand}">
-                                                <Grid ColumnDefinitions="56,*">
-                                                    <PathIcon Data="{DynamicResource PhAlbum}" />
-                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,9,16,9">
-                                                        <TextBlock Classes="np-label" Text="{loc:T Mobile.GoToAlbum}" />
-                                                        <TextBlock Classes="np-detail" Text="{Binding AlbumLine}" />
-                                                    </StackPanel>
-                                                </Grid>
-                                            </Button>
-                                            <Button Name="LinkGoToArtist" Classes="row np-row" Command="{Binding GoToArtistCommand}">
-                                                <Grid ColumnDefinitions="56,*">
-                                                    <PathIcon Data="{DynamicResource PhArtist}" />
-                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,9,16,9">
-                                                        <TextBlock Classes="np-label" Text="{loc:T Mobile.GoToArtist}" />
-                                                        <TextBlock Classes="np-detail" Text="{Binding ArtistLine}" />
-                                                    </StackPanel>
-                                                </Grid>
-                                            </Button>
-                                        </StackPanel>
+                                        <ItemsControl Name="LinkRows" Margin="0,6,0,6" ItemsSource="{Binding Artists}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="x:String">
+                                                    <Button Classes="row np-row" CommandParameter="{Binding}"
+                                                            Command="{Binding $parent[ItemsControl].((vm:TrackLinksMenuViewModel)DataContext).GoToArtistCommand}">
+                                                        <Grid ColumnDefinitions="56,*">
+                                                            <PathIcon Data="{DynamicResource PhArtist}" />
+                                                            <TextBlock Grid.Column="1" Classes="np-label" Text="{Binding}" VerticalAlignment="Center"
+                                                                       TextTrimming="CharacterEllipsis" Margin="0,0,16,0" />
+                                                        </Grid>
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
                                     </DataTemplate>
                                     <!-- Now Playing's quality badge: what the playing file is - its class
                                          under the desktop's waveform (every class, as the badge), the
