@@ -170,6 +170,9 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             // The desktop's album descriptions: Last.fm, asked by artist and album name only
             // when an album page opens (Settings → About says so).
             AlbumDescriptions = LastFmAlbumDescriptionSource.Create(persistence.DataDirectory, new HttpClient()),
+            // The same for the artist page's biography: Last.fm, asked by the artist's name only
+            // when an artist page opens.
+            ArtistBiographies = LastFmArtistBiographySource.Create(persistence.DataDirectory, new HttpClient()),
             // Home's From Your Last.fm and Discover on Last.fm (GitHub #177): the charts of the
             // account connected in Settings → Scrobbling, read by its name only, cached for 12 h.
             LastFmTaste = new LastFmTasteService(new HttpClient(), Path.Combine(persistence.DataDirectory, "cache", "lastfm_taste.json")),

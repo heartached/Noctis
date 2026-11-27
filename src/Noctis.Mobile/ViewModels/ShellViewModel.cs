@@ -110,6 +110,10 @@ public sealed partial class ShellViewModel : ObservableObject
     /// injected, and the paragraph then stays hidden.</summary>
     public IAlbumDescriptionSource? AlbumDescriptions { get; init; }
 
+    /// <summary>The artist page's biography paragraph (Last.fm on Android, the album description's
+    /// twin); null in tests unless injected, and the paragraph then stays hidden.</summary>
+    public IArtistBiographySource? ArtistBiographies { get; init; }
+
     /// <summary>The connected Last.fm account's charts for Home's From Your Last.fm and Discover
     /// on Last.fm (GitHub #177); null in tests unless injected, and both sections then stay hidden.</summary>
     public LastFmTasteService? LastFmTaste { get; init; }
