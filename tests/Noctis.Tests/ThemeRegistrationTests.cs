@@ -30,9 +30,7 @@ public class ThemeRegistrationTests
         return s_app;
     }
 
-    private static ResourceInclude? ThemeOverlayOf(Noctis.App app) =>
-        app.Resources.MergedDictionaries.OfType<ResourceInclude>()
-            .SingleOrDefault(r => r.Source?.ToString().Contains("/Assets/Themes/") == true);
+    private static ResourceInclude? ThemeOverlayOf(Noctis.App app) => app.ActiveThemeOverlay;
 
     private static Color Resolve(Noctis.App app, string key)
     {

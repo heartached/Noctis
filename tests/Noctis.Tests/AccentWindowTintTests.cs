@@ -65,7 +65,7 @@ public class AccentWindowTintTests
         };
         app.Resources.MergedDictionaries.Add(theme);
         Color Main() => app.TryGetResource("AppMainBackgroundColor", ThemeVariant.Dark, out var v) ? (Color)v! : default;
-        IResourceDictionary Overlay() => app.Resources.MergedDictionaries.OfType<IResourceDictionary>().Last();
+        IResourceDictionary Overlay() => app.ActiveAccentOverlay!;
 
         Assert.False(app.TintWindowWithAccent);
         app.SetAccent("#E74856");

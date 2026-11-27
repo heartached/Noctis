@@ -125,6 +125,24 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     private void ApplyTrackLinkAccent(bool accent) => Classes.Set("plain-track-links", !accent);
 
     private EventHandler? _accentWindowTintGlassHandler;
+    private EventHandler? _themeResourcesApplyingHandler;
+
+    /// <summary>A theme switch has its new surfaces in place but has not told the tree yet: the
+    /// glass overlay follows them inside that one notification (the switch's own refresh after it
+    /// then finds nothing to do), instead of a second walk of the whole window.</summary>
+    private void FollowThemeWithLiquidGlass()
+    {
+        if (!_liquidGlassActive || _liquidGlassLayer == null) return;
+        _liquidGlassLayer.BeginUpdate();
+        try
+        {
+            ApplyLiquidGlass(true);
+        }
+        finally
+        {
+            _liquidGlassLayer.EndUpdateCovered();
+        }
+    }
 
     /// <summary>GitHub #240: "Tint window with accent colour" on or off. App re-applies the
     /// accent with (or without) the shaded backgrounds; Liquid Glass then re-reads them.</summary>
@@ -185,6 +203,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     private EventHandler<bool>? _sidebarAlwaysExpandedHandler;
     private System.ComponentModel.PropertyChangedEventHandler? _sidebarAutoHideHandler;
     private ResourceDictionary? _liquidGlassOverlay;
+    private ResourceLayer? _liquidGlassLayer;
+    private (Color Main, Color Sidebar)? _liquidGlassTints;
     private bool _liquidGlassActive;
     private System.ComponentModel.PropertyChangedEventHandler? _playerPropertyChangedHandler;
     private System.ComponentModel.PropertyChangedEventHandler? _queuePopupStateHandler;
@@ -563,18 +583,37 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         // (IsLiquidGlassSupported); this gate also covers a settings file that
         // already carries LiquidGlassEnabled=true.
         if (OperatingSystem.IsLinux()) on = false;
-        _liquidGlassActive = on;
 
-        if (_liquidGlassOverlay != null)
+        // Resolve the active theme's surface colors from Application-level resources
+        // (the window-scoped glass overlay never shadows those), so every theme —
+        // built-in or custom — keeps its own tint behind the glass.
+        var main = on ? ResolveThemeColor("AppMainBackground", Color.Parse("#252525")) : default;
+        var sidebar = on ? ResolveThemeColor("AppSidebarBackground", Color.Parse("#141414")) : default;
+
+        // Already on with these colours: a theme switch that kept them, or the switch's own
+        // refresh after the accent tint's (11-27: each one swapped the window's overlay out and
+        // in, two walks of the whole window, and re-tinted every glass surface for nothing).
+        if (on && _liquidGlassActive && _liquidGlassOverlay != null && _liquidGlassTints == (main, sidebar))
         {
-            Resources.MergedDictionaries.Remove(_liquidGlassOverlay);
-            _liquidGlassOverlay = null;
+            QueueDrawerGlass.Apply(_queuePopupPanel, _queueGlass, glassActive: true);
+            return;
+        }
+
+        _liquidGlassActive = on;
+        _liquidGlassOverlay = null;
+        _liquidGlassTints = null;
+        // One merged entry of this window's resources; swapping its part is one notification.
+        if (_liquidGlassLayer == null)
+        {
+            _liquidGlassLayer = new ResourceLayer(1);
+            Resources.MergedDictionaries.Add(_liquidGlassLayer);
         }
 
         var acrylic = this.FindControl<ExperimentalAcrylicBorder>("LiquidGlassAcrylic");
 
         if (!on)
         {
+            _liquidGlassLayer[0] = null;
             ClearValue(TransparencyLevelHintProperty);
             if (acrylic != null) acrylic.IsVisible = false;
             // Every GlassPanel (sidebar, Settings sheet, island) drops back to its plain fill.
@@ -582,12 +621,6 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             QueueDrawerGlass.Apply(_queuePopupPanel, _queueGlass, glassActive: false);
             return;
         }
-
-        // Resolve the active theme's surface colors from Application-level resources
-        // (the window-scoped glass overlay never shadows those), so every theme —
-        // built-in or custom — keeps its own tint behind the glass.
-        var main = ResolveThemeColor("AppMainBackground", Color.Parse("#252525"));
-        var sidebar = ResolveThemeColor("AppSidebarBackground", Color.Parse("#141414"));
 
         // One shared array: a new, equal array on every glass refresh is re-applied by
         // Avalonia, and macOS drops a repeated level to Opaque (see MiniPlayerWindow).
@@ -623,7 +656,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             // Accent action buttons deliberately keep their solid accent fill: frosting
             // them (2026-08-06) read as washed-out, muddy buttons and was reverted 09-07.
         };
-        Resources.MergedDictionaries.Add(_liquidGlassOverlay);
+        _liquidGlassLayer[0] = _liquidGlassOverlay;
+        _liquidGlassTints = (main, sidebar);
 
         // In-app frost: GlassPanel hosts (sidebar, Settings sheet, playback island) blur the
         // app content beneath them. Dialog windows are left alone: an AcrylicBlur hint on a
@@ -775,6 +809,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                 ApplyAccentWindowTint(vm.Settings.TintWindowWithAccent);
                 _accentWindowTintGlassHandler = (_, _) => RefreshLiquidGlassForAccentTint();
                 App.AccentApplied += _accentWindowTintGlassHandler;
+                _themeResourcesApplyingHandler = (_, _) => FollowThemeWithLiquidGlass();
+                App.ThemeResourcesApplying += _themeResourcesApplyingHandler;
 
                 _liquidGlassChangedHandler = (_, on) => ApplyLiquidGlass(on);
                 vm.Settings.LiquidGlassChanged += _liquidGlassChangedHandler;
@@ -1861,6 +1897,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
             if (_accentWindowTintGlassHandler != null)
                 App.AccentApplied -= _accentWindowTintGlassHandler;
+            if (_themeResourcesApplyingHandler != null)
+                App.ThemeResourcesApplying -= _themeResourcesApplyingHandler;
 
             if (_liquidGlassChangedHandler != null)
                 vm.Settings.LiquidGlassChanged -= _liquidGlassChangedHandler;

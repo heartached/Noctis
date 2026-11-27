@@ -375,9 +375,37 @@ public partial class App : Application
     public static bool IsLightVariantTheme(string? themeName) =>
         themeName != null && LightVariantThemes.Contains(themeName);
 
+    /// <summary>The application whose resources SetTheme / SetAccent change: this one, except
+    /// in the headless theme-switch bench, which applies them to the test application its
+    /// windows resolve against.</summary>
+    internal Application ThemeHost
+    {
+        get => _themeHost ?? this;
+        set => _themeHost = value;
+    }
+    private Application? _themeHost;
+
     private ResourceInclude? _activeThemeOverlay;
     private Avalonia.Controls.ResourceDictionary? _activeCustomOverlay;
     private string? _activeAccentHex;
+    private readonly Dictionary<string, ResourceInclude> _themeOverlays = new(StringComparer.Ordinal);
+
+    /// <summary>The built-in theme overlay in place, null on Gray / Light or a custom theme (tests).</summary>
+    internal ResourceInclude? ActiveThemeOverlay => _activeThemeOverlay;
+
+    // The theme overlay (built-in, custom or pack) and the accent overlay on top of it: one
+    // merged entry of Application.Resources, so a switch swaps both with one notification.
+    private const int ThemePart = 0, AccentPart = 1;
+    private Noctis.Helpers.ResourceLayer? _themeLayer;
+
+    private Noctis.Helpers.ResourceLayer ThemeLayer()
+    {
+        _themeLayer ??= new Noctis.Helpers.ResourceLayer(2);
+        var merged = ThemeHost.Resources.MergedDictionaries;
+        if (!merged.Contains(_themeLayer))
+            merged.Add(_themeLayer);
+        return _themeLayer;
+    }
 
     /// <summary>
     /// Callback the SettingsViewModel registers so App can resolve a Custom:<id> theme name
@@ -434,17 +462,36 @@ public partial class App : Application
 
     private void SetThemeCore(string themeName)
     {
-        if (_activeThemeOverlay != null)
+        // One coalesced update (11-27): the parts change silently and the tree hears about it
+        // once, at EndUpdate, instead of once per overlay removed or added (3-4 walks of every
+        // control, each landing a half-switched state). The variant goes last, once the accent
+        // overlay is built for it, so what reacts to it already reads the new resources.
+        var layer = ThemeLayer();
+        var accentApplied = false;
+        layer.BeginUpdate();
+        try
         {
-            Resources.MergedDictionaries.Remove(_activeThemeOverlay);
-            _activeThemeOverlay = null;
+            accentApplied = ApplyThemeParts(layer, themeName);
+            if (layer.IsChangePending)
+                ThemeResourcesApplying?.Invoke(this, EventArgs.Empty);
         }
-        if (_activeCustomOverlay != null)
+        finally
         {
-            Resources.MergedDictionaries.Remove(_activeCustomOverlay);
-            _activeCustomOverlay = null;
+            layer.EndUpdate();
         }
+        if (accentApplied)
+            AccentApplied?.Invoke(this, EventArgs.Empty);
+    }
 
+    /// <summary>Raised inside a theme switch's resource update, once the new theme, accent and
+    /// variant are in place and before the tree is told: a window's overlay derived from them
+    /// (Liquid Glass) follows silently and rides on the same notification.</summary>
+    internal static event EventHandler? ThemeResourcesApplying;
+
+    /// <summary>Lays the theme's overlay, the accent overlay built for it and the theme variant;
+    /// true when the accent overlay was rebuilt.</summary>
+    private bool ApplyThemeParts(Noctis.Helpers.ResourceLayer layer, string themeName)
+    {
         // Custom themes
         if (themeName != null && themeName.StartsWith("Custom:", StringComparison.Ordinal))
         {
@@ -454,7 +501,7 @@ public partial class App : Application
             {
                 var derived = Noctis.Services.ThemeDerivation.Derive(def);
 
-                RequestedThemeVariant =
+                var variant =
                     derived.TryGetValue("__BaseVariant", out var v) && (string)v == "Light"
                         ? Avalonia.Styling.ThemeVariant.Light
                         : Avalonia.Styling.ThemeVariant.Dark;
@@ -465,14 +512,11 @@ public partial class App : Application
                     if (key.StartsWith("__")) continue;
                     rd[key] = value;
                 }
-                Resources.MergedDictionaries.Add(rd);
-                _activeCustomOverlay = rd;
 
-                // Custom themes drive their own accent — push it through the SetAccent
-                // path so the accent palette (Dark1/2/3, Light1/2/3, MenuFlyout hovers,
-                // etc.) is generated and overlaid the same way as for built-in themes.
-                SetAccent(def.AccentHex);
-                return;
+                // Custom themes drive their own accent — it goes through the same accent path
+                // so the accent palette (Dark1/2/3, Light1/2/3, MenuFlyout hovers, etc.) is
+                // generated and overlaid the same way as for built-in themes.
+                return LayThemeParts(layer, rd, null, rd, variant, def.AccentHex);
             }
             // Unknown id falls through to default handling (Gray).
             themeName = ThemeGray;
@@ -486,23 +530,20 @@ public partial class App : Application
             if (theme != null)
             {
                 var resources = Noctis.Services.Plugins.PackThemeBuilder.Build(theme);
-                RequestedThemeVariant = theme.IsLight ? Avalonia.Styling.ThemeVariant.Light : Avalonia.Styling.ThemeVariant.Dark;
+                var variant = theme.IsLight ? Avalonia.Styling.ThemeVariant.Light : Avalonia.Styling.ThemeVariant.Dark;
                 var rd = new Avalonia.Controls.ResourceDictionary();
                 foreach (var (key, value) in resources)
                 {
                     if (key.StartsWith("__")) continue;
                     rd[key] = value;
                 }
-                Resources.MergedDictionaries.Add(rd);
-                _activeCustomOverlay = rd;
                 // The user's accent (seeded from the theme's accent when it was picked) wins.
-                SetAccent(_activeAccentHex ?? theme.AccentHex);
-                return;
+                return LayThemeParts(layer, rd, null, rd, variant, _activeAccentHex ?? theme.AccentHex);
             }
             themeName = ThemeGray;
         }
 
-        RequestedThemeVariant = IsLightVariantTheme(themeName)
+        var builtInVariant = IsLightVariantTheme(themeName)
             ? Avalonia.Styling.ThemeVariant.Light
             : Avalonia.Styling.ThemeVariant.Dark;
 
@@ -515,17 +556,34 @@ public partial class App : Application
             _ => null
         };
 
-        if (overlayUri != null)
-        {
-            var include = new ResourceInclude((Uri?)null) { Source = new Uri(overlayUri) };
-            Resources.MergedDictionaries.Add(include);
-            _activeThemeOverlay = include;
-        }
+        // One instance per overlay, kept: switching back to a theme re-uses it (no reload), and
+        // re-applying the theme on screen changes nothing at all.
+        ResourceInclude? include = null;
+        if (overlayUri != null && !_themeOverlays.TryGetValue(overlayUri, out include))
+            _themeOverlays[overlayUri] = include = new ResourceInclude((Uri?)null) { Source = new Uri(overlayUri) };
 
         // Theme overlays redefine AccentColorBrush et al. — re-apply the user's accent
         // last so it always wins, regardless of theme.
-        if (_activeAccentHex != null)
-            SetAccent(_activeAccentHex);
+        return LayThemeParts(layer, include, include, null, builtInVariant, _activeAccentHex);
+    }
+
+    private bool LayThemeParts(Noctis.Helpers.ResourceLayer layer, IResourceProvider? overlay,
+        ResourceInclude? builtIn, Avalonia.Controls.ResourceDictionary? custom,
+        Avalonia.Styling.ThemeVariant variant, string? accentHex)
+    {
+        layer[ThemePart] = overlay;
+        _activeThemeOverlay = builtIn;
+        _activeCustomOverlay = custom;
+
+        var accentApplied = false;
+        if (accentHex != null)
+        {
+            _activeAccentHex = accentHex;
+            accentApplied = ApplyAccentOverlay(ParseAccent(accentHex), variant == Avalonia.Styling.ThemeVariant.Light, variant);
+        }
+
+        ThemeHost.RequestedThemeVariant = variant;
+        return accentApplied;
     }
 
     // ── Accent palette ────────────────────────────────────────────
@@ -591,6 +649,10 @@ public partial class App : Application
     };
 
     private ResourceDictionary? _activeAccentOverlay;
+    private (Color Color, bool IsLight, Avalonia.Styling.ThemeVariant? Variant, bool Tint, IResourceProvider? Theme)? _accentOverlayInputs;
+
+    /// <summary>The accent overlay in place (tests).</summary>
+    internal IResourceDictionary? ActiveAccentOverlay => _activeAccentOverlay;
 
     /// <summary>
     /// Raised after the accent overlay is swapped, so .cs-driven controls that captured
@@ -605,37 +667,62 @@ public partial class App : Application
     /// </summary>
     public void SetAccent(string hex)
     {
-        if (!TryParseHex(hex, out var color))
-            color = Color.Parse("#E74856");
-
+        var color = ParseAccent(hex);
         _activeAccentHex = hex;
+
+        var isLight = ThemeHost.RequestedThemeVariant == Avalonia.Styling.ThemeVariant.Light;
+        var variant = ThemeHost.ActualThemeVariant;
+        // The overlay in place already is this accent on this theme ("Accent follows album
+        // art" and a theme switch re-apply the accent on screen): nothing to swap or re-read.
+        if (AccentOverlayIsFor(color, isLight, variant))
+            return;
 
         // With the window tint on an accent change recolours the backgrounds too: land it in
         // one frame, like a theme switch, instead of hover transitions lerping through it.
+        var applied = false;
         if (TintWindowWithAccent)
-            RunWithTransitionsSuppressed(MainWindowOrNull(), () => ApplyAccentOverlay(color));
+            RunWithTransitionsSuppressed(MainWindowOrNull(), () => applied = ApplyAccentOverlay(color, isLight, variant));
         else
-            ApplyAccentOverlay(color);
+            applied = ApplyAccentOverlay(color, isLight, variant);
 
-        AccentApplied?.Invoke(this, EventArgs.Empty);
+        if (applied)
+            AccentApplied?.Invoke(this, EventArgs.Empty);
     }
 
-    private void ApplyAccentOverlay(Color color)
+    private static Color ParseAccent(string? hex) =>
+        TryParseHex(hex, out var color) ? color : Color.Parse("#E74856");
+
+    private bool AccentOverlayIsFor(Color color, bool isLight, Avalonia.Styling.ThemeVariant? variant) =>
+        _activeAccentOverlay != null && _themeLayer != null
+        && _accentOverlayInputs == (color, isLight, variant, TintWindowWithAccent, _themeLayer[ThemePart]);
+
+    /// <summary>Builds the accent overlay and lays it in the theme layer (one notification, or
+    /// none inside a theme switch, which notifies once for both); false when the overlay in place
+    /// was built from the same inputs.</summary>
+    private bool ApplyAccentOverlay(Color color, bool isLight, Avalonia.Styling.ThemeVariant? variant)
     {
-        if (_activeAccentOverlay != null)
+        if (AccentOverlayIsFor(color, isLight, variant))
+            return false;
+
+        var layer = ThemeLayer();
+        layer.BeginUpdate();
+        try
         {
-            Resources.MergedDictionaries.Remove(_activeAccentOverlay);
-            _activeAccentOverlay = null;
+            // Out first: the window tint reads the theme's own surfaces.
+            layer[AccentPart] = null;
+            var rd = Helpers.AccentPalette.Build(color, isLight);
+            if (TintWindowWithAccent)
+                Noctis.Services.AccentWindowTint.AddTo(rd, ThemeHost, variant, color, isLight);
+
+            layer[AccentPart] = rd;
+            _activeAccentOverlay = rd;
+            _accentOverlayInputs = (color, isLight, variant, TintWindowWithAccent, layer[ThemePart]);
         }
-
-        var isLight = RequestedThemeVariant == Avalonia.Styling.ThemeVariant.Light;
-        var rd = Helpers.AccentPalette.Build(color, isLight);
-        // Read with the previous accent overlay already removed: the theme's own surfaces.
-        if (TintWindowWithAccent)
-            Noctis.Services.AccentWindowTint.AddTo(rd, this, ActualThemeVariant, color, isLight);
-
-        Resources.MergedDictionaries.Add(rd);
-        _activeAccentOverlay = rd;
+        finally
+        {
+            layer.EndUpdate();
+        }
+        return true;
     }
 
     private Avalonia.Controls.Window? MainWindowOrNull() =>
