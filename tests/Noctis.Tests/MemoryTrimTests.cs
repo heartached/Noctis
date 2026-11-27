@@ -76,6 +76,85 @@ public class MemoryTrimTests
     }
 
     [Fact]
+    public void WhileAudioPlays_TheGcStaysInSustainedLowLatency_AndTheModeComesBackOnStop()
+    {
+        // 11-27 "weird audio cut off": one 760 ms blocking gen2 (gcs=1/1/1) froze the render
+        // thread far past the 100 ms device buffer. SustainedLowLatency keeps the gen2s the
+        // runtime starts on its own background ones while music plays.
+        var original = System.Runtime.GCSettings.LatencyMode;
+        try
+        {
+            MemoryTrim.SetAudioPlaying(false);
+            System.Runtime.GCSettings.LatencyMode = System.Runtime.GCLatencyMode.Interactive;
+            MemoryTrim.SetAudioPlaying(true);
+            Assert.Equal(System.Runtime.GCLatencyMode.SustainedLowLatency, System.Runtime.GCSettings.LatencyMode);
+            MemoryTrim.SetAudioPlaying(true); // repeated state changes (track to track) keep it
+            Assert.Equal(System.Runtime.GCLatencyMode.SustainedLowLatency, System.Runtime.GCSettings.LatencyMode);
+            MemoryTrim.SetAudioPlaying(false);
+            Assert.Equal(System.Runtime.GCLatencyMode.Interactive, System.Runtime.GCSettings.LatencyMode);
+        }
+        finally
+        {
+            MemoryTrim.SetAudioPlaying(false);
+            System.Runtime.GCSettings.LatencyMode = original;
+        }
+    }
+
+    [Fact]
+    public async Task ATrimSkippedWhilePlaying_RunsCompactingOnceStopped_AndRechecksBeforeRunning()
+    {
+        var quiet = MemoryTrim.Quiet;
+        var original = System.Runtime.GCSettings.LatencyMode;
+        var modes = new System.Collections.Concurrent.ConcurrentQueue<bool>();
+        MemoryTrim.Collector = blocking => modes.Enqueue(blocking);
+        MemoryTrim.Quiet = TimeSpan.FromMilliseconds(50);
+        try
+        {
+            MemoryTrim.SetAudioPlaying(true);
+            MemoryTrim.RequestAfterIdle("window in the background");
+            await WaitUntil(() => !modes.IsEmpty);
+            Assert.Equal(new[] { false }, modes.ToArray()); // background only while playing
+
+            // Paused, then playing again before the deferred trim's quiet period ends: the
+            // trim checks again when it fires and still does not block.
+            modes.Clear();
+            MemoryTrim.SetAudioPlaying(false);
+            MemoryTrim.SetAudioPlaying(true);
+            await WaitUntil(() => !modes.IsEmpty);
+            Assert.Equal(new[] { false }, modes.ToArray());
+
+            // Stopped for good: the compacting trim it was owed runs, once.
+            modes.Clear();
+            MemoryTrim.SetAudioPlaying(false);
+            await WaitUntil(() => !modes.IsEmpty);
+            await Task.Delay(150);
+            Assert.Equal(new[] { true }, modes.ToArray());
+
+            // Nothing was skipped since: another stop owes nothing.
+            modes.Clear();
+            MemoryTrim.SetAudioPlaying(true);
+            MemoryTrim.SetAudioPlaying(false);
+            await Task.Delay(200);
+            Assert.Empty(modes);
+        }
+        finally
+        {
+            MemoryTrim.SetAudioPlaying(false);
+            await Task.Delay(150); // let a deferred request, if any, drain into the fake collector
+            MemoryTrim.Collector = null;
+            MemoryTrim.Quiet = quiet;
+            System.Runtime.GCSettings.LatencyMode = original;
+        }
+    }
+
+    [Fact]
+    public void ThePlayerStateDrivesTheGcMode()
+    {
+        var vm = File.ReadAllText(Path.Combine(FindRepoRoot(), "src", "Noctis", "ViewModels", "MainWindowViewModel.cs"));
+        Assert.Contains("e.PropertyName == nameof(PlayerViewModel.State))\n                Services.MemoryTrim.SetAudioPlaying(Player.IsPlaying);", vm);
+    }
+
+    [Fact]
     public void StartupAndScan_RequestATrim_WhenTheyFinish()
     {
         var vm = File.ReadAllText(Path.Combine(FindRepoRoot(), "src", "Noctis", "ViewModels", "MainWindowViewModel.cs"));

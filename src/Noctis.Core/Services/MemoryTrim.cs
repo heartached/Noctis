@@ -1,3 +1,5 @@
+using System.Runtime;
+
 namespace Noctis.Services;
 
 /// <summary>
@@ -35,6 +37,56 @@ public static class MemoryTrim
     private static readonly object Gate = new();
     private static int _pending;
     private static string _reason = "";
+    private static bool _playing;
+    private static bool _deferred;
+    private static GCLatencyMode _restoreMode = GCLatencyMode.Interactive;
+
+    /// <summary>
+    /// Called by the app on every playback state change. While music plays the GC runs in
+    /// <see cref="GCLatencyMode.SustainedLowLatency"/>: gen2 collections it starts on its own
+    /// (allocation budget, GC.AddMemoryPressure from decoded covers) stay background ones
+    /// instead of blocking compacting ones. The 11-27 "audio cut off" was one 760 ms blocking
+    /// gen2 (gcs=1/1/1) that froze the render thread far past the 100 ms device buffer; a
+    /// headless probe (270 MB fragmented heap, ArtworkCache-style AddMemoryPressure churn)
+    /// gave a 281-309 ms blocking compacting gen2 in Interactive and none in
+    /// SustainedLowLatency, the heap ending at the same 270 MB. Low system memory still gets
+    /// full blocking collections from the runtime. When playback stops the previous mode
+    /// comes back, and a compacting trim skipped while playing runs then.
+    /// </summary>
+    public static void SetAudioPlaying(bool playing)
+    {
+        var runDeferred = false;
+        lock (Gate)
+        {
+            if (_playing == playing) return;
+            _playing = playing;
+            try
+            {
+                if (playing)
+                {
+                    var current = GCSettings.LatencyMode;
+                    if (current != GCLatencyMode.SustainedLowLatency) _restoreMode = current;
+                    GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
+                }
+                else
+                {
+                    GCSettings.LatencyMode = _restoreMode;
+                }
+            }
+            catch
+            {
+                // Best effort: a runtime without concurrent GC keeps its mode.
+            }
+            if (!playing)
+            {
+                runDeferred = _deferred;
+                _deferred = false;
+            }
+        }
+        if (runDeferred) RequestAfterIdle("playback stopped (deferred trim)");
+    }
+
+    private static bool AudioPlaying => IsAudioPlaying?.Invoke() == true || Volatile.Read(ref _playing);
 
     public static void RequestAfterIdle(string reason)
     {
@@ -58,7 +110,14 @@ public static class MemoryTrim
     {
         try
         {
-            var blocking = IsAudioPlaying?.Invoke() != true;
+            // Checked when the quiet period ends, not when the trim was asked for: playback
+            // may have started since.
+            var blocking = !AudioPlaying;
+            if (!blocking)
+            {
+                // The compacting trim waits for playback to stop (SetAudioPlaying).
+                lock (Gate) _deferred = true;
+            }
             if (Collector is { } custom)
             {
                 custom(blocking);
@@ -72,7 +131,7 @@ public static class MemoryTrim
                 // would otherwise ride along on the next blocking gen2 during playback.
                 GC.Collect(2, GCCollectionMode.Forced, blocking: false, compacting: false);
                 DebugLog.Write("Memory",
-                    $"trim after {_reason}: managed {before / 1048576} MB, background collection (audio playing)");
+                    $"trim after {_reason}: managed {before / 1048576} MB, background collection (audio playing; compacting trim deferred until playback stops)");
                 return;
             }
             // Aggressive, not Forced + LOH CompactOnce: with regions (.NET 7+) a Forced
