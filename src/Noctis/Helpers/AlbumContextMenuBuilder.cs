@@ -131,7 +131,7 @@ public sealed class AlbumContextMenuBuilder
         GroupAlbums.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis.UI/Assets/Icons/Metadata%20ICON.png");
         items.Add(GroupAlbums);
 
-        UndoGroupAlbums = MenuV2.Row(resourceHost, Loc.T("GroupAlbums.Undo"), "MenuLineHistory", visible: false);
+        UndoGroupAlbums = MenuV2.Row(resourceHost, Loc.T("GroupAlbums.Undo"), "MenuLineUngroup", visible: false);
         items.Add(UndoGroupAlbums);
 
         EditDescription = new MenuItem { Header = "Update Description", IsVisible = false };
@@ -230,7 +230,7 @@ public sealed class AlbumContextMenuBuilder
         items.Add(Metadata);
         GroupAlbums = MenuV2.Row(host, Loc.T("GroupAlbums.Menu"), "MenuLineAlbum", visible: false);
         items.Add(GroupAlbums);
-        UndoGroupAlbums = MenuV2.Row(host, Loc.T("GroupAlbums.Undo"), "MenuLineHistory", visible: false);
+        UndoGroupAlbums = MenuV2.Row(host, Loc.T("GroupAlbums.Undo"), "MenuLineUngroup", visible: false);
         items.Add(UndoGroupAlbums);
         EditDescription = MenuV2.Row(host, Loc.T("AlbumDetail.EditDescription"), null, visible: false);
         items.Add(EditDescription);

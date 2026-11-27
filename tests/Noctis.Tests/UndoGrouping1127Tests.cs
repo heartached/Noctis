@@ -425,6 +425,13 @@ public class UndoGrouping1127Tests : IDisposable
     [AvaloniaFact]
     public void AlbumMenu_UndoGrouping_ShownOnlyWithACommand()
     {
+        // The line icons live in Icons.axaml, which the headless app does not load on its own.
+        var app = Avalonia.Application.Current!;
+        if (!app.Resources.TryGetResource("MenuLineAlbum", null, out _))
+            app.Resources.MergedDictionaries.Add(new Avalonia.Markup.Xaml.Styling.ResourceInclude(new Uri("avares://Noctis/"))
+            {
+                Source = new Uri("avares://Noctis.UI/Assets/Icons.axaml"),
+            });
         var host = new Avalonia.Controls.UserControl();
         var builder = new AlbumContextMenuBuilder();
         builder.Build("Remove from Library", host, v2: true);
@@ -437,6 +444,11 @@ public class UndoGrouping1127Tests : IDisposable
         builder.BindUndoGroupAlbums(album, vm.UndoGroupingCommand);
         Assert.True(builder.UndoGroupAlbums.IsVisible);
         Assert.Equal(Loc.T("GroupAlbums.Undo"), builder.UndoGroupAlbums.Header);
+        // Its own line icon (two squares with an arrow back), not the disc of other album rows.
+        var icon = MenuV2.IconPath(builder.UndoGroupAlbums.Icon)?.Data;
+        Assert.NotNull(icon);
+        Assert.Same(Avalonia.Controls.ResourceNodeExtensions.FindResource(Avalonia.Application.Current!, "MenuLineUngroup"), icon);
+        Assert.NotSame(Avalonia.Controls.ResourceNodeExtensions.FindResource(Avalonia.Application.Current!, "MenuLineAlbum"), icon);
     }
 
     [Fact]
