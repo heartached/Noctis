@@ -9554,6 +9554,24 @@
 
                         <!-- Action buttons (top-right) -->
                         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <!-- Always there (Discord 11-26, Andre), beside the update pill: this version's release notes,
+                                 in app (WhatsNewDialog). It sat in the status line, which is empty (folded) when up to date. -->
+                            <Button x:Name="WhatsNewButton"
+                                    Command="{Binding OpenWhatsNewCommand}"
+                                    AutomationProperties.Name="{loc:T Settings.WhatsNew}"
+                                    Classes="pill"
+                                    Padding="16,6"
+                                    VerticalAlignment="Center">
+                                <!-- The small accent dot: this version's notes not opened yet since an update. -->
+                                <StackPanel Orientation="Horizontal" Spacing="7">
+                                    <Ellipse x:Name="WhatsNewDot"
+                                             Width="7" Height="7"
+                                             Fill="{DynamicResource AccentColorBrush}"
+                                             VerticalAlignment="Center"
+                                             IsVisible="{Binding ShowWhatsNew}" />
+                                    <TextBlock Text="{loc:T Settings.WhatsNew}" FontSize="12" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
                             <!-- Update-available dot next to the update pill, mirroring the
                                  sidebar settings-icon badge -->
                             <Ellipse Width="8" Height="8"
@@ -9697,15 +9715,6 @@
                                        FontSize="12"
                                        VerticalAlignment="Center" />
                         </StackPanel>
-                        <!-- Always there (Discord 11-26, Andre): this version's release notes on GitHub -->
-                        <Button x:Name="WhatsNewButton"
-                                Command="{Binding OpenWhatsNewCommand}"
-                                AutomationProperties.Name="{loc:T Settings.WhatsNew}"
-                                Classes="pill"
-                                Padding="12,4"
-                                VerticalAlignment="Center">
-                            <TextBlock Text="{loc:T Settings.WhatsNew}" FontSize="12" />
-                        </Button>
                     </StackPanel>
                     </controls:CollapsibleContent>
                     </StackPanel>
