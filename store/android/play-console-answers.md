@@ -51,7 +51,7 @@ form offers an instructions box, paste: "Noctis plays audio files already on the
 Add folder and pick any folder that contains music files. Settings → Account optionally
 connects to the Noctis desktop app the user runs on their own computer (local network); the
 rest of the app works without it. Album pages show a description fetched from Last.fm, and
-artist pages a photo fetched from Deezer."
+artist pages a biography fetched from Last.fm and a photo fetched from Deezer."
 
 **Content rating** (IARC questionnaire). Email: your contact email. Category: the one for
 utility / productivity / communication / other apps (Noctis is not a game, not social,
@@ -117,6 +117,11 @@ children: No. (Selecting any under-13 group puts the app under the Families poli
     is stored by the developer; Last.fm's policy covers its logs).
   - If you want "No" to stay clearly true, a Settings switch to turn the lookup off (or make
     it opt-in) would make it optional; not built yet.
+- **Last.fm artist biographies (since November 2026).** Opening an artist page sends an HTTPS
+  GET to the same Last.fm API (method artist.getinfo) with only the artist's name and the app's
+  API key; cached in app-private storage like the album descriptions. Same declaration as the
+  album descriptions above. (Verified in code: Noctis.Core LastFmArtistBiographies,
+  FetchFromApiAsync; the phone creates it in AndroidApp.axaml.cs.)
 - **Deezer artist photos (since October 2026).** Opening an artist page, or artists coming
   into view in the Artists list, Search results or the pinned items, sends an HTTPS GET to
   Deezer's public API (api.deezer.com/search/artist) with only the artist's name (then its

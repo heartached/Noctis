@@ -5,8 +5,7 @@
              xmlns:views="using:Noctis.Mobile.Views"
              xmlns:controls="using:Noctis.Controls"
              x:Class="Noctis.Mobile.Views.AddSongsPage"
-             x:DataType="vm:AddSongsPageViewModel"
-             Background="{DynamicResource PhoneBackgroundBrush}">
+             x:DataType="vm:AddSongsPageViewModel">
     <!-- Add Songs on a playlist's page (Apple Music's add sheet, the desktop's Add Songs): Cancel
          and Done in glass pills (Select mode's bar), "Add Songs" or "3 Selected" between them; the
          list's search field; the library's songs, each with a plus that turns into a check when
@@ -23,6 +22,8 @@
     </UserControl.Styles>
 
     <Grid RowDefinitions="Auto,Auto,*">
+        <!-- The page brush, its own layer: a Background's mesh is drawn directly. -->
+        <views:PageBackdrop Grid.RowSpan="3" Brush="{DynamicResource PhoneBackgroundBrush}" />
         <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Height="44" Margin="16,10,16,10">
             <controls:GlassPanel Classes="header-glass" Width="NaN">
                 <Button Name="AddSongsCancelButton" Classes="glass-text" Command="{Binding CancelCommand}"

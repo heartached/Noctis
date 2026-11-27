@@ -449,7 +449,7 @@ public class MobileLyricsPageTests
         Assert.False(page.IsHeldForMenu);
         Assert.Null(scroll.CacheMode);
 
-        shell.OpenCurrentLinksCommand.Execute(null);                 // a ⋯-style pop-up over the page
+        shell.OpenNowPlayingMenuCommand.Execute(null);                 // a ⋯-style pop-up over the page
         Assert.True(shell.IsMenuOpen);
         Assert.True(page.IsHeldForMenu);
         var cache = Assert.IsType<Avalonia.Media.BitmapCache>(scroll.CacheMode);
@@ -469,10 +469,10 @@ public class MobileLyricsPageTests
         Assert.Null(scroll.CacheMode);
         Assert.InRange(waited.ElapsedMilliseconds, 0, 1000);
 
-        shell.OpenCurrentLinksCommand.Execute(null);                 // a menu that opens again first
+        shell.OpenNowPlayingMenuCommand.Execute(null);                 // a menu that opens again first
         Assert.True(page.IsHeldForMenu);
         shell.CloseSheet();
-        shell.OpenCurrentLinksCommand.Execute(null);
+        shell.OpenNowPlayingMenuCommand.Execute(null);
         Thread.Sleep((int)LyricsPage.HoldReleaseDelay.TotalMilliseconds + 100);
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
         Assert.True(page.IsHeldForMenu);
@@ -506,6 +506,64 @@ public class MobileLyricsPageTests
         shell.Lyrics.ShowTranslation = false;
         window.UpdateLayout();
         Assert.False(translation.IsEffectivelyVisible);
+
+        window.Close();
+        try { Directory.Delete(root, recursive: true); } catch { }
+    }
+
+    /// <summary>Beta 6 (#mobile-beta, the tester's mockup): the header's title row ends in a small
+    /// Play/Pause beside the ⋯, so the song pauses without bringing the faded transport back; the
+    /// Translation / Romanization pills moved under the artist to make room (shown only with
+    /// something to switch).</summary>
+    [AvaloniaFact]
+    public void Header_HasPlayPause_BesideTheMore_AndThePillsUnderTheArtist()
+    {
+        var (shell, player, files, root) = MakeShell();
+        files.Sidecars[".ttml"] = MobileLyricsViewModelTests.IssueTtml;   // has translations
+        var (view, window) = Mount(shell);
+        shell.Player.PlayTracks(new[] { NewTrack() }, 0);
+        player.RaisePositionChanged(TimeSpan.FromSeconds(2.5));
+        shell.OpenNowPlayingCommand.Execute(null);
+        shell.ToggleLyricsCommand.Execute(null);
+        window.UpdateLayout();
+        var page = view.GetLogicalDescendants().OfType<LyricsPage>().Single();
+
+        var play = page.FindControl<Button>("HeaderPlayPause")!;
+        var more = page.FindControl<Button>("LyricsMore")!;
+        var title = page.FindControl<TextBlock>("HeaderTitle")!;
+        var artist = page.FindControl<TextBlock>("HeaderArtist")!;
+        var pills = page.FindControl<Control>("LayerPills")!;
+        Assert.True(play.IsEffectivelyVisible && pills.IsEffectivelyVisible);
+        Point At(Control c) => c.TranslatePoint(default, page)!.Value;
+        double MidY(Control c) => At(c).Y + c.Bounds.Height / 2;
+        // On the ⋯'s row, just left of it, the ⋯'s size; the transport's own glyph.
+        Assert.Equal(MidY(more), MidY(play), 1);
+        Assert.True(At(play).X + play.Bounds.Width <= At(more).X + 0.5);
+        Assert.True(At(play).X >= At(title).X + 20);
+        Assert.Equal(more.Bounds.Size, play.Bounds.Size);
+        var glyph = play.GetVisualDescendants().OfType<TransportGlyph>().Single();
+        Assert.Equal(TransportKind.PlayPause, glyph.Kind);
+        Assert.True(glyph.IsPlaying);
+        // The pills under the artist, left-aligned with the title; none left on the title row.
+        Assert.True(At(pills).Y >= At(artist).Y + artist.Bounds.Height - 0.5);
+        Assert.Equal(At(title).X, At(pills).X, 1);
+        Assert.True(pills.IsVisualAncestorOf(page.FindControl<Control>("TranslationToggle")!));
+
+        // A tap pauses, and plays again; nothing else.
+        play.Command!.Execute(null);
+        Assert.False(shell.Player.IsPlaying);
+        Assert.False(glyph.IsPlaying);
+        play.Command!.Execute(null);
+        Assert.True(shell.Player.IsPlaying);
+        Assert.True(shell.IsLyricsOpen);
+
+        // Nothing to switch: no pill row.
+        files.Sidecars.Clear();
+        shell.Player.PlayTracks(new[] { NewTrack() }, 0);
+        window.UpdateLayout();
+        Assert.False(shell.Lyrics.HasTranslations);
+        Assert.False(pills.IsVisible);
+        Assert.True(play.IsEffectivelyVisible);
 
         window.Close();
         try { Directory.Delete(root, recursive: true); } catch { }

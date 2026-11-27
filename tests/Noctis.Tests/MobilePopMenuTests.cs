@@ -166,9 +166,9 @@ public class MobilePopMenuTests(ITestOutputHelper output)
 
     /// <summary>The phone's pop (tester 11-04): the card starts at <see cref="PopMenu.PopScale"/>
     /// with its frost and the dim faded out, holds that pose until it has been drawn, then springs
-    /// out of the ⋯ button (most of the way at once, a hair past, settled), the frost and the dim
-    /// in together; the close is quicker and heads back into the button, inert at once, hiding
-    /// the card after it.</summary>
+    /// out of the ⋯ button (most of the way at once, a hair past, settled), the frost whole at once
+    /// and the rows and the dim fading in over it; the close is quicker and heads back into the
+    /// button, inert at once, hiding the card after it.</summary>
     [AvaloniaFact]
     public void TheMenu_GrowsOutOfTheButton_AndShrinksBackIntoIt_Smoothly()
     {
@@ -197,9 +197,11 @@ public class MobilePopMenuTests(ITestOutputHelper output)
         // the slow first frame. (Headless, the dispatcher runs those frames as jobs.)
         Assert.Null(card.Transitions);
 
+        var body = menu.FindControl<ScrollViewer>("Body")!;
         var scales = new List<double> { PopMenu.PopScale };
         var fades = new List<double> { 0 };
         var dims = new List<double> { 0 };
+        var rows = new List<double> { body.Opacity };
         var checkedTransitions = false;
         for (var i = 0; i < 40; i++)
         {
@@ -207,19 +209,27 @@ public class MobilePopMenuTests(ITestOutputHelper output)
             scales.Add(ScaleOf(card));
             fades.Add(glass.Fade);
             dims.Add(dim.Opacity);
+            rows.Add(body.Opacity);
             if (!checkedTransitions && card.Transitions is { Count: > 0 })
             {
                 checkedTransitions = true;
                 var grow = Assert.IsType<TransformOperationsTransition>(Assert.Single(card.Transitions));
                 Assert.Equal(TimeSpan.FromMilliseconds(PopMenu.PopOpenMs), grow.Duration);
                 Assert.IsType<PopSpringEase>(grow.Easing);
-                var frost = Assert.IsType<DoubleTransition>(Assert.Single(glass.Transitions!));
+                var content = Assert.IsType<DoubleTransition>(Assert.Single(body.Transitions!));
                 var shade = Assert.IsType<DoubleTransition>(Assert.Single(dim.Transitions!));
-                Assert.Equal(TimeSpan.FromMilliseconds(PopMenu.PopFadeMs), frost.Duration);
-                Assert.Equal(frost.Duration, shade.Duration);                // the dim fades with the frost
-                Assert.Same(frost.Easing, shade.Easing);
+                Assert.Equal(TimeSpan.FromMilliseconds(PopMenu.PopFadeMs), content.Duration);
+                Assert.Equal(content.Duration, shade.Duration);              // the dim fades with the rows
+                Assert.Same(content.Easing, shade.Easing);
             }
         }
+        // Beta 6: the glass is whole on the first frame anything of the card shows; the rows fade
+        // in over it, never ahead of it (a half-strength frost under readable rows read as the
+        // glass arriving late).
+        Assert.All(fades, f => Assert.True(f == 0 || f == 1, $"glass faded in: {string.Join(" ", fades)}"));
+        for (var i = 0; i < rows.Count; i++)
+            Assert.True(fades[i] >= rows[i], $"frame {i}: rows {rows[i]:0.000} over glass {fades[i]:0.000}");
+        Assert.Contains(rows, r => r > 0.02 && r < 0.98);                 // the rows still glide in
         Assert.True(checkedTransitions);
         output.WriteLine("open scale: " + string.Join(" ", scales.Select(v => v.ToString("0.0000"))));
         output.WriteLine("open fade:  " + string.Join(" ", fades.Select(v => v.ToString("0.000"))));
@@ -243,15 +253,22 @@ public class MobilePopMenuTests(ITestOutputHelper output)
         Assert.Equal(origin, card.RenderTransformOrigin.ToPixels(card.Bounds.Size));   // back into the button
         var closing = new List<double>();
         var closingFade = new List<double>();
+        var closingRows = new List<double>();
         for (var i = 0; i < (int)(PopMenu.PopCloseMs / 16) + 8 && menu.IsVisible; i++)
         {
             Pump(1);
+            if (!menu.IsVisible) break;
             closing.Add(ScaleOf(card));
             closingFade.Add(glass.Fade);
+            closingRows.Add(body.Opacity);
         }
         output.WriteLine("close scale: " + string.Join(" ", closing.Select(v => v.ToString("0.000"))));
         output.WriteLine("close fade:  " + string.Join(" ", closingFade.Select(v => v.ToString("0.000"))));
+        output.WriteLine("close rows:  " + string.Join(" ", closingRows.Select(v => v.ToString("0.000"))));
         Assert.Contains(closing, s => s > PopMenu.PopCloseScale + 1e-3 && s < 1 - 1e-3);  // shrinks through the frames
+        // The rows fade out on the whole glass, which goes with the card: no faded glass lingers.
+        Assert.All(closingFade, f => Assert.Equal(1, f));
+        Assert.Contains(closingRows, r => r > 0.02 && r < 0.98);
         Assert.False(menu.IsVisible);
         window.Close();
     }
@@ -364,7 +381,7 @@ public class MobilePopMenuTests(ITestOutputHelper output)
             var fade = PopMenu.PopFadeEase.Ease(Math.Min(1, t * PopMenu.PopOpenMs / PopMenu.PopFadeMs));
             var scale = PopMenu.PopScale + (1 - PopMenu.PopScale) * spring.Ease(t);
             foreach (var c in new Control[] { card, glass, body, dim }) c.Transitions = null;
-            glass.Fade = fade;
+            glass.Fade = 1;   // whole from the first frame (PopIn)
             body.Opacity = fade;
             dim.Opacity = fade;
             card.RenderTransform = new PopPose(scale, 0).Transform();
@@ -404,14 +421,14 @@ public class MobilePopMenuTests(ITestOutputHelper output)
     }
 
     /// <summary>
-    /// Now Playing's artist line (owner 10-14, Apple Music's): a tap pops a small glass bubble out
-    /// of the artist with only Go to Album (the album under it) and Go to Artist (every credited
-    /// artist under it), sitting just above the text with its lower-left corner by it, growing
-    /// out of it. Back or a tap outside closes only the bubble; each row closes the player and
-    /// opens its page, the artist row the one the ⋯ menu's Go to Artist opens.
+    /// Now Playing's artist line on a song with several artists (beta 6, #mobile-beta; the bubble
+    /// is Apple Music's, owner 10-14): a tap pops a small glass bubble out of the artist with one
+    /// row per credited artist, sitting just above the text with its lower-left corner by it,
+    /// growing out of it. Back or a tap outside closes only the bubble; a row closes the player
+    /// and opens that artist. The title opens the album, with no bubble.
     /// </summary>
     [AvaloniaFact]
-    public void TheArtistLine_PopsGoToAlbumAndGoToArtist_OutOfItself()
+    public void TheArtistLine_OnSeveralArtists_PopsOneRowEach_OutOfItself()
     {
         var song = MobileFixtures.Song("Leave the Door Open", artist: "Bruno Mars, Anderson .Paak & Silk Sonic");
         var album = MobileFixtures.MakeAlbum("An Evening with Silk Sonic", "Bruno Mars", song);
@@ -428,6 +445,8 @@ public class MobilePopMenuTests(ITestOutputHelper output)
         }
 
         Button ArtistLine() => MobileFixtures.Named<Button>(view.FindControl<NowPlayingPage>("NowPlaying")!, "ArtistButton");
+        Button TitleLine() => MobileFixtures.Named<Button>(view.FindControl<NowPlayingPage>("NowPlaying")!, "TitleButton");
+        List<Button> Rows() => MobileFixtures.Named<ItemsControl>(menu, "LinkRows").GetVisualDescendants().OfType<Button>().ToList();
 
         rig.Shell.Player.PlayTracks(rig.Library.TrackList, 0);
         OpenPlayer();
@@ -440,15 +459,15 @@ public class MobilePopMenuTests(ITestOutputHelper output)
         Assert.IsType<TrackLinksMenuViewModel>(rig.Shell.PopMenu);
         Assert.True(rig.Shell.IsNowPlayingOpen);
         Assert.Equal(1, ScaleOf(card), 3);
-        foreach (var name in new[] { "LinkGoToAlbum", "LinkGoToArtist" })
-            Assert.True(MobileFixtures.Named<Control>(menu, name).IsEffectivelyVisible, name);
-        Assert.Equal(2, MobileFixtures.Named<StackPanel>(menu, "LinkRows").Children.Count);
+        Assert.Equal(2, Rows().Count);
+        Assert.All(Rows(), r => Assert.True(r.IsEffectivelyVisible));
         Assert.DoesNotContain(menu.GetVisualDescendants().OfType<Control>(), c => c.Name is "MenuFavourite" or "Tiles" or "MenuAddToQueue");
         var texts = menu.GetVisualDescendants().OfType<TextBlock>().Where(t => t.IsEffectivelyVisible).Select(t => t.Text).ToList();
-        Assert.Equal(new[] { "Go to Album", "An Evening with Silk Sonic", "Go to Artist", "Bruno Mars, Anderson .Paak & Silk Sonic" }, texts);
-        // The ⋯ menu's glyphs (the desktop's).
+        // Split as the Artists list splits (Settings › Library separators: "&" is not one by default).
+        Assert.Equal(new[] { "Bruno Mars", "Anderson .Paak & Silk Sonic" }, texts);
+        // The ⋯ menu's artist glyph (the desktop's) on each row.
         var glyphs = menu.GetVisualDescendants().OfType<PathIcon>().Select(i => i.Data).ToList();
-        Assert.Equal(new[] { card.FindResource("PhAlbum"), card.FindResource("PhArtist") }, glyphs);
+        Assert.Equal(new[] { card.FindResource("PhArtist"), card.FindResource("PhArtist") }, glyphs);
         Assert.All(glyphs, Assert.NotNull);
 
         // Apple's place: just above the artist, its lower-left corner by the text, over the title.
@@ -477,27 +496,21 @@ public class MobilePopMenuTests(ITestOutputHelper output)
         Assert.True(rig.Shell.IsNowPlayingOpen);
         Pump(15);
 
-        // Go to Album: the player closes and the album opens.
+        // A row: the player closes and that artist opens.
         Tap(window, artist);
         Pump(25);
-        Tap(window, MobileFixtures.Named<Button>(menu, "LinkGoToAlbum"));
+        Tap(window, Rows()[1]);
+        Assert.False(rig.Shell.IsMenuOpen);
+        Assert.False(rig.Shell.IsNowPlayingOpen);
+        Assert.Equal("Anderson .Paak & Silk Sonic", Assert.IsType<ArtistPageViewModel>(rig.Shell.CurrentPage).Title);
+        Pump(15);
+
+        // The title: straight to the album, no bubble.
+        OpenPlayer();
+        Tap(window, TitleLine());
         Assert.False(rig.Shell.IsMenuOpen);
         Assert.False(rig.Shell.IsNowPlayingOpen);
         Assert.Equal(album.Id, Assert.IsType<AlbumPageViewModel>(rig.Shell.CurrentPage).AlbumId);
-        Pump(15);
-
-        // Go to Artist: the artist the ⋯ menu's Go to Artist opens (the one the song is filed under).
-        OpenPlayer();
-        Tap(window, ArtistLine());
-        Pump(25);
-        Tap(window, MobileFixtures.Named<Button>(menu, "LinkGoToArtist"));
-        Assert.False(rig.Shell.IsMenuOpen);
-        Assert.False(rig.Shell.IsNowPlayingOpen);
-        Assert.Equal(song.GroupingArtist, Assert.IsType<ArtistPageViewModel>(rig.Shell.CurrentPage).Title);
-        Pump(15);
-        rig.Shell.OpenTrackSheetCommand.Execute(song);
-        rig.Shell.Sheet!.GoToArtistCommand.Execute(null);
-        Assert.Equal(song.GroupingArtist, rig.Shell.CurrentPage!.Title);
         window.Close();
     }
 

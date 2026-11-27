@@ -8622,6 +8622,14 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Mobile.AnimatedCovers.Off" xml:space="preserve"><value>オフ</value></data>
   <data name="Mobile.AnimatedCovers.WifiOnly" xml:space="preserve"><value>Wi-Fiのみ</value></data>
   <data name="Mobile.AnimatedCovers.Always" xml:space="preserve"><value>常に</value></data>
+  <data name="Mobile.Settings.AnimatedCoversHint" xml:space="preserve"><value>再生中のカバー表示で再生されます。アルバムのフォルダーの cover.mp4 / cover.webm、アルバムの ⋯ メニューで選んだ動画、またはコンピューターから。</value></data>
+  <data name="Mobile.ChooseAnimatedCover" xml:space="preserve"><value>アニメーションカバーを選択…</value></data>
+  <data name="Mobile.RemoveAnimatedCover" xml:space="preserve"><value>アニメーションカバーを削除</value></data>
+  <data name="Mobile.AnimatedCoverSet" xml:space="preserve"><value>アニメーションカバーを設定しました。再生中で再生されます。</value></data>
+  <data name="Mobile.AnimatedCoverSetButOff" xml:space="preserve"><value>アニメーションカバーを設定しました。表示するには設定でアニメーションカバーをオンにしてください。</value></data>
+  <data name="Mobile.AnimatedCoverNotVideo" xml:space="preserve"><value>このファイルは MP4 または WebM の動画ではありません。</value></data>
+  <data name="Mobile.AnimatedCoverTooBig" xml:space="preserve"><value>この動画は 200 MB を超えています。</value></data>
+  <data name="Mobile.AnimatedCoverFailed" xml:space="preserve"><value>動画を保存できませんでした。</value></data>
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>再生中の背景</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>再生中の背景の明るさ</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>再生画面の背景を暗くまたは明るく</value></data>
@@ -8750,6 +8758,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Mobile.Artist.MostPlayed" xml:space="preserve"><value>最も再生した作品</value></data>
   <data name="Mobile.Artist.LatestEp" xml:space="preserve"><value>最新EP</value></data>
   <data name="Mobile.Artist.LatestSingle" xml:space="preserve"><value>最新シングル</value></data>
+  <data name="Mobile.Artist.Biography" xml:space="preserve"><value>バイオグラフィ</value></data>
   <data name="Mobile.Player.UnreachableSkipping" xml:space="preserve"><value>コンピューターに接続できません。ダウンロード済みの曲を再生しています。</value></data>
   <data name="Mobile.Player.UnreachableStopped" xml:space="preserve"><value>コンピューターに接続できません。コンピューターでNoctisを開くか、ダウンロード済みの曲を再生してください。</value></data>
   <data name="Mobile.Player.TooManyErrors" xml:space="preserve"><value>複数の曲を続けて再生できなかったため、再生を停止しました。</value></data>
@@ -9054,6 +9063,11 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>評価</value></data>
   <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>お気に入り</value></data>
   <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>曲の行の最後に星かハート</value></data>
+  <data name="Mobile.Settings.ScanSchedule" xml:space="preserve"><value>ライブラリのスキャン</value><comment>Settings › Library row: when a start of the app rescans the folders</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.EveryStart" xml:space="preserve"><value>起動するたび</value><comment>Scan Library choice: a scan at each start</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Daily" xml:space="preserve"><value>毎日</value><comment>Scan Library choice: at the first start of a day</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Weekly" xml:space="preserve"><value>毎週</value><comment>Scan Library choice: at a start 7+ days after the last scan</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Manual" xml:space="preserve"><value>手動のみ</value><comment>Scan Library choice: only with Rescan Library</comment></data>
   <data name="Mobile.Rate" xml:space="preserve"><value>評価</value></data>
   <data name="Mobile.RateStars" xml:space="preserve"><value>5段階中{0}で評価</value></data>
   <data name="Mobile.ClearRating" xml:space="preserve"><value>評価を消去</value></data>

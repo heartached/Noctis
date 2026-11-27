@@ -63,10 +63,19 @@ public partial class ArtistPage : UserControl
     private readonly HeroChrome _chrome;
     private ArtistPageViewModel? _vm;
 
+    /// <summary>The biography's fold: the album page's description (<see cref="AlbumPage.DescriptionLines"/> lines, MORE).</summary>
+    private readonly DescriptionFold _biography;
+
     public ArtistPage()
     {
         InitializeComponent();
-        _chrome = new HeroChrome(this, Hero, HeroFade, TopFade, TopScrim, TopBar, PageBody, "Artist", UpdateScrollChrome, ApplyShades);
+        _biography = new DescriptionFold(BiographyText, BiographyClip, BiographyFolded, BiographyFoldedHead,
+            BiographyFoldedTail, BiographyMore, AlbumPage.DescriptionLines) { FadeTextUnderMore = true };
+        _chrome = new HeroChrome(this, Hero, HeroFade, TopFade, TopScrim, TopBar, PageBody, "Artist", UpdateScrollChrome, into =>
+        {
+            _biography.SetMoreFade(into);
+            ApplyShades(into);
+        });
         ArtistScroll.SizeChanged += (_, _) => LayoutPage();
         ArtistScroll.ScrollChanged += (_, _) => UpdateScrollChrome();
         TitleArt.SizeChanged += (_, _) => LayoutTitle();
@@ -110,6 +119,7 @@ public partial class ArtistPage : UserControl
         _vm.PropertyChanged += OnPageChanged;
         _chrome.Attach(vm.Shell, vm.Tint);
         LayoutPage();
+        _biography.Measure();
     }
 
     private void Detach()

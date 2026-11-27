@@ -57,6 +57,7 @@ internal sealed class HeroChrome
     private readonly Panel _body;
     private readonly Border _heroFade, _topFade, _topScrim;
     private readonly Control _topBar;
+    private readonly Control? _selectBar;
     private readonly string _prefix;
     private readonly Action _layoutChanged;
     private readonly Action<Color?> _tintApplied;
@@ -81,8 +82,10 @@ internal sealed class HeroChrome
     /// <param name="layoutChanged">The status bar inset changed: the page re-runs its scroll chrome.</param>
     /// <param name="tintApplied">The page colour (the tint, else the theme's surface) was applied:
     /// the page sets its own fades from it.</param>
+    /// <param name="selectBar">Select mode's bar (SelectionHeader), standing in the button row's
+    /// place: it takes the row's status bar inset too.</param>
     public HeroChrome(UserControl page, Control hero, Border heroFade, Border topFade, Border topScrim, Control topBar, Panel body,
-        string resourcePrefix, Action layoutChanged, Action<Color?>? tintApplied = null)
+        string resourcePrefix, Action layoutChanged, Action<Color?>? tintApplied = null, Control? selectBar = null)
     {
         _page = page;
         _hero = hero;
@@ -90,6 +93,7 @@ internal sealed class HeroChrome
         _topFade = topFade;
         _topScrim = topScrim;
         _topBar = topBar;
+        _selectBar = selectBar;
         _body = body;
         _prefix = resourcePrefix;
         _layoutChanged = layoutChanged;
@@ -139,12 +143,14 @@ internal sealed class HeroChrome
     /// ShellView pads the tab content by the status bar; the page takes that strip back with a
     /// negative top margin so the picture runs under the clock, and puts its own buttons and
     /// fades below it instead. The shell is not edited for this: every other page keeps the padding.
+    /// Select mode's bar goes below it too (beta 6: Select All and Done sat under the clock).
     /// </summary>
     private void ApplySafeArea()
     {
         var top = SafeTop;
         _page.Margin = new Thickness(0, -top, 0, 0);
         _topBar.Margin = new Thickness(16, top + 6, 16, 0);
+        if (_selectBar != null) _selectBar.Margin = _topBar.Margin;
         _topScrim.Height = top + TopBarHeight + ScrimTail;
         _topFade.Height = top + TopBarHeight + TopFadeExtra;
         ApplyTint();

@@ -103,8 +103,12 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasTrack), nameof(Quality), nameof(HasQuality), nameof(HasNext))]
+    [NotifyPropertyChangedFor(nameof(HasTrack), nameof(Quality), nameof(HasQuality), nameof(HasNext), nameof(HasAlbum))]
     private Track? _currentTrack;
+
+    /// <summary>The song is on an album of its own (not the shared "Unknown Album" bucket): Now
+    /// Playing's title opens it (ShellViewModel.GoToCurrentAlbum).</summary>
+    public bool HasAlbum => CurrentTrack != null && Track.IsRealAlbumName(CurrentTrack.Album);
 
     /// <summary>Now Playing's quality badge: the playing file's class (<see cref="TrackQuality"/>),
     /// null (no badge) for a file with no codec to name. Changes only with the track.</summary>

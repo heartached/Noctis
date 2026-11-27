@@ -591,4 +591,167 @@ public class MobileAnimatedCoverTests : IDisposable
         Assert.False(p.IsShown);
         Assert.Equal(1, video.Calls.Count(c => c.StartsWith("play", StringComparison.Ordinal)));
     }
+
+    // ── Loops from the phone's own storage (Discord #mobile-beta 11-27: "have the animated covers
+    //    come from our storage ... pick the file for each album") ──
+
+    private static readonly byte[] Mp4 = { 0, 0, 0, 0x18, (byte)'f', (byte)'t', (byte)'y', (byte)'p', (byte)'i', (byte)'s', (byte)'o', (byte)'m', 1, 2, 3 };
+    private static readonly byte[] WebM = { 0x1A, 0x45, 0xDF, 0xA3, 0x9F, 0x42, 0x86, 0x81, 1, 4, 5, 6 };
+
+    private ChosenAnimatedCovers Chosen(long max = ChosenAnimatedCovers.MaxBytes) => new(Path.Combine(_dir, "chosen"), () => _now, max);
+
+    [Fact]
+    public void AVideosType_ComesFromItsFirstBytes_NotItsName()
+    {
+        Assert.Equal(".mp4", ChosenAnimatedCovers.ExtensionFor(Mp4));
+        Assert.Equal(".webm", ChosenAnimatedCovers.ExtensionFor(WebM));
+        Assert.Null(ChosenAnimatedCovers.ExtensionFor(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }));   // a PNG
+        Assert.Null(ChosenAnimatedCovers.ExtensionFor(new byte[] { 0, 0, 0, 0x18, (byte)'f', (byte)'t' }));         // cut short
+        Assert.Null(ChosenAnimatedCovers.ExtensionFor(ReadOnlySpan<byte>.Empty));
+    }
+
+    [Fact]
+    public async Task AChosenVideo_IsCopiedIn_ReplacesTheLastOne_AndAWrongPickIsTurnedAway()
+    {
+        var chosen = Chosen(max: 64);
+        Guid album = Guid.NewGuid(), other = Guid.NewGuid();
+        Assert.Null(chosen.Find(album));                                              // no folder yet
+
+        Assert.Equal(ChosenCoverResult.Saved, await chosen.SaveAsync(album, new MemoryStream(Mp4)));
+        var first = chosen.Find(album)!;
+        Assert.Equal(".mp4", Path.GetExtension(first));
+        Assert.Equal(Mp4, File.ReadAllBytes(first));
+        Assert.True(chosen.Has(album));
+        Assert.False(chosen.Has(other));
+
+        _now = _now.AddMinutes(1);
+        Assert.Equal(ChosenCoverResult.Saved, await chosen.SaveAsync(album, new MemoryStream(WebM)));
+        var second = chosen.Find(album)!;
+        Assert.NotEqual(first, second);                     // a new path: the player never resumes the old file
+        Assert.Equal(".webm", Path.GetExtension(second));
+        Assert.False(File.Exists(first));
+
+        // Not a video, or bigger than the cap: nothing kept, the chosen one stays.
+        Assert.Equal(ChosenCoverResult.NotVideo, await chosen.SaveAsync(album, new MemoryStream(new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 })));
+        Assert.Equal(ChosenCoverResult.TooBig, await chosen.SaveAsync(album, new MemoryStream(Mp4.Concat(new byte[100]).ToArray())));
+        Assert.Equal(second, chosen.Find(album));
+        Assert.Single(Directory.GetFiles(chosen.Folder));                             // no .part left behind
+
+        chosen.Remove(album);
+        Assert.Null(chosen.Find(album));
+        Assert.Empty(Directory.GetFiles(chosen.Folder));
+    }
+
+    [Fact]
+    public async Task TheChosenLoop_WinsOverTheFoldersCoverMp4_WhichWinsOverTheComputers_AndNeitherNeedsWifi()
+    {
+        var computer = new FakeComputer { Unreachable = true };          // offline: the computer cannot answer
+        var chosen = Chosen();
+        var song = ComputerSong(Guid.NewGuid());
+        var source = new AnimatedCoverSource(Cache(), () => false, () => _now)
+        {
+            Chosen = chosen,
+            FindSidecar = _ => "content://tree/cover.mp4",
+            IsComputerSong = _ => true,
+            Fetch = computer.Fetch,
+        };
+
+        // The folder's cover.mp4 on mobile data under Wi-Fi Only, the computer never asked.
+        Assert.Equal("content://tree/cover.mp4", await source.ResolveAsync(song, AnimatedCoversSetting.WifiOnly, CancellationToken.None));
+
+        await chosen.SaveAsync(song.AlbumId, new MemoryStream(Mp4));
+        Assert.Equal(chosen.Find(song.AlbumId), await source.ResolveAsync(song, AnimatedCoversSetting.WifiOnly, CancellationToken.None));
+        Assert.Equal(chosen.Find(song.AlbumId), await source.ResolveAsync(song, AnimatedCoversSetting.Always, CancellationToken.None));
+        Assert.Null(await source.ResolveAsync(song, AnimatedCoversSetting.Off, CancellationToken.None));
+        Assert.Empty(computer.Asked);
+
+        // Another album's song: its own folder's loop, not this album's chosen one.
+        Assert.Equal("content://tree/cover.mp4", await source.ResolveAsync(ComputerSong(Guid.NewGuid()), AnimatedCoversSetting.WifiOnly, CancellationToken.None));
+
+        // Removed: the folder's loop again; with no folder loop either, the computer's (on Wi-Fi rules).
+        chosen.Remove(song.AlbumId);
+        Assert.Equal("content://tree/cover.mp4", await source.ResolveAsync(song, AnimatedCoversSetting.WifiOnly, CancellationToken.None));
+    }
+
+    private sealed class VideoPicker(byte[]? video) : IPlaylistFilePicker
+    {
+        public int Picks;
+
+        public Task<IReadOnlyList<PickedPlaylistFile>> PickPlaylistFilesAsync() =>
+            Task.FromResult<IReadOnlyList<PickedPlaylistFile>>(Array.Empty<PickedPlaylistFile>());
+
+        public Task<PickedVideoFile?> PickVideoAsync()
+        {
+            Picks++;
+            return Task.FromResult(video is null ? null : new PickedVideoFile("loop.mp4", () => new MemoryStream(video)));
+        }
+    }
+
+    /// <summary>Album ⋯ › Choose Animated Cover copies the picked video in, says so, and Now Playing
+    /// (open on that album's song) plays it at once; Remove Animated Cover takes it away again. A
+    /// file that is not a video says so; with the setting Off the notice says to turn it on.</summary>
+    [Fact]
+    public async Task TheAlbumMenu_ChoosesAndRemovesTheAnimatedCover_AndNowPlayingFollows()
+    {
+        var song = MobileFixtures.Song("Loop");
+        var album = MobileFixtures.MakeAlbum("Motion", "Artist", song);
+        using var rig = MobileFixtures.MakeRig(new[] { song }, new[] { album });
+        var chosen = Chosen();
+        var source = new AnimatedCoverSource(Cache(), () => false, () => _now) { Chosen = chosen };
+        var picker = new VideoPicker(Mp4);
+        var shell = new ShellViewModel(rig.Shell.Library, rig.Shell.Player, rig.Shell.Lyrics)
+        {
+            Marshal = x => x(),
+            TintFactory = rig.Shell.TintFactory,
+            PlaylistFiles = picker,
+            AnimatedCoverSource = source,
+        };
+
+        // Without a picker or a store (tests, hosts without one): neither row.
+        rig.Shell.OpenAlbumSheetCommand.Execute(album);
+        Assert.False(rig.Shell.Sheet!.CanChooseAnimatedCover);
+        Assert.False(rig.Shell.Sheet.CanRemoveAnimatedCover);
+        rig.Shell.CloseSheet();
+
+        shell.Player.PlayTracks(new[] { song }, 0);
+        shell.IsNowPlayingOpen = true;
+        await shell.Motion!.Pending;
+        Assert.Null(shell.Motion.Path);                                   // nothing yet: the still cover
+
+        shell.OpenAlbumSheetCommand.Execute(album);
+        Assert.True(shell.Sheet!.CanChooseAnimatedCover);
+        Assert.False(shell.Sheet.CanRemoveAnimatedCover);
+        await shell.Sheet.ChooseAnimatedCoverCommand.ExecuteAsync(null);
+        Assert.False(shell.IsSheetOpen);
+        Assert.Equal("Animated cover set. It plays on Now Playing.", shell.Player.Notice);
+        await shell.Motion.Pending;
+        Assert.Equal(chosen.Find(album.Id), shell.Motion.Path);
+        Assert.NotNull(shell.Motion.Path);
+
+        shell.OpenAlbumSheetCommand.Execute(album);
+        Assert.True(shell.Sheet!.CanRemoveAnimatedCover);
+        shell.Sheet.RemoveAnimatedCoverCommand.Execute(null);
+        await shell.Motion.Pending;
+        Assert.Null(shell.Motion.Path);
+        Assert.False(chosen.Has(album.Id));
+
+        // A picture picked by mistake: said, nothing kept.
+        var wrong = new ShellViewModel(rig.Shell.Library, rig.Shell.Player, rig.Shell.Lyrics)
+        {
+            Marshal = x => x(),
+            TintFactory = rig.Shell.TintFactory,
+            PlaylistFiles = new VideoPicker(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0 }),
+            AnimatedCoverSource = source,
+        };
+        await wrong.ChooseAnimatedCoverAsync(album);
+        Assert.Equal("That file isn't an MP4 or WebM video.", wrong.Player.Notice);
+        Assert.False(chosen.Has(album.Id));
+
+        // Animated Covers Off: kept, and the notice says where to turn it on.
+        shell.AnimatedCovers = AnimatedCoversSetting.Off;
+        await shell.ChooseAnimatedCoverAsync(album);
+        Assert.Equal("Animated cover set. Turn on Animated Covers in Settings to see it.", shell.Player.Notice);
+        Assert.True(chosen.Has(album.Id));
+        Assert.Null(shell.Motion.Path);
+    }
 }

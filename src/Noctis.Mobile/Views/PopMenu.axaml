@@ -57,8 +57,12 @@
             <Setter Property="HorizontalAlignment" Value="Center" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
+        <!-- A long action ("Choose Animated Cover…", most translations) takes a second line
+             rather than losing its end to an ellipsis. -->
         <Style Selector="Button.np-row TextBlock.np-label">
             <Setter Property="FontSize" Value="17" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="MaxLines" Value="2" />
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         </Style>
         <Style Selector="Button.np-row TextBlock.np-detail">
@@ -272,6 +276,24 @@
                                                     <Border Grid.Column="1" Classes="np-line" />
                                                 </Grid>
                                             </Button>
+                                            <!-- An album's animated cover for Now Playing: a video from the phone (the
+                                                 desktop's Choose Animated Artwork); Remove while one is chosen. -->
+                                            <Button Name="MenuChooseAnimatedCover" Classes="row np-row" Command="{Binding ChooseAnimatedCoverCommand}"
+                                                    IsVisible="{Binding CanChooseAnimatedCover}">
+                                                <Grid ColumnDefinitions="56,*">
+                                                    <PathIcon Data="{DynamicResource PhAlbum}" />
+                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="{loc:T Mobile.ChooseAnimatedCover}" VerticalAlignment="Center" />
+                                                    <Border Grid.Column="1" Classes="np-line" />
+                                                </Grid>
+                                            </Button>
+                                            <Button Name="MenuRemoveAnimatedCover" Classes="row np-row" Command="{Binding RemoveAnimatedCoverCommand}"
+                                                    IsVisible="{Binding CanRemoveAnimatedCover}">
+                                                <Grid ColumnDefinitions="56,*">
+                                                    <PathIcon Data="{DynamicResource PhClose}" />
+                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="{loc:T Mobile.RemoveAnimatedCover}" VerticalAlignment="Center" />
+                                                    <Border Grid.Column="1" Classes="np-line" />
+                                                </Grid>
+                                            </Button>
                                             <!-- A playlist's own edits, the desktop's glyphs (MenuLineEdit, MenuLineTrash,
                                                  MenuLinePlaylistRemove); the destructive rows last, in red, as the
                                                  desktop's v2 menus and Apple's. -->
@@ -350,29 +372,24 @@
                                             </Button>
                                         </StackPanel>
                                     </DataTemplate>
-                                    <!-- Now Playing's artist line (Apple's bubble): the ⋯ menu's two
-                                         rows, out of the artist, nothing else (no hairline, as Apple's). -->
+                                    <!-- Now Playing's artist line on a song with several artists (Apple's
+                                         bubble): one row per artist, out of the artist, nothing else (no
+                                         hairline, as Apple's). A row opens that artist. -->
                                     <DataTemplate DataType="vm:TrackLinksMenuViewModel">
-                                        <StackPanel Name="LinkRows" Margin="0,6,0,6">
-                                            <Button Name="LinkGoToAlbum" Classes="row np-row" Command="{Binding GoToAlbumCommand}">
-                                                <Grid ColumnDefinitions="56,*">
-                                                    <PathIcon Data="{DynamicResource PhAlbum}" />
-                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,9,16,9">
-                                                        <TextBlock Classes="np-label" Text="{loc:T Mobile.GoToAlbum}" />
-                                                        <TextBlock Classes="np-detail" Text="{Binding AlbumLine}" />
-                                                    </StackPanel>
-                                                </Grid>
-                                            </Button>
-                                            <Button Name="LinkGoToArtist" Classes="row np-row" Command="{Binding GoToArtistCommand}">
-                                                <Grid ColumnDefinitions="56,*">
-                                                    <PathIcon Data="{DynamicResource PhArtist}" />
-                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,9,16,9">
-                                                        <TextBlock Classes="np-label" Text="{loc:T Mobile.GoToArtist}" />
-                                                        <TextBlock Classes="np-detail" Text="{Binding ArtistLine}" />
-                                                    </StackPanel>
-                                                </Grid>
-                                            </Button>
-                                        </StackPanel>
+                                        <ItemsControl Name="LinkRows" Margin="0,6,0,6" ItemsSource="{Binding Artists}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="x:String">
+                                                    <Button Classes="row np-row" CommandParameter="{Binding}"
+                                                            Command="{Binding $parent[ItemsControl].((vm:TrackLinksMenuViewModel)DataContext).GoToArtistCommand}">
+                                                        <Grid ColumnDefinitions="56,*">
+                                                            <PathIcon Data="{DynamicResource PhArtist}" />
+                                                            <TextBlock Grid.Column="1" Classes="np-label" Text="{Binding}" VerticalAlignment="Center"
+                                                                       TextTrimming="CharacterEllipsis" Margin="0,0,16,0" />
+                                                        </Grid>
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
                                     </DataTemplate>
                                     <!-- Now Playing's quality badge: what the playing file is - its class
                                          under the desktop's waveform (every class, as the badge), the

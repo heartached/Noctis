@@ -4,35 +4,28 @@ using Noctis.Models;
 namespace Noctis.Mobile.ViewModels;
 
 /// <summary>
-/// Now Playing's artist line, Apple Music's: a small glass bubble growing out of the tapped
-/// artist with two rows, Go to Album (the album's name under it) and Go to Artist (the song's
-/// artists under it). The rows act as the ⋯ menu's Go to Album and Go to Artist do: the artist
-/// row opens the artist the song is filed under (Track.GroupingArtist, the Artists list's key)
-/// and shows every credited name, as the ⋯ menu does. Each row closes the menu, and the page it
-/// opens closes the player (ShellViewModel.Navigate).
+/// Now Playing's artist line on a song credited to several artists (beta 6, #mobile-beta: the
+/// artist goes straight to the artist page, the title to the album): Apple Music's small glass
+/// bubble growing out of the tapped artist, one row per credited name (<see cref="ArtistsOf"/>,
+/// the Settings › Library separators the Artists list splits by). A row closes the menu and opens
+/// that artist's page, which closes the player (ShellViewModel.Navigate). A song with one artist
+/// never shows it: the tap opens the artist at once (ShellViewModel.GoToCurrentArtist).
 /// </summary>
-public sealed partial class TrackLinksMenuViewModel(ShellViewModel shell, Track track)
+public sealed partial class TrackLinksMenuViewModel(ShellViewModel shell, Track track, IReadOnlyList<string> artists)
 {
     public Track Track { get; } = track;
 
-    /// <summary>Go to Album's second line.</summary>
-    public string? AlbumLine => Track.Album;
+    /// <summary>The rows: every credited artist, in the credit's order.</summary>
+    public IReadOnlyList<string> Artists { get; } = artists;
 
-    /// <summary>Go to Artist's second line: every credited artist.</summary>
-    public string? ArtistLine => Track.Artist;
-
-    [RelayCommand]
-    private void GoToAlbum()
-    {
-        var album = shell.Library.Service.GetAlbumById(Track.AlbumId);
-        shell.CloseSheet();
-        if (album != null) shell.OpenAlbumCommand.Execute(album);
-    }
+    /// <summary>The names in <paramref name="track"/>'s artist credit, split as the library splits
+    /// them, each once (first spelling wins).</summary>
+    public static IReadOnlyList<string> ArtistsOf(Track track) =>
+        ArtistCredit.Split(track.Artist).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 
     [RelayCommand]
-    private void GoToArtist()
+    private void GoToArtist(string? name)
     {
-        var name = Track.GroupingArtist;
         shell.CloseSheet();
         if (!string.IsNullOrWhiteSpace(name)) shell.OpenArtistCommand.Execute(name);
     }

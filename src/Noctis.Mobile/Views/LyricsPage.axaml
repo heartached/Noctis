@@ -21,7 +21,6 @@
          at the bottom, which fades away while the song plays and comes back on a touch. -->
 
     <UserControl.Resources>
-        <conv:PreBlurredArtworkConverter x:Key="PreBlur" />
         <conv:EmphasisGlowConverter x:Key="EmphasisGlow" />
         <conv:EmphasisGlowBlurConverter x:Key="EmphasisGlowBlur" />
         <conv:WordOverflowPaddingConverter x:Key="WordOverflowPad" />
@@ -179,8 +178,8 @@
         <!-- The wash (as Now Playing's): the cover blurred to colour alone and stretched over the
              whole screen, darkened more than Now Playing's so white lyrics read on any cover,
              and dithered against banding. Drawn once per cover, never per frame. -->
-        <Image Name="Backdrop" Source="{Binding #HeaderArt.Source, Converter={StaticResource PreBlur}, ConverterParameter=wash}"
-               Stretch="Fill" IsHitTestVisible="False" IsVisible="{Binding !#BlurCover.HasImage}" />
+        <views:WashImage Name="Backdrop" Art="{Binding #HeaderArt.Source}"
+                         Stretch="Fill" IsHitTestVisible="False" IsVisible="{Binding !#BlurCover.HasImage}" />
         <!-- Now Playing Background › Blurred Cover: the cover itself, blurred once per cover (as
              Now Playing's), in the wash's place under the same shade. -->
         <views:BlurredCoverBackdrop Name="BlurCover" Source="{Binding #HeaderArt.Source}"
@@ -244,13 +243,26 @@
                     </Grid>
                     <TextBlock Name="HeaderArtist" Text="{Binding Player.CurrentTrack.Artist}" FontSize="15" Foreground="#99FFFFFF"
                                TextTrimming="CharacterEllipsis" MaxLines="1" />
+                    <!-- Under the artist (beta 6, #mobile-beta): the row's end holds Play/Pause now. -->
+                    <StackPanel Name="LayerPills" Orientation="Horizontal" Spacing="6" Margin="0,5,0,0">
+                        <StackPanel.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                                <Binding Path="Lyrics.HasTranslations" />
+                                <Binding Path="Lyrics.HasRomanizations" />
+                            </MultiBinding>
+                        </StackPanel.IsVisible>
+                        <ToggleButton Name="TranslationToggle" Classes="lyrics-pill" Content="{loc:T Mobile.Lyrics.Translation}"
+                                      IsChecked="{Binding Lyrics.ShowTranslation}" IsVisible="{Binding Lyrics.HasTranslations}" />
+                        <ToggleButton Name="RomajiToggle" Classes="lyrics-pill" Content="{loc:T Mobile.Lyrics.Romaji}"
+                                      IsChecked="{Binding Lyrics.ShowRomanization}" IsVisible="{Binding Lyrics.HasRomanizations}" />
+                    </StackPanel>
                 </StackPanel>
-                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                    <ToggleButton Name="TranslationToggle" Classes="lyrics-pill" Content="{loc:T Mobile.Lyrics.Translation}"
-                                  IsChecked="{Binding Lyrics.ShowTranslation}" IsVisible="{Binding Lyrics.HasTranslations}" />
-                    <ToggleButton Name="RomajiToggle" Classes="lyrics-pill" Content="{loc:T Mobile.Lyrics.Romaji}"
-                                  IsChecked="{Binding Lyrics.ShowRomanization}" IsVisible="{Binding Lyrics.HasRomanizations}" />
-                </StackPanel>
+                <!-- Beta 6 (#mobile-beta): pause without bringing the faded transport back. The
+                     transport's own glyph and press, at the ⋯'s size. -->
+                <Button Grid.Column="2" Name="HeaderPlayPause" Classes="icon tx" VerticalAlignment="Center"
+                        Command="{Binding Player.TogglePlayPauseCommand}" AutomationProperties.Name="{loc:T Mobile.PlayPause}">
+                    <controls:TransportGlyph Kind="PlayPause" Width="22" Height="22" IsPlaying="{Binding Player.IsPlaying}" />
+                </Button>
                 <Button Grid.Column="3" Name="LyricsMore" Classes="icon" VerticalAlignment="Center"
                         Command="{Binding OpenNowPlayingMenuCommand}" AutomationProperties.Name="{loc:T Mobile.More}">
                     <PathIcon Data="{DynamicResource PhMore}" Width="26" Height="26" />

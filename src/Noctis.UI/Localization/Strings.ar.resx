@@ -8622,6 +8622,14 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.AnimatedCovers.Off" xml:space="preserve"><value>إيقاف</value></data>
   <data name="Mobile.AnimatedCovers.WifiOnly" xml:space="preserve"><value>Wi-Fi فقط</value></data>
   <data name="Mobile.AnimatedCovers.Always" xml:space="preserve"><value>دائمًا</value></data>
+  <data name="Mobile.Settings.AnimatedCoversHint" xml:space="preserve"><value>يظهر في قيد التشغيل بنمط الغلاف. من cover.mp4 أو cover.webm في مجلد الألبوم، أو فيديو تختاره من قائمة ⋯ للألبوم، أو من الكمبيوتر.</value></data>
+  <data name="Mobile.ChooseAnimatedCover" xml:space="preserve"><value>اختيار غلاف متحرك…</value></data>
+  <data name="Mobile.RemoveAnimatedCover" xml:space="preserve"><value>إزالة الغلاف المتحرك</value></data>
+  <data name="Mobile.AnimatedCoverSet" xml:space="preserve"><value>تم تعيين الغلاف المتحرك. يظهر في قيد التشغيل.</value></data>
+  <data name="Mobile.AnimatedCoverSetButOff" xml:space="preserve"><value>تم تعيين الغلاف المتحرك. فعّل الأغلفة المتحركة في الإعدادات لرؤيته.</value></data>
+  <data name="Mobile.AnimatedCoverNotVideo" xml:space="preserve"><value>هذا الملف ليس فيديو MP4 أو WebM.</value></data>
+  <data name="Mobile.AnimatedCoverTooBig" xml:space="preserve"><value>حجم هذا الفيديو أكبر من 200 ميغابايت.</value></data>
+  <data name="Mobile.AnimatedCoverFailed" xml:space="preserve"><value>تعذّر حفظ الفيديو.</value></data>
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>خلفية قيد التشغيل</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>سطوع خلفية قيد التشغيل</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>ألوان أغمق أو أفتح خلف شاشة «قيد التشغيل»</value></data>
@@ -8750,6 +8758,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.Artist.MostPlayed" xml:space="preserve"><value>الأكثر تشغيلًا</value></data>
   <data name="Mobile.Artist.LatestEp" xml:space="preserve"><value>أحدث EP</value></data>
   <data name="Mobile.Artist.LatestSingle" xml:space="preserve"><value>أحدث أغنية منفردة</value></data>
+  <data name="Mobile.Artist.Biography" xml:space="preserve"><value>السيرة الذاتية</value></data>
   <data name="Mobile.Player.UnreachableSkipping" xml:space="preserve"><value>تعذّر الوصول إلى الكمبيوتر. يتم تشغيل الأغاني التي نزّلتها.</value></data>
   <data name="Mobile.Player.UnreachableStopped" xml:space="preserve"><value>تعذّر الوصول إلى الكمبيوتر. افتح Noctis عليه، أو شغّل الأغاني التي نزّلتها.</value></data>
   <data name="Mobile.Player.TooManyErrors" xml:space="preserve"><value>تعذّر تشغيل عدة أغانٍ متتالية، لذا توقف التشغيل.</value></data>
@@ -9054,6 +9063,11 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>التقييمات</value></data>
   <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>المفضلة</value></data>
   <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>نجوم أو قلب في نهاية كل صف أغنية</value></data>
+  <data name="Mobile.Settings.ScanSchedule" xml:space="preserve"><value>فحص المكتبة</value><comment>Settings › Library row: when a start of the app rescans the folders</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.EveryStart" xml:space="preserve"><value>عند كل تشغيل</value><comment>Scan Library choice: a scan at each start</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Daily" xml:space="preserve"><value>يوميًا</value><comment>Scan Library choice: at the first start of a day</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Weekly" xml:space="preserve"><value>أسبوعيًا</value><comment>Scan Library choice: at a start 7+ days after the last scan</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Manual" xml:space="preserve"><value>يدويًا فقط</value><comment>Scan Library choice: only with Rescan Library</comment></data>
   <data name="Mobile.Rate" xml:space="preserve"><value>تقييم</value></data>
   <data name="Mobile.RateStars" xml:space="preserve"><value>تقييم {0} من 5</value></data>
   <data name="Mobile.ClearRating" xml:space="preserve"><value>مسح التقييم</value></data>

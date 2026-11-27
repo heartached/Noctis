@@ -3630,6 +3630,14 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.AnimatedCovers.Off" xml:space="preserve"><value>Выкл.</value></data>
   <data name="Mobile.AnimatedCovers.WifiOnly" xml:space="preserve"><value>Только Wi-Fi</value></data>
   <data name="Mobile.AnimatedCovers.Always" xml:space="preserve"><value>Всегда</value></data>
+  <data name="Mobile.Settings.AnimatedCoversHint" xml:space="preserve"><value>Играет на экране «Сейчас играет» в стиле «Обложка». Берётся из cover.mp4 или cover.webm в папке альбома, из видео, выбранного в меню ⋯ альбома, или с компьютера.</value></data>
+  <data name="Mobile.ChooseAnimatedCover" xml:space="preserve"><value>Выбрать анимированную обложку…</value></data>
+  <data name="Mobile.RemoveAnimatedCover" xml:space="preserve"><value>Удалить анимированную обложку</value></data>
+  <data name="Mobile.AnimatedCoverSet" xml:space="preserve"><value>Анимированная обложка задана. Она играет на экране «Сейчас играет».</value></data>
+  <data name="Mobile.AnimatedCoverSetButOff" xml:space="preserve"><value>Анимированная обложка задана. Включите «Анимированные обложки» в настройках, чтобы её видеть.</value></data>
+  <data name="Mobile.AnimatedCoverNotVideo" xml:space="preserve"><value>Этот файл не является видео MP4 или WebM.</value></data>
+  <data name="Mobile.AnimatedCoverTooBig" xml:space="preserve"><value>Это видео больше 200 МБ.</value></data>
+  <data name="Mobile.AnimatedCoverFailed" xml:space="preserve"><value>Не удалось сохранить видео.</value></data>
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>Фон плеера</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>Яркость фона плеера</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>Темнее или светлее цвета за экраном воспроизведения</value></data>
@@ -3758,6 +3766,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Artist.MostPlayed" xml:space="preserve"><value>ЧАЩЕ ВСЕГО</value></data>
   <data name="Mobile.Artist.LatestEp" xml:space="preserve"><value>НОВЫЙ EP</value></data>
   <data name="Mobile.Artist.LatestSingle" xml:space="preserve"><value>НОВЫЙ СИНГЛ</value></data>
+  <data name="Mobile.Artist.Biography" xml:space="preserve"><value>Биография</value></data>
   <data name="Mobile.Player.UnreachableSkipping" xml:space="preserve"><value>Нет связи с компьютером. Играют скачанные песни.</value></data>
   <data name="Mobile.Player.UnreachableStopped" xml:space="preserve"><value>Нет связи с компьютером. Откройте на нём Noctis или слушайте скачанные песни.</value></data>
   <data name="Mobile.Player.TooManyErrors" xml:space="preserve"><value>Несколько песен подряд не удалось воспроизвести, поэтому воспроизведение остановлено.</value></data>
@@ -4062,6 +4071,11 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>Оценки</value></data>
   <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>Избранное</value></data>
   <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>Звёзды или сердце в конце каждой строки песни</value></data>
+  <data name="Mobile.Settings.ScanSchedule" xml:space="preserve"><value>Сканирование медиатеки</value><comment>Settings › Library row: when a start of the app rescans the folders</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.EveryStart" xml:space="preserve"><value>При каждом запуске</value><comment>Scan Library choice: a scan at each start</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Daily" xml:space="preserve"><value>Ежедневно</value><comment>Scan Library choice: at the first start of a day</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Weekly" xml:space="preserve"><value>Еженедельно</value><comment>Scan Library choice: at a start 7+ days after the last scan</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Manual" xml:space="preserve"><value>Только вручную</value><comment>Scan Library choice: only with Rescan Library</comment></data>
   <data name="Mobile.Rate" xml:space="preserve"><value>Оценить</value></data>
   <data name="Mobile.RateStars" xml:space="preserve"><value>Оценка {0} из 5</value></data>
   <data name="Mobile.ClearRating" xml:space="preserve"><value>Сбросить оценку</value></data>

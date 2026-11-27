@@ -10,17 +10,18 @@ import { links } from '../../config/site';
  * must not share a page. The wording mirrors store/android/privacy-policy.md on the
  * Android branch; keep them identical. Every claim was checked against the Android
  * build (SAF-only folder access, logcat-only diagnostics, the Last.fm album.getinfo
- * lookup in Noctis.Core LastFmAlbumDescriptions, the Deezer artist-photo lookup in
+ * lookup in Noctis.Core LastFmAlbumDescriptions, the Last.fm artist.getinfo lookup in
+ * Noctis.Core LastFmArtistBiographies, the Deezer artist-photo lookup in
  * Noctis.Core DeezerArtistPhotos, the LRCLIB lyrics lookup in Noctis.Core LrcLibService, the
  * artist-logo lookup in Noctis.Core ArtistLogoService, the opt-in Last.fm / ListenBrainz
  * scrobbling in Noctis.Core ScrobbleClients, the optional account link).
  */
-const updated = '4 November 2026';
+const updated = '27 November 2026';
 ---
 
 <Base
   title="Noctis for Android · Privacy policy"
-  description="Noctis for Android collects no data. No ads, no analytics, no crash reporting. Your library, lyrics and settings stay on your phone; album descriptions come from Last.fm, artist photos from Deezer and missing lyrics from LRCLIB."
+  description="Noctis for Android collects no data. No ads, no analytics, no crash reporting. Your library, lyrics and settings stay on your phone; album descriptions and artist biographies come from Last.fm, artist photos from Deezer and missing lyrics from LRCLIB."
   path="/privacy/android"
 >
   <section class="pp section" aria-labelledby="pp-title">
@@ -31,8 +32,8 @@ const updated = '4 November 2026';
         Noctis for Android does not collect, sell or share any personal data or usage data.
         The developer receives nothing from the app: there is no advertising, no analytics,
         no crash reporting and no developer server. The app’s network connections are all
-        described under Network: it asks Last.fm for album descriptions, sending only the
-        album’s artist and title; it asks Deezer for artist photos, sending only the
+        described under Network: it asks Last.fm for album descriptions and artist biographies, sending only the
+        album’s artist and title or the artist’s name; it asks Deezer for artist photos, sending only the
         artist’s name; it asks LRCLIB for lyrics to songs that have none of their own,
         sending only the song’s title, artist and length; it may ask MusicBrainz, fanart.tv
         and TheAudioDB for artists’ logos, sending only the artist’s name and sometimes a
@@ -67,6 +68,11 @@ const updated = '4 November 2026';
         <li>
           <strong>Album descriptions.</strong> Descriptions fetched from Last.fm (see
           Network) are kept in the app’s private storage so each album is looked up only
+          once.
+        </li>
+        <li>
+          <strong>Artist biographies.</strong> Biographies fetched from Last.fm (see
+          Network) are kept in the app’s private storage so each artist is looked up only
           once.
         </li>
         <li>
@@ -123,6 +129,14 @@ const updated = '4 November 2026';
         answers are stored on your phone so each album is looked up only once. Last.fm’s
         privacy policy covers its service:
         <a href="https://www.last.fm/legal/privacy">https://www.last.fm/legal/privacy</a>.
+      </p>
+      <p>
+        <strong>Last.fm, for artist biographies.</strong> When you open an artist page,
+        Noctis asks the same Last.fm web service, in the same way, for that artist’s
+        biography. The request contains only the artist’s name (if Last.fm has nothing for
+        a joint credit, Noctis asks once more with the first artist named) and Noctis’s own
+        application key; placeholders such as Unknown Artist and Various Artists are never asked. The answers
+        are stored on your phone so each artist is looked up only once.
       </p>
       <p>
         <strong>Deezer, for artist photos.</strong> When you open an artist page, or artists
@@ -257,7 +271,7 @@ const updated = '4 November 2026';
       <p>
         If you have Android backup turned on, Android may include the app’s local data (your
         library index and artwork, including the song list and covers from your computer if
-        you signed in, album descriptions, artist photos, artist logos, lyrics found online,
+        you signed in, album descriptions, artist biographies, artist photos, artist logos, lyrics found online,
         favourites, playlists, play history, play queue, your scrobbling connections and
         settings) in your device backup to your Google account. Google handles that backup
         under your account; the developer cannot see it. Your account link and downloaded

@@ -12,7 +12,6 @@
              Foreground="White">
 
     <UserControl.Resources>
-        <conv:PreBlurredArtworkConverter x:Key="PreBlur" />
         <!-- The quality badge's ink: a shade under the title's white, over the capsule's veil. -->
         <SolidColorBrush x:Key="NowPlayingBadgeText" Color="#E0FFFFFF" />
         <!-- The wash's shade (the page's second layer, below); the Blurred Cover wears it too. -->
@@ -175,8 +174,7 @@
                 DitherLayer (one Skia shader), as the lyrics page's: a tiled image brush is redrawn
                 through a new surface every time anything over it moves. -->
         <Panel Name="WashLayer" IsVisible="{Binding !#BlurCover.HasImage}">
-            <Image Name="Backdrop" Source="{Binding #Artwork.Source, Converter={StaticResource PreBlur}, ConverterParameter=wash}"
-                   Stretch="Fill" IsHitTestVisible="False" />
+            <views:WashImage Name="Backdrop" Art="{Binding #Artwork.Source}" Stretch="Fill" IsHitTestVisible="False" />
             <Border Name="WashShade" IsHitTestVisible="False" Opacity="{Binding NowPlayingShadeOpacity}"
                     Background="{StaticResource NowPlayingShade}" />
             <views:DitherLayer Name="WashDither" IsHitTestVisible="False" />
@@ -270,17 +268,23 @@
 
                 <Grid Grid.Row="2" Name="TitleRow" ColumnDefinitions="*,Auto,Auto" Margin="0,12,0,0">
                     <StackPanel VerticalAlignment="Center">
+                        <!-- Beta 6 (#mobile-beta): the title opens the song's album, the artist the
+                             artist (several artists: a bubble out of it asks which, PopMenu). A song
+                             with no album has no link on its title. -->
                         <!-- Left-aligned so the explicit badge follows the title, not the row's end. -->
-                        <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Left">
-                            <TextBlock Name="TitleText" Text="{Binding Player.CurrentTrack.Title}" FontSize="20" FontWeight="Bold"
-                                       TextTrimming="CharacterEllipsis" MaxLines="1" VerticalAlignment="Center" />
-                            <Border Grid.Column="1" Name="TitleExplicit" Classes="explicit-badge" Margin="8,0,0,0"
-                                    IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}">
-                                <TextBlock Text="E" Classes="explicit-badge-text" FontSize="10" Opacity="0.9" />
-                            </Border>
-                        </Grid>
-                        <!-- Apple's: a tap pops Go to Album / Go to Artist out of the artist (PopMenu). -->
-                        <Button Name="ArtistButton" Classes="row" HorizontalAlignment="Left" Command="{Binding OpenCurrentLinksCommand}">
+                        <Button Name="TitleButton" Classes="row" HorizontalAlignment="Left" Command="{Binding GoToCurrentAlbumCommand}"
+                                IsHitTestVisible="{Binding Player.HasAlbum}" AutomationProperties.Name="{loc:T Mobile.GoToAlbum}">
+                            <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Left">
+                                <TextBlock Name="TitleText" Text="{Binding Player.CurrentTrack.Title}" FontSize="20" FontWeight="Bold"
+                                           TextTrimming="CharacterEllipsis" MaxLines="1" VerticalAlignment="Center" />
+                                <Border Grid.Column="1" Name="TitleExplicit" Classes="explicit-badge" Margin="8,0,0,0"
+                                        IsVisible="{Binding Player.CurrentTrack.IsExplicit, FallbackValue=False}">
+                                    <TextBlock Text="E" Classes="explicit-badge-text" FontSize="10" Opacity="0.9" />
+                                </Border>
+                            </Grid>
+                        </Button>
+                        <Button Name="ArtistButton" Classes="row" HorizontalAlignment="Left" Command="{Binding GoToCurrentArtistCommand}"
+                                AutomationProperties.Name="{loc:T Mobile.GoToArtist}">
                             <TextBlock Classes="np-sub" Text="{Binding Player.CurrentTrack.Artist}" FontSize="20" TextTrimming="CharacterEllipsis" />
                         </Button>
                     </StackPanel>

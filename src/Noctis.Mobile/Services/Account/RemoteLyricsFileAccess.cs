@@ -75,6 +75,8 @@ public sealed class RemoteLyricsFileAccess : ITrackFileAccess
         }
     }
 
+    public void ForgetFolders() => _inner.ForgetFolders();
+
     /// <summary>
     /// The track the loader should read: for a desktop song whose phone copy has no synced or
     /// plain lyrics, a stand-in (same id and path) carrying the desktop's; otherwise the track

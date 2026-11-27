@@ -9,8 +9,7 @@
              x:DataType="vm:ShellViewModel"
              views:RowMark.Mode="{Binding SongRowMark}"
              controls:GlassPanel.ReduceGlass="{Binding ReduceGlass}"
-             FlowDirection="{Binding FlowDirection}"
-             Background="{DynamicResource PhoneBackgroundBrush}">
+             FlowDirection="{Binding FlowDirection}">
 
     <UserControl.Styles>
         <StyleInclude Source="avares://Noctis.Mobile/Views/MobileStyles.axaml" />
@@ -115,6 +114,8 @@
          is the Queue sheet, which keeps the tab bar under it (the owner's mockup): the
          code-behind raises the chrome over the overlays while the Queue page is on screen. -->
     <Grid>
+        <!-- The window's page brush, its own layer: a Background's mesh is drawn directly. -->
+        <views:PageBackdrop Brush="{DynamicResource PhoneBackgroundBrush}" />
         <!-- The app under a sheet: it steps back and dims while Settings or Now Playing is up
              (ShellView.ApplyBackdrop). The chrome steps back with it from its own layer. -->
         <Panel Name="AppLayer">
@@ -124,7 +125,8 @@
                      page brush itself, over the same slot as a pushed page's: with a Background
                      mesh on, the roots and the page are one mesh, stretched alike, so nothing jumps
                      as one slides over the other (the window's own copy spans the status bar too). -->
-                <Panel Name="RootLayer" Background="{DynamicResource PhoneBackgroundBrush}">
+                <Panel Name="RootLayer">
+                    <views:PageBackdrop Name="RootBackdrop" Brush="{DynamicResource PhoneBackgroundBrush}" />
                     <views:HomePage DataContext="{Binding}" IsVisible="{Binding IsHomeSelected}" />
                     <views:LibraryPage DataContext="{Binding}" IsVisible="{Binding IsLibrarySelected}" />
                     <views:SearchPage DataContext="{Binding Search}" IsVisible="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).IsSearchSelected}" />

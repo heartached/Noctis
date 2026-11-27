@@ -678,6 +678,24 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     public string SongRowsRowName => Named(Loc.T("Mobile.Settings.SongRows"), Shell.SongRowMarkLabel);
 
+    /// <summary>Settings › Library › Scan Library: Every Start, Daily, Weekly or Manual Only on the
+    /// glass menu (LibraryViewModel.ScanSchedule). Rescan Library scans whatever is picked.</summary>
+    [RelayCommand]
+    private void ShowScanScheduleMenu()
+    {
+        var items = Enum.GetValues<ScanSchedule>()
+            .Select(s => new OptionsMenuItem(Shell, ScanScheduleName(s), Shell.Library.ScanSchedule == s, () => Shell.Library.SetScanSchedule(s)))
+            .ToList();
+        Shell.ShowOptions(OptionsMenuViewModel.ForItems(items));
+    }
+
+    internal static string ScanScheduleName(ScanSchedule schedule) => Loc.T("Mobile.Settings.ScanSchedule." + schedule);
+
+    /// <summary>The Scan Library row's value ("Every Start").</summary>
+    public string ScanScheduleValue => ScanScheduleName(Shell.Library.ScanSchedule);
+
+    public string ScanScheduleRowName => Named(Loc.T("Mobile.Settings.ScanSchedule"), ScanScheduleValue);
+
 
     // ── Lyrics ──
 
@@ -1376,6 +1394,10 @@ public sealed partial class SettingsPageViewModel : MobilePage
             case nameof(LibraryViewModel.LastScanLocal):
                 OnPropertyChanged(nameof(RescanSubtitle));
                 OnPropertyChanged(nameof(RescanRowName));
+                break;
+            case nameof(LibraryViewModel.ScanSchedule):
+                OnPropertyChanged(nameof(ScanScheduleValue));
+                OnPropertyChanged(nameof(ScanScheduleRowName));
                 break;
             // A scan stopped on a dead grant: ask each folder again whether it is readable.
             case nameof(LibraryViewModel.NeedsReconnect):

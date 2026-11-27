@@ -37,6 +37,15 @@ public class AppSettings : IJsonOnDeserializing
     /// takes every song Android's media index knows (MediaStore), besides the folders.</summary>
     public bool PhoneAllMusic { get; set; }
 
+    /// <summary>Phone, Settings › Library › Scan Library: how often a start rescans while
+    /// <see cref="ScanOnStartup"/> is on, "" (every start, the default), "Daily" or "Weekly"
+    /// (Mobile ScanSchedules). ScanOnStartup off is Manual Only.</summary>
+    public string PhoneScanSchedule { get; set; } = "";
+
+    /// <summary>Phone: when the last library scan finished (UTC), started or asked for; Daily and
+    /// Weekly count from it, Settings › Rescan Library shows it.</summary>
+    public DateTime? PhoneLastScanUtc { get; set; }
+
     /// <summary>GitHub #71: whether files/folders dropped onto Noctis are moved into the
     /// managed "Noctis Imports" folder and added to the library (true, the original
     /// behaviour) or played/queued from where they are without touching the library.

@@ -3621,6 +3621,14 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Mobile.AnimatedCovers.Off" xml:space="preserve"><value>Desactivado</value><comment>Animated Covers choice: never, the still cover only</comment></data>
   <data name="Mobile.AnimatedCovers.WifiOnly" xml:space="preserve"><value>Solo Wi-Fi</value><comment>Animated Covers choice: the computer's loops download on Wi-Fi only</comment></data>
   <data name="Mobile.AnimatedCovers.Always" xml:space="preserve"><value>Siempre</value><comment>Animated Covers choice: the computer's loops download on mobile data too</comment></data>
+  <data name="Mobile.Settings.AnimatedCoversHint" xml:space="preserve"><value>Se ve en Ahora suena con el estilo Portada. Sale de cover.mp4 o cover.webm en la carpeta del álbum, de un vídeo elegido en el menú ⋯ del álbum o de tu equipo.</value><comment>Subtitle under Settings &gt; Animated Covers: where the loops show and where they come from. Keep cover.mp4 / cover.webm as file names</comment></data>
+  <data name="Mobile.ChooseAnimatedCover" xml:space="preserve"><value>Elegir portada animada…</value><comment>Album menu action: pick a video on the phone as the album's animated cover</comment></data>
+  <data name="Mobile.RemoveAnimatedCover" xml:space="preserve"><value>Quitar portada animada</value><comment>Album menu action: forget the video chosen as the album's animated cover</comment></data>
+  <data name="Mobile.AnimatedCoverSet" xml:space="preserve"><value>Portada animada lista. Se ve en Ahora suena.</value><comment>Notice after choosing an album's animated cover</comment></data>
+  <data name="Mobile.AnimatedCoverSetButOff" xml:space="preserve"><value>Portada animada lista. Activa Portadas animadas en Ajustes para verla.</value><comment>Notice after choosing an album's animated cover while Settings &gt; Animated Covers is Off</comment></data>
+  <data name="Mobile.AnimatedCoverNotVideo" xml:space="preserve"><value>Ese archivo no es un vídeo MP4 ni WebM.</value><comment>Notice: the picked file is not a video Noctis can use as an animated cover</comment></data>
+  <data name="Mobile.AnimatedCoverTooBig" xml:space="preserve"><value>Ese vídeo pesa más de 200 MB.</value><comment>Notice: the picked video is larger than the 200 MB limit</comment></data>
+  <data name="Mobile.AnimatedCoverFailed" xml:space="preserve"><value>No se pudo guardar el vídeo.</value><comment>Notice: the picked video could not be copied into the app</comment></data>
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>Fondo de Reproduciendo</value><comment>Settings row: a slider for how dark or bright the Now Playing background is</comment></data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>Brillo del fondo de Reproduciendo</value><comment>Screen reader name of the slider</comment></data>
   <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>Colores más oscuros o más claros detrás de Reproduciendo</value><comment>Footnote under the slider</comment></data>
@@ -3749,6 +3757,7 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Mobile.Artist.MostPlayed" xml:space="preserve"><value>LO MÁS ESCUCHADO</value><comment>Artist page card kicker</comment></data>
   <data name="Mobile.Artist.LatestEp" xml:space="preserve"><value>ÚLTIMO EP</value><comment>Artist page card kicker</comment></data>
   <data name="Mobile.Artist.LatestSingle" xml:space="preserve"><value>ÚLTIMO SENCILLO</value><comment>Artist page card kicker</comment></data>
+  <data name="Mobile.Artist.Biography" xml:space="preserve"><value>Biografía</value><comment>Artist page: the biography sheet's line under the artist's name</comment></data>
   <data name="Mobile.Player.UnreachableSkipping" xml:space="preserve"><value>No se puede conectar con tu equipo. Se reproducen tus canciones descargadas.</value><comment>Player banner</comment></data>
   <data name="Mobile.Player.UnreachableStopped" xml:space="preserve"><value>No se puede conectar con tu equipo. Abre Noctis en él o reproduce las canciones que hayas descargado.</value><comment>Player banner</comment></data>
   <data name="Mobile.Player.TooManyErrors" xml:space="preserve"><value>No se pudieron reproducir varias canciones seguidas, así que se detuvo la reproducción.</value><comment>Player banner</comment></data>
@@ -4053,6 +4062,11 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>Valoraciones</value><comment>Show in Song Rows choice: star ratings</comment></data>
   <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>Favoritos</value><comment>Show in Song Rows choice: a heart on favorites</comment></data>
   <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>Estrellas o un corazón al final de cada fila de canción</value><comment>Library group footnote</comment></data>
+  <data name="Mobile.Settings.ScanSchedule" xml:space="preserve"><value>Escanear biblioteca</value><comment>Settings › Library row: when a start of the app rescans the folders</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.EveryStart" xml:space="preserve"><value>Cada vez que se abre</value><comment>Scan Library choice: a scan at each start</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Daily" xml:space="preserve"><value>A diario</value><comment>Scan Library choice: at the first start of a day</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Weekly" xml:space="preserve"><value>Cada semana</value><comment>Scan Library choice: at a start 7+ days after the last scan</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Manual" xml:space="preserve"><value>Solo manual</value><comment>Scan Library choice: only with Rescan Library</comment></data>
   <data name="Mobile.Rate" xml:space="preserve"><value>Valorar</value><comment>Song menu row: set the star rating</comment></data>
   <data name="Mobile.RateStars" xml:space="preserve"><value>Valorar con {0} de 5</value><comment>Screen reader for a star in the song menu. {0} = 1-5</comment></data>
   <data name="Mobile.ClearRating" xml:space="preserve"><value>Borrar valoración</value><comment>Song menu: remove the rating</comment></data>

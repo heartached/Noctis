@@ -8622,6 +8622,14 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="Mobile.AnimatedCovers.Off" xml:space="preserve"><value>關閉</value></data>
   <data name="Mobile.AnimatedCovers.WifiOnly" xml:space="preserve"><value>僅限 Wi-Fi</value></data>
   <data name="Mobile.AnimatedCovers.Always" xml:space="preserve"><value>永遠</value></data>
+  <data name="Mobile.Settings.AnimatedCoversHint" xml:space="preserve"><value>在播放中的封面樣式中播放。來源：專輯資料夾中的 cover.mp4 或 cover.webm、在專輯 ⋯ 選單中選擇的影片，或你的電腦。</value></data>
+  <data name="Mobile.ChooseAnimatedCover" xml:space="preserve"><value>選擇動態封面…</value></data>
+  <data name="Mobile.RemoveAnimatedCover" xml:space="preserve"><value>移除動態封面</value></data>
+  <data name="Mobile.AnimatedCoverSet" xml:space="preserve"><value>已設定動態封面，將在播放中播放。</value></data>
+  <data name="Mobile.AnimatedCoverSetButOff" xml:space="preserve"><value>已設定動態封面。在設定中開啟動態封面即可看到。</value></data>
+  <data name="Mobile.AnimatedCoverNotVideo" xml:space="preserve"><value>此檔案不是 MP4 或 WebM 影片。</value></data>
+  <data name="Mobile.AnimatedCoverTooBig" xml:space="preserve"><value>此影片超過 200 MB。</value></data>
+  <data name="Mobile.AnimatedCoverFailed" xml:space="preserve"><value>無法儲存此影片。</value></data>
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>播放中背景</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>播放中背景亮度</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>播放中畫面背後的顏色更暗或更亮</value></data>
@@ -8750,6 +8758,7 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="Mobile.Artist.MostPlayed" xml:space="preserve"><value>最常播放</value></data>
   <data name="Mobile.Artist.LatestEp" xml:space="preserve"><value>最新 EP</value></data>
   <data name="Mobile.Artist.LatestSingle" xml:space="preserve"><value>最新單曲</value></data>
+  <data name="Mobile.Artist.Biography" xml:space="preserve"><value>簡介</value></data>
   <data name="Mobile.Player.UnreachableSkipping" xml:space="preserve"><value>無法連線到你的電腦。正在播放已下載的歌曲。</value></data>
   <data name="Mobile.Player.UnreachableStopped" xml:space="preserve"><value>無法連線到你的電腦。請在電腦上開啟 Noctis，或播放已下載的歌曲。</value></data>
   <data name="Mobile.Player.TooManyErrors" xml:space="preserve"><value>連續多首歌曲無法播放，因此已停止播放。</value></data>
@@ -9054,6 +9063,11 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>評分</value></data>
   <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>收藏</value></data>
   <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>在每行歌曲末尾顯示星級或愛心</value></data>
+  <data name="Mobile.Settings.ScanSchedule" xml:space="preserve"><value>掃描資料庫</value><comment>Settings › Library row: when a start of the app rescans the folders</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.EveryStart" xml:space="preserve"><value>每次啟動</value><comment>Scan Library choice: a scan at each start</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Daily" xml:space="preserve"><value>每天</value><comment>Scan Library choice: at the first start of a day</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Weekly" xml:space="preserve"><value>每週</value><comment>Scan Library choice: at a start 7+ days after the last scan</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Manual" xml:space="preserve"><value>僅手動</value><comment>Scan Library choice: only with Rescan Library</comment></data>
   <data name="Mobile.Rate" xml:space="preserve"><value>評分</value></data>
   <data name="Mobile.RateStars" xml:space="preserve"><value>評為 {0} 星（滿分 5）</value></data>
   <data name="Mobile.ClearRating" xml:space="preserve"><value>清除評分</value></data>

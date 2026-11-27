@@ -175,6 +175,36 @@ public class MobileAlbumHeroTests : IDisposable
         window.Close();
     }
 
+    /// <summary>Beta 6: Select mode's bar (Select All, Done) sat under the clock on the album page,
+    /// which runs under the status bar. It takes the buttons' place below the bar, on any inset.</summary>
+    [AvaloniaFact]
+    public void SelectBar_StaysBelowTheStatusBar_WhereTheButtonsWere()
+    {
+        var (album, tracks) = Sample();
+        using var rig = MobileFixtures.MakeRig(tracks, new[] { album });
+        rig.Shell.SafeArea = new Thickness(0, 40, 0, 0);
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        rig.Shell.OpenAlbumCommand.Execute(album);
+        window.UpdateLayout();
+
+        var page = MobileFixtures.Find<AlbumPage>(view);
+        var back = MobileFixtures.Named<Button>(page, "BackButton");
+        var backTop = back.TranslatePoint(new Point(0, 0), view)!.Value.Y;
+        Assert.IsType<AlbumPageViewModel>(rig.Shell.CurrentPage).Selection.Begin();
+        window.UpdateLayout();
+        var selectAll = MobileFixtures.Named<Button>(page, "SelectAllButton");
+        var done = MobileFixtures.Named<Button>(page, "SelectDoneButton");
+        Assert.True(selectAll.IsEffectivelyVisible);
+        Assert.InRange(selectAll.TranslatePoint(new Point(0, 0), view)!.Value.Y, 40, 60);
+        Assert.Equal(backTop, selectAll.TranslatePoint(new Point(0, 0), view)!.Value.Y, 1);
+        Assert.Equal(backTop, done.TranslatePoint(new Point(0, 0), view)!.Value.Y, 1);
+
+        rig.Shell.SafeArea = new Thickness(0, 24, 0, 48);   // the insets change (rotation, another bar)
+        window.UpdateLayout();
+        Assert.InRange(selectAll.TranslatePoint(new Point(0, 0), view)!.Value.Y, 24, 44);
+        window.Close();
+    }
+
     /// <summary>Avalonia 12 clips every TemplatedControl by default, so the shell's page host
     /// cut the cover's status-bar strip off on the device. The page lifts that clip only while
     /// it is shown.</summary>

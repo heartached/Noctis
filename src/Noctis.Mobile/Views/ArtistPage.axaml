@@ -127,6 +127,13 @@
             <Setter Property="Opacity" Value="0.6" />
         </Style>
 
+        <!-- The biography's MORE: the album description's small bold caps. -->
+        <Style Selector="views|ArtistPage TextBlock.artist-more">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="LineHeight" Value="20" />
+        </Style>
+
         <!-- The playing song's bars, white over its darkened cover (Apple's). -->
         <Style Selector="views|ArtistPage views|PlayingBars">
             <Setter Property="Fill" Value="White" />
@@ -220,6 +227,31 @@
                         </Button>
                     </StackPanel>
                 </StackPanel>
+
+                <!-- The biography under the buttons: the album page's description (Last.fm, the same
+                     fold and sheet; DescriptionFold): its first lines with MORE over the end of the
+                     last, the whole text on the glass sheet on a tap. Nothing when there is none. -->
+                <Button Name="BiographyBlock" Classes="row" Margin="20,12,20,0" IsVisible="{Binding HasBiography}"
+                        Command="{Binding ShowBiographyCommand}">
+                    <Panel>
+                        <Border Name="BiographyClip" ClipToBounds="True" VerticalAlignment="Top">
+                            <StackPanel VerticalAlignment="Top">
+                                <Panel>
+                                    <TextBlock Name="BiographyText" Text="{Binding Biography}" FontSize="15" LineHeight="20"
+                                               TextWrapping="Wrap" />
+                                    <StackPanel Name="BiographyFolded" VerticalAlignment="Top" IsVisible="False">
+                                        <TextBlock Name="BiographyFoldedHead" FontSize="15" LineHeight="20" TextWrapping="Wrap" />
+                                        <TextBlock Name="BiographyFoldedTail" FontSize="15" LineHeight="20" TextWrapping="NoWrap" />
+                                    </StackPanel>
+                                </Panel>
+                            </StackPanel>
+                        </Border>
+                        <Border Name="BiographyMore" HorizontalAlignment="Right" VerticalAlignment="Bottom" Padding="36,0,0,0"
+                                IsHitTestVisible="False">
+                            <TextBlock Classes="artist-more" Text="{loc:T Mobile.Album.More}" />
+                        </Border>
+                    </Panel>
+                </Button>
 
                 <!-- The carousel: one card a page, the next one peeking (card width from the
                      code-behind), snapping to each card's left edge. -->

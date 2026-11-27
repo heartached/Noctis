@@ -8622,6 +8622,14 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.AnimatedCovers.Off" xml:space="preserve"><value>끔</value></data>
   <data name="Mobile.AnimatedCovers.WifiOnly" xml:space="preserve"><value>Wi-Fi에서만</value></data>
   <data name="Mobile.AnimatedCovers.Always" xml:space="preserve"><value>항상</value></data>
+  <data name="Mobile.Settings.AnimatedCoversHint" xml:space="preserve"><value>지금 재생 중 화면의 커버 스타일에서 재생됩니다. 앨범 폴더의 cover.mp4 또는 cover.webm, 앨범 ⋯ 메뉴에서 고른 동영상, 또는 컴퓨터에서 가져옵니다.</value></data>
+  <data name="Mobile.ChooseAnimatedCover" xml:space="preserve"><value>움직이는 커버 선택…</value></data>
+  <data name="Mobile.RemoveAnimatedCover" xml:space="preserve"><value>움직이는 커버 제거</value></data>
+  <data name="Mobile.AnimatedCoverSet" xml:space="preserve"><value>움직이는 커버를 설정했습니다. 지금 재생 중에서 재생됩니다.</value></data>
+  <data name="Mobile.AnimatedCoverSetButOff" xml:space="preserve"><value>움직이는 커버를 설정했습니다. 보려면 설정에서 움직이는 커버를 켜세요.</value></data>
+  <data name="Mobile.AnimatedCoverNotVideo" xml:space="preserve"><value>이 파일은 MP4 또는 WebM 동영상이 아닙니다.</value></data>
+  <data name="Mobile.AnimatedCoverTooBig" xml:space="preserve"><value>이 동영상은 200MB를 넘습니다.</value></data>
+  <data name="Mobile.AnimatedCoverFailed" xml:space="preserve"><value>동영상을 저장할 수 없습니다.</value></data>
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>재생 중 배경</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>재생 중 배경 밝기</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>지금 재생 중 뒤의 색을 더 어둡거나 밝게</value></data>
@@ -8750,6 +8758,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.Artist.MostPlayed" xml:space="preserve"><value>가장 많이 재생함</value></data>
   <data name="Mobile.Artist.LatestEp" xml:space="preserve"><value>최신 EP</value></data>
   <data name="Mobile.Artist.LatestSingle" xml:space="preserve"><value>최신 싱글</value></data>
+  <data name="Mobile.Artist.Biography" xml:space="preserve"><value>아티스트 소개</value></data>
   <data name="Mobile.Player.UnreachableSkipping" xml:space="preserve"><value>컴퓨터에 연결할 수 없습니다. 다운로드한 노래를 재생합니다.</value></data>
   <data name="Mobile.Player.UnreachableStopped" xml:space="preserve"><value>컴퓨터에 연결할 수 없습니다. 컴퓨터에서 Noctis를 열거나 다운로드한 노래를 재생하세요.</value></data>
   <data name="Mobile.Player.TooManyErrors" xml:space="preserve"><value>여러 곡을 연속으로 재생하지 못해 재생이 중지되었습니다.</value></data>
@@ -9054,6 +9063,11 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>평점</value></data>
   <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>즐겨찾기</value></data>
   <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>노래 줄 끝에 별 또는 하트</value></data>
+  <data name="Mobile.Settings.ScanSchedule" xml:space="preserve"><value>라이브러리 스캔</value><comment>Settings › Library row: when a start of the app rescans the folders</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.EveryStart" xml:space="preserve"><value>시작할 때마다</value><comment>Scan Library choice: a scan at each start</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Daily" xml:space="preserve"><value>매일</value><comment>Scan Library choice: at the first start of a day</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Weekly" xml:space="preserve"><value>매주</value><comment>Scan Library choice: at a start 7+ days after the last scan</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Manual" xml:space="preserve"><value>수동으로만</value><comment>Scan Library choice: only with Rescan Library</comment></data>
   <data name="Mobile.Rate" xml:space="preserve"><value>평가</value></data>
   <data name="Mobile.RateStars" xml:space="preserve"><value>5점 중 {0}점으로 평가</value></data>
   <data name="Mobile.ClearRating" xml:space="preserve"><value>평점 지우기</value></data>

@@ -425,9 +425,26 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>What each song's lookup found (no sidecar, its tags' lyrics), so its next play skips
+    /// those slow provider calls (<see cref="LyricsLookupCache"/>). Phone songs only: a desktop
+    /// song's lyrics come from the desktop (RemoteLyricsFileAccess), which may gain them later.</summary>
+    public LyricsLookupCache Lookups { get; } = new();
+
+    /// <summary>A rescan finished: sidecars may have come or gone, so every song is looked up
+    /// afresh (folder listings too).</summary>
+    public void ForgetLookups()
+    {
+        Lookups.Clear();
+        _files.ForgetFolders();
+    }
+
     private async Task LoadAsync(Track? track)
     {
         var generation = ++_generation;
+        // Loading before anything is cleared, and the result in place before it ends: the empty
+        // state ("No Lyrics") never shows for a song still being looked up, not even between two
+        // of these writes (beta 6: blank, then "No Lyrics" for a moment, then the lyrics).
+        IsLoading = track != null;
         _timeline.Reset();
         _clock.Reset();
         ActiveLineIndex = -1;
@@ -443,19 +460,19 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
         IsInstrumental = false;
         OnlineLookupFailed = false;
         Source = LyricsSource.None;
-        if (track == null)
-        {
-            IsLoading = false;
-            return;
-        }
+        if (track == null) return;
 
-        IsLoading = true;
         var join = JoinSplitWords;
         var prepare = PrepareTrack;
+        var lookups = Lookups;
         LoadedLyrics result;
         try
         {
-            result = await _runBackground(() => LyricsLoader.Load(Prepared(track, prepare), _files, join));
+            result = await _runBackground(() =>
+            {
+                var prepared = Prepared(track, prepare);
+                return LyricsLoader.Load(prepared, _files, join, prepared.SourceType == SourceType.NoctisServer ? null : lookups);
+            });
         }
         catch (Exception ex)
         {
@@ -498,7 +515,6 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
             }
         }
 
-        IsLoading = false;
         Source = result.Source;
         Lines.ReplaceAll(result.Lines);
         LinesFlowDirection = ScriptDirection.Of(result.Lines.Select(l => l.Text));
@@ -508,6 +524,7 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
         IsRawFallback = result.Source == LyricsSource.SidecarUnparsed;
         HasTranslations = result.Lines.Any(l => l.HasTranslation);
         HasRomanizations = result.Lines.Any(l => l.HasTransliteration);
+        IsLoading = false;
         if (IsSynced)
         {
             ApplyOpacities(-1);
