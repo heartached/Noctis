@@ -2586,6 +2586,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Plugins.Detail.Enabled" xml:space="preserve"><value>Включён</value></data>
   <data name="Plugins.Detail.EnableLine" xml:space="preserve"><value>Выключите, чтобы остановить плагин, не удаляя его.</value></data>
   <data name="Plugins.Detail.RestrictedLine" xml:space="preserve"><value>Включите плагины сообщества, чтобы им пользоваться.</value></data>
+  <data name="Plugins.Detail.LocalCopyRestrictedLine" xml:space="preserve"><value>Эта копия не проверена, поэтому она выключена, пока выключены плагины сообщества. Чтобы пользоваться ею, замените её официальной.</value></data>
   <data name="Plugins.Detail.Files" xml:space="preserve"><value>Файлы плагина</value></data>
   <data name="Plugins.Detail.FilesLine" xml:space="preserve"><value>При удалении его настройки и данные сохраняются, если вы не выберете иное.</value></data>
   <data name="Plugins.Detail.More" xml:space="preserve"><value>Ещё</value></data>

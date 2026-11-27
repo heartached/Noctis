@@ -254,6 +254,16 @@ public class ArtistImageService
         _fetchGate.Release();
     }
 
+    /// <summary>
+    /// Raised by Settings › Clear Artwork Cache once the portraits are deleted. The grids and
+    /// Home build their rows again from the library update that follows; an open artist page
+    /// holds its own portrait path, so it listens here to fetch the photo again.
+    /// </summary>
+    public event EventHandler? CacheCleared;
+
+    /// <summary>Raises <see cref="CacheCleared"/>.</summary>
+    public void NotifyCacheCleared() => CacheCleared?.Invoke(this, EventArgs.Empty);
+
     public async Task FetchAndCacheAsync(IReadOnlyList<Artist> artists, Action<Artist, string>? onImageReady = null)
     {
         var generation = Volatile.Read(ref _sweepGeneration);

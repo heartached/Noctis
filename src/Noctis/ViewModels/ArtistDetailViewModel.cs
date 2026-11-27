@@ -584,6 +584,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         // must follow the set, so re-derive the lists when favourites change anywhere.
         _favoritesChangedHandler = (_, _) => Dispatcher.UIThread.Post(ApplyLists);
         _library.FavoritesChanged += _favoritesChangedHandler;
+        if (_images != null) _images.CacheCleared += OnArtworkCacheCleared;
         // Top Songs and Most Played rank by plays, and a counted play raises no LibraryUpdated:
         // re-rank once the song is over (FinishedPlays), like Songs sorted by Plays.
         _finishedPlays = new FinishedPlays(player, finished =>
@@ -741,6 +742,11 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
             {
                 _rebuildPending = false;
                 Rebuild();
+            }
+            if (value && _portraitsPending)
+            {
+                _portraitsPending = false;
+                ReloadPortraits();
             }
             // The tab sort is shared by every artist page: a pick made on another page
             // while this one sat in history applies on the way back.
@@ -1042,6 +1048,32 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
             {
                 if (artist.Id == Artist.Id) ImagePath = path;
             }));
+    }
+
+    private bool _portraitsPending;
+
+    /// <summary>
+    /// Settings › Clear Artwork Cache deleted the portraits. The page kept pointing at the
+    /// deleted file and showed the placeholder until it was opened again: the photo is now
+    /// looked up again, and so are the similar artists' photos. A page kept in history does
+    /// it once it is current again.
+    /// </summary>
+    private void OnArtworkCacheCleared(object? sender, EventArgs e)
+        => Dispatcher.UIThread.Post(() =>
+        {
+            if (_cts.IsCancellationRequested) return;
+            if (_isActive) ReloadPortraits();
+            else _portraitsPending = true;
+        });
+
+    private void ReloadPortraits()
+    {
+        // The Artist object outlives the library update, and its path is the deleted file.
+        if (!string.IsNullOrEmpty(Artist.ImagePath) && !File.Exists(Artist.ImagePath))
+            Artist.ImagePath = null;
+        ImagePath = null;
+        ResolveImage();
+        ReloadSimilar();
     }
 
     partial void OnImagePathChanged(string? value)
@@ -1507,6 +1539,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         _songsGeneration++; // stops an in-flight Songs-tab slice fill
         _library.LibraryUpdated -= _libraryUpdatedHandler;
         _library.FavoritesChanged -= _favoritesChangedHandler;
+        if (_images != null) _images.CacheCleared -= OnArtworkCacheCleared;
         _finishedPlays.Dispose();
     }
 }

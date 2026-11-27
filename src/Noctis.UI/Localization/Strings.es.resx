@@ -2579,6 +2579,7 @@ Años: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar sear
   <data name="Plugins.Detail.Enabled" xml:space="preserve"><value>Activado</value></data>
   <data name="Plugins.Detail.EnableLine" xml:space="preserve"><value>Desactívalo para detener el complemento sin quitarlo.</value></data>
   <data name="Plugins.Detail.RestrictedLine" xml:space="preserve"><value>Activa los complementos de la comunidad para usarlo.</value></data>
+  <data name="Plugins.Detail.LocalCopyRestrictedLine" xml:space="preserve"><value>Esta copia no está verificada, así que sigue desactivada mientras los complementos de la comunidad estén desactivados. Reemplázala por la oficial para usarla.</value></data>
   <data name="Plugins.Detail.Files" xml:space="preserve"><value>Archivos del complemento</value></data>
   <data name="Plugins.Detail.FilesLine" xml:space="preserve"><value>Al quitarlo se conservan sus ajustes y datos, salvo que elijas lo contrario.</value></data>
   <data name="Plugins.Detail.More" xml:space="preserve"><value>Más</value></data>

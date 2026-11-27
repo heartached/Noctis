@@ -2576,6 +2576,7 @@ Yıllar: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar se
   <data name="Plugins.Detail.Enabled" xml:space="preserve"><value>Etkin</value></data>
   <data name="Plugins.Detail.EnableLine" xml:space="preserve"><value>Eklentiyi kaldırmadan durdurmak için kapat.</value></data>
   <data name="Plugins.Detail.RestrictedLine" xml:space="preserve"><value>Kullanmak için Topluluk eklentilerini aç.</value></data>
+  <data name="Plugins.Detail.LocalCopyRestrictedLine" xml:space="preserve"><value>Bu kopya doğrulanmadı, bu yüzden Topluluk eklentileri kapalıyken kapalı kalır. Kullanmak için resmi sürümle değiştir.</value></data>
   <data name="Plugins.Detail.Files" xml:space="preserve"><value>Eklenti dosyaları</value></data>
   <data name="Plugins.Detail.FilesLine" xml:space="preserve"><value>Kaldırmak, aksini seçmediğin sürece ayarlarını ve verilerini korur.</value></data>
   <data name="Plugins.Detail.More" xml:space="preserve"><value>Daha fazla</value></data>

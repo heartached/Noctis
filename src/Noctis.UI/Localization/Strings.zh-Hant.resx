@@ -6564,6 +6564,7 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="Plugins.Detail.Enabled" xml:space="preserve"><value>已啟用</value></data>
   <data name="Plugins.Detail.EnableLine" xml:space="preserve"><value>關閉後外掛將停止執行，但不會被移除。</value></data>
   <data name="Plugins.Detail.RestrictedLine" xml:space="preserve"><value>開啟社群外掛後才能使用。</value></data>
+  <data name="Plugins.Detail.LocalCopyRestrictedLine" xml:space="preserve"><value>此副本未經驗證，社群外掛關閉時它會保持關閉。取代為官方版即可使用。</value></data>
   <data name="Plugins.Detail.Files" xml:space="preserve"><value>外掛檔案</value></data>
   <data name="Plugins.Detail.FilesLine" xml:space="preserve"><value>移除後會保留其設定和資料，除非你另行選擇。</value></data>
   <data name="Plugins.Detail.More" xml:space="preserve"><value>更多</value></data>

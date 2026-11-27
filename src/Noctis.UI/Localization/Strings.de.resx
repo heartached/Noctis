@@ -2579,6 +2579,7 @@ Jahre: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar sear
   <data name="Plugins.Detail.Enabled" xml:space="preserve"><value>Aktiviert</value></data>
   <data name="Plugins.Detail.EnableLine" xml:space="preserve"><value>Schalte es aus, um das Plugin zu stoppen, ohne es zu entfernen.</value></data>
   <data name="Plugins.Detail.RestrictedLine" xml:space="preserve"><value>Schalte Community-Plugins ein, um es zu nutzen.</value></data>
+  <data name="Plugins.Detail.LocalCopyRestrictedLine" xml:space="preserve"><value>Diese Kopie ist nicht verifiziert und bleibt daher aus, solange Community-Plugins aus sind. Ersetze sie durch die offizielle, um sie zu nutzen.</value></data>
   <data name="Plugins.Detail.Files" xml:space="preserve"><value>Plugin-Dateien</value></data>
   <data name="Plugins.Detail.FilesLine" xml:space="preserve"><value>Entfernen behält Einstellungen und Daten, außer du wählst anders.</value></data>
   <data name="Plugins.Detail.More" xml:space="preserve"><value>Mehr</value></data>

@@ -511,7 +511,7 @@ public sealed partial class PluginCardItem : ObservableObject
     /// <summary>The short line under the page's switch, only when something is wrong: why it can't
     /// run, or the problem. A plugin that runs fine has none (owner 10-29: no long subtitle).</summary>
     public string EnableLine => Installed is not { } p ? ""
-        : p.IsRestricted ? Loc.T("Plugins.Detail.RestrictedLine")
+        : p.IsRestricted ? Loc.T(IsLocalCopy ? "Plugins.Detail.LocalCopyRestrictedLine" : "Plugins.Detail.RestrictedLine")
         : p.ShowStatusBadge ? p.StatusText
         : "";
     public bool HasEnableLine => EnableLine.Length > 0;

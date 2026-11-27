@@ -705,17 +705,51 @@ public sealed class PluginHost
     public bool CommunityPluginsEnabled => _settings().CommunityPluginsEnabled == true;
 
     /// <summary>
-    /// The verified copy of an official plugin: it credits Noctis, and the zip installed for this
-    /// exact version was checked against the official list (<see cref="RecordOfficialInstall"/>).
-    /// Such a plugin runs whatever the Community switch says; a zip that only claims to be by
-    /// Noctis has no record and stays a community plugin.
+    /// The verified copy of an official plugin (<see cref="IsVerifiedOfficial"/> against the
+    /// listing of its id in <see cref="OfficialList"/>). Such a plugin runs whatever the Community
+    /// switch says; anything else, a zip that only claims to be by Noctis or a copy whose recorded
+    /// hash is not the list's, is a community plugin.
     /// </summary>
     public bool IsTrustedOfficial(LoadedPlugin plugin)
+        => IsVerifiedOfficialCore(plugin, OfficialList.Plugins.FirstOrDefault(e => SameId(e.Id, plugin.Id)));
+
+    private PluginCatalog? _officialList;
+
+    /// <summary>
+    /// The official list the install-time record is checked against: the copy built into the app
+    /// (so the check holds offline, from startup), replaced by the live list once the Plugins page
+    /// has fetched it (<see cref="SetOfficialList"/>). It used to be asked only by the Plugins page:
+    /// the loader trusted the record's version alone, so a copy whose recorded zip hash was no
+    /// longer the list's (A-B Loop 1.0.1, rebuilt at the same version) showed as "Local copy · not
+    /// verified" and still ran with Community plugins off. With a NOCTIS_PLUGIN_INDEX test list
+    /// the built-in copy is not used: until that list is loaded, the record alone decides.
+    /// </summary>
+    public PluginCatalog OfficialList => _officialList ??=
+        string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(PluginCatalog.OverrideVariable))
+            ? PluginCatalog.LoadEmbedded()
+            : PluginCatalog.Empty;
+
+    /// <summary>
+    /// The Plugins page loaded a list (live, or the built-in copy when that failed): trust follows
+    /// it at once. With Community plugins off, a copy that is no longer verified stops and one
+    /// that now is starts.
+    /// </summary>
+    public void SetOfficialList(PluginCatalog list)
     {
-        if (!PluginTrust.IsOfficialAuthor(plugin.Author)) return false;
-        var record = (_settings().VerifiedOfficialPlugins ?? new()).FirstOrDefault(kv => SameId(kv.Key, plugin.Id)).Value;
-        var bar = record?.IndexOf('|') ?? -1;
-        return bar > 0 && PluginVersion.Compare(record![..bar], plugin.Version) == 0;
+        var before = Plugins.Where(p => !p.IsContentPack).ToDictionary(p => p, IsTrustedOfficial);
+        _officialList = list;
+        if (CommunityPluginsEnabled) return;
+        var changed = false;
+        foreach (var (plugin, trusted) in before)
+        {
+            if (IsTrustedOfficial(plugin) == trusted || !Plugins.Contains(plugin)) continue;
+            Stop(plugin);
+            Activate(plugin);
+            changed = true;
+        }
+        if (!changed) return;
+        RebuildContent();
+        VisualLayersChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>The Community switch allows this plugin's code to run.</summary>
@@ -1807,8 +1841,17 @@ public sealed class PluginHost
     /// Never decided by plugin.json alone.
     /// </summary>
     public bool IsVerifiedOfficial(LoadedPlugin plugin, PluginCatalogEntry listing)
+        => SameId(plugin.Id, listing.Id) && IsVerifiedOfficialCore(plugin, listing);
+
+    /// <summary>
+    /// The one trust check behind <see cref="IsVerifiedOfficial"/> (the card) and
+    /// <see cref="IsTrustedOfficial"/> (the loader). <paramref name="listing"/> is the list's entry
+    /// for the plugin's id, or null when the list has none (a plugin taken off the list keeps the
+    /// record it was installed with).
+    /// </summary>
+    private bool IsVerifiedOfficialCore(LoadedPlugin plugin, PluginCatalogEntry? listing)
     {
-        if (!listing.IsOfficial || !SameId(plugin.Id, listing.Id) || !PluginTrust.IsOfficialAuthor(plugin.Author)) return false;
+        if (listing is { IsOfficial: false } || !PluginTrust.IsOfficialAuthor(plugin.Author)) return false;
         var record = (_settings().VerifiedOfficialPlugins ?? new()).FirstOrDefault(kv => SameId(kv.Key, plugin.Id)).Value;
         if (record is null) return false;
         var bar = record.IndexOf('|');
@@ -1817,7 +1860,8 @@ public sealed class PluginHost
         var sha = record[(bar + 1)..];
         if (PluginVersion.Compare(version, plugin.Version) != 0) return false;
         // Same version as the list: the hash must be the list's too (a corrected listing wins).
-        return PluginVersion.Compare(version, listing.Version) != 0 || string.Equals(sha, listing.Sha256, StringComparison.Ordinal);
+        return listing is null || PluginVersion.Compare(version, listing.Version) != 0
+               || string.Equals(sha, listing.Sha256, StringComparison.Ordinal);
     }
 
     /// <summary>
