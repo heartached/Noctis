@@ -205,6 +205,36 @@ public class RetainedRowsTests
         public Task FlushAsync() => Task.CompletedTask;
     }
 
+    /// <summary>Owner's build 11-27: favouriting an artist on its page left the Artists grid tile
+    /// with its old star. Artist is not observable, and a tile handed the artist it already
+    /// showed never read it again. With RebindSameItems it does, and keeps its tile.</summary>
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TileRow_HandedTheSameItemAgain_ReadsItAgain_OnlyWhenAsked(bool rebind)
+    {
+        var artist = new Artist { Name = "Chase Atlantic" };
+        var row = new TileRow
+        {
+            RebindSameItems = rebind,
+            ItemTemplate = new Avalonia.Controls.Templates.FuncDataTemplate<Artist>((_, _) =>
+                new Border { [!Visual.IsVisibleProperty] = new Avalonia.Data.Binding(nameof(Artist.IsFavorite)) }),
+            Items = new List<Artist> { artist },
+        };
+        var window = new Window { Width = 400, Height = 300, Content = row };
+        window.Show();
+        Pump();
+        var tile = row.GetVisualDescendants().OfType<Border>().Single();
+        Assert.False(tile.IsVisible);
+
+        artist.IsFavorite = true;
+        row.Items = new List<Artist> { artist }; // the rebuilt row: same artist, same slot
+        Pump();
+        Assert.Same(tile, row.GetVisualDescendants().OfType<Border>().Single());
+        Assert.Equal(rebind, tile.IsVisible);
+        window.Close();
+    }
+
     /// <summary>A grid row scrolled off is re-used for other albums: its tiles re-bind (TileRow)
     /// rather than being built again, each shows its own album, and the Ctrl-selection plate
     /// follows the album, not the tile.</summary>

@@ -63,7 +63,7 @@
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="m:ArtistRow">
                         <!-- A row re-used for other artists keeps its tiles (TileRow, 11-14). -->
-                        <ctrl:TileRow Items="{Binding Artists}"
+                        <ctrl:TileRow RebindSameItems="True" Items="{Binding Artists}"
                                       Columns="{Binding $parent[UserControl].((vm:LibraryArtistsViewModel)DataContext).GridColumns, FallbackValue=7}" Rows="1">
                             <ctrl:TileRow.ItemTemplate>
                                 <DataTemplate DataType="{x:Type m:Artist}">

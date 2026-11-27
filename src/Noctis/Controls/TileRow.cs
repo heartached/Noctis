@@ -25,6 +25,18 @@ public sealed class TileRow : UniformGrid
     public static readonly StyledProperty<IDataTemplate?> ItemTemplateProperty =
         AvaloniaProperty.Register<TileRow, IDataTemplate?>(nameof(ItemTemplate));
 
+    /// <summary>
+    /// For items that are not observable (Artist: IsFavorite, ImagePath and CountsLine are
+    /// plain properties, shown "when the rows re-materialize"): a tile handed the item it
+    /// already shows binds again, so it reads the item's current values. Without it the same
+    /// item in the same slot was a no-op, and an artist's tile kept its old favourite star
+    /// until its row was re-used for someone else (owner's build 11-27).
+    /// </summary>
+    public static readonly StyledProperty<bool> RebindSameItemsProperty =
+        AvaloniaProperty.Register<TileRow, bool>(nameof(RebindSameItems));
+
+    public bool RebindSameItems { get => GetValue(RebindSameItemsProperty); set => SetValue(RebindSameItemsProperty, value); }
+
     public IEnumerable? Items { get => GetValue(ItemsProperty); set => SetValue(ItemsProperty, value); }
     public IDataTemplate? ItemTemplate { get => GetValue(ItemTemplateProperty); set => SetValue(ItemTemplateProperty, value); }
 
@@ -49,6 +61,8 @@ public sealed class TileRow : UniformGrid
                 {
                     // Same template: the presenter keeps its tile, only the item changes.
                     var presenter = (ContentPresenter)Children[i];
+                    if (RebindSameItems && ReferenceEquals(presenter.DataContext, item))
+                        presenter.DataContext = null;
                     presenter.DataContext = item;
                     presenter.Content = item;
                 }
