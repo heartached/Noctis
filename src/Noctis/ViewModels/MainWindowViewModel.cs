@@ -551,18 +551,22 @@ public partial class MainWindowViewModel : ViewModelBase
         // API 1.9: plugins (Album Roulette) read and play the media servers' albums (GitHub #268).
         Plugins.MediaServer = mediaServer;
         Plugins.PlayHistorySource = () => _playHistory.Events;
-        Plugins.AlbumOpener = albumId =>
-        {
-            if (_library.GetAlbumById(albumId) is not { } album) return false;
-            OpenAlbumDetail(album);
-            if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime { MainWindow: { } window })
+        // API 1.3 ShowAlbum / 1.10 ShowTrack: the album page, then Settings closes (a plugin's view
+        // is usually shown inside the sheet, which covered the page: Show did nothing, owner 11-27).
+        var pluginNavigator = new PluginLibraryNavigator(_library,
+            (album, revealTrackId) => OpenAlbumDetail(album, revealTrackId: revealTrackId),
+            () => { if (IsSettingsModalOpen) CloseSettings(); },
+            () =>
             {
-                if (window.WindowState == Avalonia.Controls.WindowState.Minimized) window.WindowState = Avalonia.Controls.WindowState.Normal;
-                if (!window.IsVisible) window.Show();
-                window.Activate();
-            }
-            return true;
-        };
+                if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime { MainWindow: { } window })
+                {
+                    if (window.WindowState == Avalonia.Controls.WindowState.Minimized) window.WindowState = Avalonia.Controls.WindowState.Normal;
+                    if (!window.IsVisible) window.Show();
+                    window.Activate();
+                }
+            });
+        Plugins.AlbumOpener = pluginNavigator.ShowAlbum;
+        Plugins.TrackOpener = pluginNavigator.ShowTrack;
         TrackContextMenuBuilder.ArtistPhotoSource = name => HomeViewModel.CachedArtistPhoto(name, _library, _artistImageService);
         Plugins.NotificationRequested += (_, notice) =>
             TransientStatus.Show(nameof(PluginNotice), v => PluginNotice = v, $"{notice.PluginName}: {notice.Message}", TimeSpan.FromSeconds(4));

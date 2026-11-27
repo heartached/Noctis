@@ -3,7 +3,7 @@
     Add from YouTube, the official Noctis plugin: search YouTube or paste a link, pick a format,
     and the audio lands in your library folder, tagged and with its cover. Moved out of the app
     on 10-29 (it was Settings → Library → Add songs from YouTube). Uses plugin API 1.5
-    ("library.import") and a view of its own (1.3). yt-dlp runs as an external tool, installed
+    ("library.import"), a view of its own (1.3) and ShowTrack (1.10, so minAppVersion 1.7.4). yt-dlp runs as an external tool, installed
     and kept current by the plugin; ffmpeg (bundled with Noctis) converts when found.
     `dotnet build -c Release` writes bin/Release/Noctis.Plugins.YouTubeImport-<version>.zip.
   -->
@@ -12,7 +12,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Noctis.Plugins.YouTubeImport</RootNamespace>
-    <Version>1.0.3</Version>
+    <Version>1.0.4</Version>
     <EnableDynamicLoading>true</EnableDynamicLoading>
   </PropertyGroup>
   <ItemGroup>

@@ -2,12 +2,38 @@ using System.Runtime.InteropServices;
 
 namespace Noctis.Plugins.YouTubeImport;
 
+/// <summary>One report of an import: the stage line and where the whole import is (0..1, see
+/// <see cref="ImportPhases"/>). 0 = no number yet: the card's bar sweeps instead.</summary>
 public sealed record YouTubeImportProgress(string Stage, double Fraction);
+
+/// <summary>
+/// Where each stage sits on the card's one bar, so it fills once from start to end: yt-dlp's
+/// percent covers the download only (0-100, and again from 0 on a retry), the conversion reports
+/// none, and tagging and the library add take a moment each. Before this the bar went 2%
+/// (reading details), 5%, then the download from 5% to 80%, and a retry's
+/// "Updating yt-dlp and retrying…" set it back to 5% (owner 11-27: "cleaner and smoother").
+/// </summary>
+public static class ImportPhases
+{
+    /// <summary>The download fills the bar up to here.</summary>
+    public const double DownloadEnd = 0.80;
+    /// <summary>ffmpeg converting (MP3, Opus, M4A from another codec).</summary>
+    public const double Converting = 0.85;
+    public const double Tagging = 0.90;
+    public const double Adding = 0.95;
+
+    /// <summary>yt-dlp's download percent (0-100) on the whole bar.</summary>
+    public static double Download(double percent)
+        => DownloadEnd * Math.Clamp(double.IsFinite(percent) ? percent : 0, 0, 100) / 100.0;
+}
 
 public sealed record YouTubeImportResult(string FilePath, string Artist, string Title, bool AddedToLibrary)
 {
     /// <summary>The album the library put it in (<see cref="TrackInfo.AlbumId"/>), for "Show"; empty when unknown.</summary>
     public string AlbumId { get; init; } = "";
+
+    /// <summary>The library song (<see cref="TrackInfo.Id"/>), for "Show" (API 1.10 ShowTrack); empty when unknown.</summary>
+    public string TrackId { get; init; } = "";
 
     /// <summary>Nothing was downloaded: the file of an earlier import of the same video is already in the folder.</summary>
     public bool AlreadyDownloaded { get; init; }
@@ -137,7 +163,7 @@ public sealed class YouTubeImporter : IYouTubeImporter
         // Search entries are shallow (no track/artist/album): fetch the full record first.
         if (info.Track is null && info.Artist is null && info.Album is null)
         {
-            progress?.Report(new YouTubeImportProgress("Reading details", 0.02));
+            progress?.Report(new YouTubeImportProgress("Reading details", 0));
             try { info = await Tool.GetInfoAsync(info.Url, ct).ConfigureAwait(false) ?? info; }
             catch (OperationCanceledException) { throw; }
             catch { /* tag from what we have */ }
@@ -157,11 +183,13 @@ public sealed class YouTubeImporter : IYouTubeImporter
             return new YouTubeImportResult(earlier, earlierArtist, earlierTitle, known.Count > 0)
             {
                 AlbumId = known.Count > 0 ? known[0].AlbumId ?? "" : "",
+                TrackId = known.Count > 0 ? known[0].Id ?? "" : "",
                 AlreadyDownloaded = true,
             };
         }
 
-        progress?.Report(new YouTubeImportProgress("Downloading", 0.05));
+        // No number until yt-dlp's first percent line (it reads the video's formats first).
+        progress?.Report(new YouTubeImportProgress("Downloading", 0));
         // One report per (throttled) yt-dlp line, forwarded in order: percent and speed together,
         // so the row's text doesn't flip between "Downloading" and "Downloading · 4.2 MB/s".
         var downloadDetail = new InlineProgress<DownloadDetail>(d =>
@@ -169,15 +197,18 @@ public sealed class YouTubeImporter : IYouTubeImporter
             var stage = d.BytesPerSec is { } speed
                 ? $"Downloading · {DownloadFormat.Format(speed, d.Eta)}"
                 : "Downloading";
-            progress?.Report(new YouTubeImportProgress(stage, 0.05 + 0.75 * d.Percent / 100.0));
+            progress?.Report(new YouTubeImportProgress(stage, ImportPhases.Download(d.Percent)));
         });
+        // A retry's status ("Updating yt-dlp and retrying…") carries no number: the bar holds
+        // where it is (the card never moves it back) until the second run passes it.
         var produced = await Tool.DownloadAsync(info.Url, folder, ffmpeg, null, ct,
-            status => progress?.Report(new YouTubeImportProgress(status, 0.05)), format, downloadDetail).ConfigureAwait(false);
+            status => progress?.Report(new YouTubeImportProgress(status, 0)), format, downloadDetail,
+            onConverting: () => progress?.Report(new YouTubeImportProgress("Converting", ImportPhases.Converting))).ConfigureAwait(false);
 
         string? moved = null;
         try
         {
-            progress?.Report(new YouTubeImportProgress("Tagging", 0.85));
+            progress?.Report(new YouTubeImportProgress("Tagging", ImportPhases.Tagging));
             var (artist, title) = YtDlpParsing.InferTags(info);
             var ext = Path.GetExtension(produced);
             var final = UniquePath(Path.Combine(folder, YtDlpParsing.BuildFileName(artist, title, ext)));
@@ -202,16 +233,21 @@ public sealed class YouTubeImporter : IYouTubeImporter
                 }, ct).ConfigureAwait(false);
             }
 
-            progress?.Report(new YouTubeImportProgress("Adding to library", 0.95));
+            progress?.Report(new YouTubeImportProgress("Adding to library", ImportPhases.Adding));
             // In the library only when Noctis says so: before the move to a plugin, a file the
             // import skipped (a format Noctis doesn't play) still showed "In your library".
             var added = false;
             var albumId = "";
+            var trackId = "";
             try
             {
                 var tracks = await _library.ImportFilesAsync(new[] { final }, ct).ConfigureAwait(false);
                 added = tracks.Count > 0;
-                if (added) albumId = tracks[0].AlbumId ?? "";
+                if (added)
+                {
+                    albumId = tracks[0].AlbumId ?? "";
+                    trackId = tracks[0].Id ?? "";
+                }
             }
             catch (OperationCanceledException) { throw; }
             catch (Exception ex)
@@ -220,7 +256,7 @@ public sealed class YouTubeImporter : IYouTubeImporter
             }
             progress?.Report(new YouTubeImportProgress("Done", 1));
             Log($"YouTube.Imported: {artist} - {title} → {Path.GetFileName(final)} ({format.Key}, in library: {added})");
-            return new YouTubeImportResult(final, artist, title, added) { AlbumId = albumId };
+            return new YouTubeImportResult(final, artist, title, added) { AlbumId = albumId, TrackId = trackId };
         }
         catch (OperationCanceledException)
         {

@@ -419,16 +419,19 @@ public sealed class YtDlpTool
     /// Downloads the audio for <paramref name="url"/> (in <paramref name="format"/>, default M4A) into a fresh temp folder under
     /// <paramref name="targetDir"/> and returns the one file it produced.
     /// </summary>
-    public Task<string> DownloadAsync(string url, string targetDir, string? ffmpegPath, IProgress<double>? progress, CancellationToken ct, Action<string>? onStatus = null, AudioFormat? format = null, IProgress<DownloadDetail>? detail = null)
+    /// <param name="onConverting">Called when yt-dlp starts converting with ffmpeg (<see cref="YtDlpParsing.IsConversionLine"/>).</param>
+    public Task<string> DownloadAsync(string url, string targetDir, string? ffmpegPath, IProgress<double>? progress, CancellationToken ct, Action<string>? onStatus = null, AudioFormat? format = null, IProgress<DownloadDetail>? detail = null,
+        Action? onConverting = null)
     {
         var ffmpegDir = ffmpegPath is null ? null : Path.GetDirectoryName(ffmpegPath);
         return RunWithBlockedRetryAsync("Download", (exe, js) =>
-            DownloadToScratchAsync("Download", exe, targetDir, template => YtDlpParsing.DownloadArgs(url, template, ffmpegDir, js, format), progress, detail, ct),
+            DownloadToScratchAsync("Download", exe, targetDir, template => YtDlpParsing.DownloadArgs(url, template, ffmpegDir, js, format), progress, detail, ct, onConverting),
             onStatus, ct);
     }
 
     private async Task<string> DownloadToScratchAsync(string operation, string exe, string targetDir,
-        Func<string, IReadOnlyList<string>> buildArgs, IProgress<double>? progress, IProgress<DownloadDetail>? detail, CancellationToken ct)
+        Func<string, IReadOnlyList<string>> buildArgs, IProgress<double>? progress, IProgress<DownloadDetail>? detail, CancellationToken ct,
+        Action? onConverting = null)
     {
         var scratch = Path.Combine(targetDir, ".noctis-download-" + Guid.NewGuid().ToString("N")[..8]);
         Directory.CreateDirectory(scratch);
@@ -438,6 +441,11 @@ public sealed class YtDlpTool
             var throttle = new ReportThrottle();
             var (code, _, stderr) = await RunLoggedAsync(operation, exe, buildArgs(template), line =>
             {
+                if (onConverting is not null && YtDlpParsing.IsConversionLine(line))
+                {
+                    try { onConverting(); } catch { /* progress is cosmetic */ }
+                    return;
+                }
                 if (YtDlpParsing.ParseDownloadDetail(line) is not { } d) return;
                 if (d.Percent < 100 && !throttle.Due()) return;
                 progress?.Report(d.Percent / 100.0);

@@ -72,12 +72,16 @@ public class YouTubeImportPluginTests : IDisposable
         /// <summary>When set, an import waits for it (a download still running).</summary>
         public TaskCompletionSource? Gate;
         public string AlbumId = "";
+        public string TrackId = "";
+        /// <summary>Reports the import sends, in order (the real importer's stages).</summary>
+        public List<YouTubeImportProgress> Reports = new();
         public string ResolveDownloadFolder() => Folder;
         public Task<List<YouTubeTrackInfo>> SearchAsync(string query, CancellationToken ct) => Task.FromResult(Found.ToList());
         public Task<YouTubeTrackInfo?> ResolveAsync(string urlOrId, CancellationToken ct) => Task.FromResult(Found.FirstOrDefault());
         public async Task<YouTubeImportResult> ImportAsync(YouTubeTrackInfo info, AudioFormat format, IProgress<YouTubeImportProgress>? progress, CancellationToken ct)
         {
             Imports.Add(format);
+            foreach (var r in Reports) progress?.Report(r);
             if (Gate is { } gate) await gate.Task;
             var path = $"C:/Music/YouTube/{info.Id}.m4a";
             if (WriteInto is { } dir)
@@ -86,7 +90,7 @@ public class YouTubeImportPluginTests : IDisposable
                 path = Path.Combine(dir, info.Id + ".m4a");
                 File.WriteAllBytes(path, new byte[] { 1 });
             }
-            return new YouTubeImportResult(path, info.Channel, info.Title, InLibrary) { AlbumId = AlbumId };
+            return new YouTubeImportResult(path, info.Channel, info.Title, InLibrary) { AlbumId = AlbumId, TrackId = TrackId };
         }
     }
 
@@ -232,7 +236,9 @@ public class YouTubeImportPluginTests : IDisposable
                 Assert.Equal("In your library", row.StatusText);
                 Assert.True(PumpUntil(() => AccentTestHarness.ColorOf(cards[0].BorderBrush) == Color.Parse("#E74856")),
                     $"ring {AccentTestHarness.ColorOf(cards[0].BorderBrush)}");
-                Assert.False(downloads[0].IsVisible);
+                // Download fades out in place (the card keeps its size) and takes no clicks or Tab.
+                Assert.False(downloads[0].GetVisualAncestors().OfType<Border>().First().IsHitTestVisible);
+                Assert.False(KeyboardNavigation.GetIsTabStop(downloads[0]));
                 Assert.True(PumpUntil(() => vm.HasRecent && view.RecentList.IsEffectivelyVisible), "recent list not shown");
                 var recent = Assert.Single(vm.Recent);
                 Assert.Equal(("C:/Music/YouTube/a1.m4a", true), (recent.FilePath, recent.InLibrary));
@@ -839,14 +845,15 @@ public class YouTubeImportPluginTests : IDisposable
     {
         var m = PluginManifest.TryLoad(PluginSandbox.RepoFile("plugins/Noctis.Plugins.YouTubeImport"))!;
         var plugin = new YouTubeImportPlugin();
-        Assert.Equal((YouTubeImportPlugin.Id, "Add from YouTube", "1.0.3", "Noctis"), (m.Id, m.Name, m.Version, m.Author));
+        Assert.Equal((YouTubeImportPlugin.Id, "Add from YouTube", "1.0.4", "Noctis"), (m.Id, m.Name, m.Version, m.Author));
         Assert.Equal((plugin.Info.Id, plugin.Info.Name, plugin.Info.Version, plugin.Info.Description), (m.Id, m.Name, m.Version, m.Description));
         Assert.Equal("Save audio from a YouTube link to your library.", m.Description);
         Assert.Equal(new[] { "library.import", "network" }, m.Permissions);
         Assert.Equal("1.5", m.ApiVersion);
         Assert.Empty(m.Warnings);
-        Assert.Null(m.CheckCompatibility("1.6.6"));
-        Assert.NotNull(m.CheckCompatibility("1.6.5"));
+        // 1.0.4's Show calls ShowTrack (API 1.10, Noctis 1.7.4).
+        Assert.Null(m.CheckCompatibility("1.7.4"));
+        Assert.NotNull(m.CheckCompatibility("1.7.3"));
         Assert.True(File.Exists(PluginSandbox.RepoFile("plugins/Noctis.Plugins.YouTubeImport/icon.png")));
     }
 
@@ -857,7 +864,7 @@ public class YouTubeImportPluginTests : IDisposable
         var library = new FakeLibraryService { ImportAddsTracks = true };
         box.Settings.MusicFolders = new List<string> { Path.Combine(box.Root, "Music") };
         box.Approve((YouTubeImportPlugin.Id, new[] { "library.import", "network" }));
-        var host = box.NewHost(library: library, appVersion: "1.6.6");
+        var host = box.NewHost(library: library, appVersion: "1.7.4");
         var manifest = File.ReadAllText(PluginSandbox.RepoFile("plugins/Noctis.Plugins.YouTubeImport/plugin.json"));
         var instance = new YouTubeImportPlugin();
         var plugin = host.AddInProcess(box.WriteFolder(YouTubeImportPlugin.Id, manifest), PluginManifest.Parse(manifest), () => instance);
@@ -910,5 +917,283 @@ public class YouTubeImportPluginTests : IDisposable
         Assert.Equal("Add from YouTube", view.Name);
         Assert.NotNull(view.Provider.CreateView()); // TagLib# and the MVVM toolkit resolve to the app's copies
         Assert.True(host.Remove(plugin, deleteData: true));
+    }
+
+    // ── 11-27: smoother progress, Show that goes to the song, the tick centred ──
+
+    private static YouTubeImportViewModel.ResultRow Row(YouTubeImportViewModel vm) => new(Info("a1", "A - B", "A"), vm);
+
+    /// <summary>The download's percent, the conversion and the last steps fill one bar once: the
+    /// bar never goes back (a retry's download starting over at 0%, a stage without a number).</summary>
+    [Fact]
+    public void ImportPhases_FillTheBarOnce_InOrder()
+    {
+        Assert.Equal(0, ImportPhases.Download(0));
+        Assert.Equal(ImportPhases.DownloadEnd, ImportPhases.Download(100));
+        Assert.Equal(0, ImportPhases.Download(-5));
+        Assert.Equal(ImportPhases.DownloadEnd, ImportPhases.Download(250));
+        Assert.Equal(0, ImportPhases.Download(double.NaN));
+        var steps = new[] { ImportPhases.Download(0), ImportPhases.Download(50), ImportPhases.DownloadEnd, ImportPhases.Converting, ImportPhases.Tagging, ImportPhases.Adding, 1.0 };
+        Assert.Equal(steps.OrderBy(x => x), steps);
+        Assert.Equal(steps.Length, steps.Distinct().Count()); // each stage moves it on
+    }
+
+    [AvaloniaFact]
+    public void Card_Progress_SweepsUntilANumber_ThenOnlyMovesForward_AndIgnoresLateReports()
+    {
+        var vm = new YouTubeImportViewModel(new FakeImporter(MakeTool(installed: true)), new HttpClient(), State());
+        var row = Row(vm);
+        var run = row.BeginRun();
+        Assert.True(row.IsIndeterminate);
+        Assert.False(row.ShowPercent);
+
+        var seen = new List<double>();
+        foreach (var (stage, fraction) in new[]
+        {
+            ("Reading details", 0.0), ("Downloading", 0.0), ("Downloading · 1 MB/s", 0.3),
+            ("Updating yt-dlp and retrying…", 0.0), ("Downloading", ImportPhases.Download(10)), ("Downloading", 0.5),
+            ("Downloading", ImportPhases.Download(100)), ("Converting", ImportPhases.Converting),
+            ("Tagging", ImportPhases.Tagging), ("Adding to library", ImportPhases.Adding), ("Done", 1.0),
+        })
+        {
+            row.Report(run, new YouTubeImportProgress(stage, fraction));
+            seen.Add(row.Progress);
+            Assert.Equal(stage, row.StatusText);
+        }
+        Assert.Equal(seen.OrderBy(x => x), seen); // never backwards
+        Assert.Equal(new[] { 0.0, 0.0, 0.3, 0.3, 0.3, 0.5 }, seen.Take(6));
+        Assert.Equal(1.0, seen[^1]);
+        Assert.False(row.IsIndeterminate);
+        Assert.True(row.ShowPercent);
+
+        // Finished: a report still queued from the import changes nothing ("In your library" stays).
+        row.IsDone = true;
+        row.StatusText = "In your library";
+        row.IsBusy = false;
+        row.Report(run, new YouTubeImportProgress("Done", 1));
+        Assert.Equal(("In your library", "In your library", "", ""), (row.StatusText, row.DoneText, row.BusyText, row.FailedText));
+
+        // A report of an earlier run never reaches a new one.
+        row.IsDone = false;
+        var second = row.BeginRun();
+        row.Report(run, new YouTubeImportProgress("old", 0.9));
+        Assert.Equal((0.0, "Starting…"), (row.Progress, row.StatusText));
+        row.Report(second, new YouTubeImportProgress("Downloading", 0.2));
+        Assert.Equal(0.2, row.Progress);
+    }
+
+    /// <summary>The real importer through a yt-dlp that prints percent lines and then converts:
+    /// every report moves the bar forward, "Converting" shows, and it ends full.</summary>
+    [Fact]
+    public async Task Import_ReportsOneForwardOnlyBar_WithTheConversionStage()
+    {
+        var library = new FakeLibraryImport { Folders = { Path.Combine(_root, "Music") } };
+        var tool = MakeTool(installed: true);
+        tool.Runner = (_, args, onLine, _) =>
+        {
+            if (args.Count == 1 && args[0] == "--version") return Task.FromResult((0, "2026.09.01\n", string.Empty));
+            var o = args.ToList().IndexOf("-o");
+            if (o < 0) return Task.FromResult((0, """{"id":"vid","title":"Artist - Song","artist":"Artist","track":"Song"}""" + "\n", string.Empty));
+            var file = args[o + 1].Replace("%(id)s", "vid").Replace("%(ext)s", "m4a");
+            onLine?.Invoke("[youtube] vid: Downloading webpage");
+            onLine?.Invoke("[download]  12.5% of 3.21MiB at 1.20MiB/s ETA 00:02");
+            onLine?.Invoke("[download] 100% of 3.21MiB in 00:00:03 at 1.10MiB/s");
+            onLine?.Invoke("[ExtractAudio] Destination: " + file);
+            File.WriteAllBytes(file, new byte[] { 1, 2, 3 });
+            return Task.FromResult((0, string.Empty, string.Empty));
+        };
+        var importer = new YouTubeImporter(tool, library, new HttpClient(new NoNetwork()), () => "", () => null);
+        var reports = new List<YouTubeImportProgress>();
+
+        var result = await importer.ImportAsync(new YouTubeTrackInfo("vid", "https://www.youtube.com/watch?v=vid", "Artist - Song", "Artist",
+            TimeSpan.FromSeconds(100), null, null, null, null, null, null), AudioFormat.M4a, new SyncProgress(reports), CancellationToken.None);
+
+        var stages = reports.Select(r => r.Stage.Split(' ')[0]).Distinct().ToList();
+        Assert.Equal(new[] { "Reading", "Downloading", "Converting", "Tagging", "Adding", "Done" }, stages);
+        var fractions = reports.Where(r => r.Fraction > 0).Select(r => r.Fraction).ToList();
+        Assert.Equal(fractions.OrderBy(x => x), fractions);
+        Assert.Equal(0, reports[0].Fraction); // reading details: no number yet, the bar sweeps
+        Assert.Contains(ImportPhases.Download(12.5), fractions);
+        Assert.Equal(1, reports[^1].Fraction);
+        // The song the library made, for Show.
+        Assert.True(Guid.TryParse(result.TrackId, out _));
+    }
+
+    private sealed class SyncProgress(List<YouTubeImportProgress> list) : IProgress<YouTubeImportProgress>
+    {
+        public void Report(YouTubeImportProgress value) { lock (list) list.Add(value); }
+    }
+
+    [Fact]
+    public void ConversionLine_IsTheFfmpegStart_NotTheNoConversionNote()
+    {
+        Assert.True(YtDlpParsing.IsConversionLine("[ExtractAudio] Destination: C:\\x\\vid.mp3"));
+        Assert.False(YtDlpParsing.IsConversionLine("[ExtractAudio] Not converting audio C:\\x\\vid.m4a; file is already in target format m4a"));
+        Assert.False(YtDlpParsing.IsConversionLine("[download] 100% of 3.21MiB"));
+        Assert.False(YtDlpParsing.IsConversionLine(null));
+    }
+
+    /// <summary>Show went to the album page under the Settings sheet (host side, PluginLibraryNavigator),
+    /// and a Show that found nothing said nothing. Now: the song (ShowTrack), else its album, else a line.</summary>
+    [AvaloniaFact]
+    public void Show_GoesToTheSong_FallsBackToItsAlbum_AndSaysWhenNeitherIsThere()
+    {
+        var trackId = Guid.NewGuid().ToString("D");
+        var importer = new FakeImporter(MakeTool(installed: true)) { WriteInto = Path.Combine(_root, "Music"), AlbumId = "album-1", TrackId = trackId };
+        importer.Found.Add(Info("a1", "A - B", "A"));
+        var calls = new List<string>();
+        var trackAnswer = true;
+        Exception? trackThrows = null;
+        var albumAnswer = true;
+        YouTubeImportViewModel New() => new(importer, new HttpClient(), State(), initialQuery: "b",
+            showAlbum: id => { calls.Add("album " + id); return albumAnswer; },
+            showTrack: id => { calls.Add("track " + id); if (trackThrows is { } e) throw e; return trackAnswer; });
+        var vm = New();
+        Assert.True(PumpUntil(() => vm.Results.Count == 1));
+        var row = vm.Results[0];
+        Assert.False(row.CanShow);
+        row.DownloadCommand.Execute(null);
+        Assert.True(PumpUntil(() => row.IsDone));
+        Assert.Equal(trackId, row.TrackId);
+        Assert.True(row.CanShow);
+
+        // Finished seconds ago: straight to the song.
+        row.ShowCommand.Execute(null);
+        Assert.Equal(new[] { "track " + trackId }, calls);
+
+        // The song is not shown (any more): its album.
+        calls.Clear();
+        trackAnswer = false;
+        row.ShowCommand.Execute(null);
+        Assert.Equal(new[] { "track " + trackId, "album album-1" }, calls);
+
+        // A Noctis without ShowTrack: its album.
+        calls.Clear();
+        trackThrows = new MissingMethodException("IPluginHost.ShowTrack");
+        row.ShowCommand.Execute(null);
+        Assert.Equal(new[] { "track " + trackId, "album album-1" }, calls);
+        Assert.DoesNotContain("Couldn't", vm.StatusMessage);
+
+        // Neither is there: it says so instead of doing nothing.
+        trackThrows = null;
+        albumAnswer = false;
+        row.ShowCommand.Execute(null);
+        Assert.Equal(YouTubeImportViewModel.NotInLibraryMessage, vm.StatusMessage);
+
+        // Remembered with the song: a later search's "Already in your library" goes to it too.
+        var again = New();
+        Assert.True(PumpUntil(() => again.Results.Count == 1));
+        Assert.Equal((true, trackId), (again.Results[0].IsDone, again.Results[0].TrackId));
+        Assert.Equal(trackId, State().FindDownloaded("a1")!.TrackId);
+    }
+
+    [Fact]
+    public void State_FromBeforeTrackIds_LoadsWithoutOne()
+    {
+        var data = Path.Combine(_root, "old");
+        Directory.CreateDirectory(data);
+        var file = Path.Combine(data, "song.m4a");
+        File.WriteAllBytes(file, new byte[] { 1 });
+        File.WriteAllText(Path.Combine(data, ImportState.FileName),
+            "{\"Downloaded\":[{\"VideoId\":\"v1\",\"FilePath\":" + System.Text.Json.JsonSerializer.Serialize(file) + ",\"AlbumId\":\"al\",\"InLibrary\":true}]}");
+        var found = new ImportState(data).FindDownloaded("v1")!;
+        Assert.Equal(("al", ""), (found.AlbumId, found.TrackId));
+    }
+
+    /// <summary>Idle, downloading (no number, then a number), failed and done: the card keeps its
+    /// height and the right side its width (owner 11-27: the card jumped when the bar came and went).</summary>
+    [AvaloniaFact]
+    public void Card_KeepsItsSize_FromDownloadToDone()
+    {
+        EnsureAppStyles();
+        var vm = new YouTubeImportViewModel(new FakeImporter(MakeTool(installed: true)), new HttpClient(), State(), showAlbum: _ => true);
+        var row = Row(vm);
+        vm.Results.Add(row);
+        var (win, view) = Show(vm);
+        try
+        {
+            Assert.True(PumpUntil(() => view.GetVisualDescendants().OfType<Border>().Any(b => b.Classes.Contains("yt-row") && b.IsEffectivelyVisible)));
+            var card = view.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("yt-row"));
+            var actions = card.GetVisualDescendants().OfType<StackPanel>().Single(p => p.Name == "DoneRow").GetVisualParent<Panel>()!;
+            (double, double) Size()
+            {
+                Dispatcher.UIThread.RunJobs();
+                win.UpdateLayout();
+                return (card.Bounds.Height, actions.Bounds.Width);
+            }
+            var idle = Size();
+            var run = row.BeginRun();
+            Assert.Equal(idle, Size());
+            row.Report(run, new YouTubeImportProgress("Downloading · 4.2 MB/s · 0:12 left, a long stage line that trims", 0.42));
+            Assert.Equal(idle, Size());
+            row.Failed = true;
+            row.StatusText = "YouTube blocked this download. Update yt-dlp and try again, or try another video later on.";
+            row.IsBusy = false;
+            Assert.Equal(idle, Size());
+            row.Failed = false;
+            row.IsDone = true;
+            row.AlbumId = "album-1";
+            row.StatusText = "Already in your library";
+            Assert.Equal(idle, Size());
+        }
+        finally { Close(win); }
+    }
+
+    /// <summary>The tick sat 1.7 px above "In your library": Stretch.Uniform drew its ink at the top of
+    /// a 13 x 13 box. Now the ink, the text and Show share one centre line.</summary>
+    [AvaloniaFact]
+    public void DoneRow_TickTextAndShow_ShareOneCentreLine()
+    {
+        EnsureAppStyles();
+        var vm = new YouTubeImportViewModel(new FakeImporter(MakeTool(installed: true)), new HttpClient(), State(), showAlbum: _ => true);
+        var row = Row(vm);
+        row.IsDone = true;
+        row.AlbumId = "album-1";
+        row.StatusText = "In your library";
+        vm.Results.Add(row);
+        var (win, view) = Show(vm);
+        try
+        {
+            Assert.True(PumpUntil(() => view.GetVisualDescendants().OfType<StackPanel>().Any(p => p.Name == "DoneRow" && p.IsEffectivelyVisible)));
+            win.UpdateLayout();
+            var done = view.GetVisualDescendants().OfType<StackPanel>().Single(p => p.Name == "DoneRow");
+            var check = done.GetVisualDescendants().OfType<Avalonia.Controls.Shapes.Path>().Single(p => p.Name == "DoneCheck");
+            var text = done.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Name == "DoneText");
+            var show = done.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "ShowButton");
+            double CentreY(Visual v, Rect r) => v.TranslatePoint(r.Center, done)!.Value.Y;
+            var ink = CentreY(check, check.RenderedGeometry!.Bounds);
+            var textCentre = CentreY(text, new Rect(text.Bounds.Size));
+            var showCentre = CentreY(show, new Rect(show.Bounds.Size));
+            _o.WriteLine($"ink {ink:0.00} text {textCentre:0.00} show {showCentre:0.00}");
+            Assert.True(Math.Abs(ink - textCentre) < 0.5, $"tick ink centre {ink:0.00} vs text {textCentre:0.00}");
+            Assert.True(Math.Abs(showCentre - textCentre) < 0.5, $"Show centre {showCentre:0.00} vs text {textCentre:0.00}");
+            Assert.Equal(YouTubeImportView.CheckWidth, check.RenderedGeometry.Bounds.Width, 2);
+        }
+        finally { Close(win); }
+    }
+
+    [AvaloniaFact]
+    public void PillBar_GlidesForward_LandsBack_AndCountsThePercentItDraws()
+    {
+        var bar = new PillProgressBar { Width = 200, Height = YouTubeImportView.BarHeight };
+        var percents = new List<int>();
+        bar.ShownPercentChanged += percents.Add;
+        var win = new Window { Width = 300, Height = 100, Content = bar };
+        win.Show();
+        try
+        {
+            bar.Value = 0.5;
+            Assert.True(bar.Step(16));
+            Assert.InRange(bar.Shown, 0.01, 0.49); // part of the way, not a jump
+            for (var i = 0; i < 200 && bar.Step(16); i++) { }
+            Assert.Equal(0.5, bar.Shown);
+            Assert.Equal(50, bar.ShownPercent);
+            Assert.Equal(percents.OrderBy(x => x), percents);
+            Assert.Equal(50, percents[^1]);
+            bar.Value = 0.1; // a new download: at once, no slide back
+            Assert.Equal(0.1, bar.Shown);
+            Assert.Equal(10, percents[^1]);
+        }
+        finally { Close(win); }
     }
 }

@@ -15,7 +15,7 @@ public sealed class YouTubeImportPlugin : INoctisPlugin, IPluginViewProvider
 {
     public const string Id = "dev.noctis.plugins.youtubeimport";
     public const string DisplayName = "Add from YouTube";
-    public const string Version = "1.0.3";
+    public const string Version = "1.0.4";
     public const string About = "Save audio from a YouTube link to your library.";
     /// <summary>plugin.json setting: a yt-dlp of the user's own (never replaced).</summary>
     public const string CustomYtDlpSetting = "ytDlpPath";
@@ -82,7 +82,7 @@ public sealed class YouTubeImportPlugin : INoctisPlugin, IPluginViewProvider
             throw new InvalidOperationException("Add from YouTube is not running.");
         var host = _host;
         var vm = new YouTubeImportViewModel(ImporterOverride ?? _importer, _http, _state, _lifetime.Token,
-            showAlbum: albumId => host.ShowAlbum(albumId));
+            showAlbum: albumId => host.ShowAlbum(albumId), showTrack: trackId => host.ShowTrack(trackId));
         return new YouTubeImportView(vm);
     }
 
