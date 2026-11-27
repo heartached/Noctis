@@ -199,6 +199,24 @@ public class BuiltInFeaturesTests : IDisposable
         Assert.True(raised);
     }
 
+    /// <summary>The Plugins search finds a Built-in Feature by name (searching "Discord" used to
+    /// hide the card and say no plugin matches).</summary>
+    [AvaloniaFact]
+    public void Card_SearchShowsTheMatchingRowsOnly()
+    {
+        var vm = Settings();
+        _ = vm.BuiltInFeatures;
+        vm.PluginSearchText = "discord";
+        Assert.True(vm.ShowBuiltInFeatures);
+        Assert.Equal(new[] { "Discord" }, vm.VisibleBuiltInFeatures.Select(r => r.Key));
+        Assert.False(vm.ShowNoPluginMatches);
+        vm.PluginSearchText = "zzz nothing";
+        Assert.False(vm.ShowBuiltInFeatures);
+        Assert.True(vm.ShowNoPluginMatches);
+        vm.PluginSearchText = "";
+        Assert.Same(vm.BuiltInFeatures, vm.VisibleBuiltInFeatures);
+    }
+
     // ── Effects ──
 
     [AvaloniaFact]

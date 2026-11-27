@@ -6552,6 +6552,12 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Plugins.Card.A11yOfficial" xml:space="preserve"><value>{0}، إضافة رسمية من Noctis</value></data>
   <data name="Plugins.Card.A11yCommunity" xml:space="preserve"><value>{0}، إضافة من المجتمع من {1}</value></data>
   <data name="Plugins.Card.A11yCommunityNoAuthor" xml:space="preserve"><value>{0}، إضافة من المجتمع</value></data>
+  <data name="Plugins.Card.LocalCopy" xml:space="preserve"><value>نسخة محلية · غير موثقة</value></data>
+  <data name="Plugins.Card.A11yLocalCopy" xml:space="preserve"><value>{0}، نسخة محلية، غير موثقة</value></data>
+  <data name="Plugins.Card.NotInstalled" xml:space="preserve"><value>غير مثبتة</value></data>
+  <data name="Plugins.Card.NeedsNewerApp" xml:space="preserve"><value>حدّث Noctis</value></data>
+  <data name="Plugins.Card.NotForThisOs" xml:space="preserve"><value>غير متاحة لهذا النظام</value></data>
+  <data name="Plugins.Card.Blocked" xml:space="preserve"><value>محظورة</value></data>
   <data name="Plugins.Detail.Back" xml:space="preserve"><value>الإضافات</value></data>
   <data name="Plugins.Detail.Version" xml:space="preserve"><value>v{0}</value></data>
   <data name="Plugins.Detail.Homepage" xml:space="preserve"><value>زيارة الصفحة الرئيسية</value></data>
@@ -7277,10 +7283,6 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="StudioPicker.Clear" xml:space="preserve"><value>مسح</value><comment>Choose songs footer: Select all once every row on show is ticked (unticks them)</comment></data>
   <data name="StudioPicker.OneSong" xml:space="preserve"><value>أغنية واحدة</value><comment>Choose songs: tag on an album row with one local song</comment></data>
   <data name="StudioPicker.SongCount" xml:space="preserve"><value>الأغاني: {0}</value><comment>Choose songs: tag on an album row ({0} = local songs on it)</comment></data>
-  <data name="LyricsStudio.Queue" xml:space="preserve">
-    <value>الأغاني</value>
-    <comment>Queue column header</comment>
-  </data>
   <data name="LyricsStudio.ReviewEmptyTitle" xml:space="preserve">
     <value>لا شيء للمراجعة بعد</value>
     <comment>Review pane empty state</comment>
@@ -7354,7 +7356,6 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="LyricsStudio.TranscribeDraft" xml:space="preserve"><value>الاستماع بدلًا من ذلك · تجريبي</value><comment>Lyrics box button: transcribe the song into the box</comment></data>
   <data name="LyricsStudio.TranscribeDraftTip" xml:space="preserve"><value>يكتب Lullaby ما يسمعه. غالبًا ما يُكتب الغناء بشكل سيئ: صحّح الكلمات قبل المحاذاة.</value><comment>Tooltip "Lullaby" is the model's name: keep it untranslated.</comment></data>
   <data name="LyricsStudio.Align" xml:space="preserve"><value>محاذاة الكلمات</value><comment>Lyrics box primary button</comment></data>
-  <data name="LyricsStudio.Beta" xml:space="preserve"><value>تجريبي</value><comment>Pill next to the Lyrics Studio title (top bar and dialog header)</comment></data>
   <data name="LyricsStudio.Preview" xml:space="preserve"><value>معاينة</value><comment>Review button: play the song on the lyrics page with the unsaved timings</comment></data>
   <data name="LyricsStudio.PreviewTip" xml:space="preserve"><value>شغّل الأغنية وشاهد هذه التوقيتات غير المحفوظة في صفحة الكلمات، بالصيغة المختارة. لا يُحفظ شيء.</value><comment>Tooltip</comment></data>
   <data name="LyricsStudio.AlignTip" xml:space="preserve"><value>توقيت هذه الكلمات وفق الأغنية بالصيغة المختارة، ثم المراجعة قبل الحفظ</value><comment>Tooltip</comment></data>

@@ -29,6 +29,14 @@ public partial class ArtistDetailViewModel
 
     public bool HasArtistVideo => !string.IsNullOrEmpty(ArtistVideoPath);
 
+    /// <summary>
+    /// The Settings sheet is over the page (MainWindowViewModel). The hero video holds its
+    /// frame meanwhile: under the sheet's live blur every video frame made the blur re-render
+    /// the whole app (probe: ~10 stand-in retakes a second for a 24 fps hero).
+    /// </summary>
+    [ObservableProperty]
+    private bool _isCovered;
+
     /// <summary>The menu's Remove Artist Video: shown while a video plays here.</summary>
     public bool CanRemoveArtistVideo => HasArtistVideo;
 
@@ -98,6 +106,26 @@ public partial class ArtistDetailViewModel
         {
             DebugLog.Write(ITunesArtworkService.LogSource, $"artist video: artist page: {ex.Message}");
         }
+    }
+
+    /// <summary>The background replacement of an oversized cached video, for tests.</summary>
+    internal Task ArtistVideoShrinkTask { get; private set; } = Task.CompletedTask;
+
+    /// <summary>
+    /// The hero started the cached video, which is <paramref name="width"/>x<paramref name="height"/>:
+    /// one saved at 1080p before the picker took the hero-size stream is fetched again smaller in
+    /// the background (ArtistVideoAutoFetcher.ShrinkAsync); this one keeps playing meanwhile.
+    /// </summary>
+    internal void OnArtistVideoClipSize(int width, int height)
+    {
+        if (width <= ArtistVideoAutoFetcher.ShrinkAboveWidth || !ArtistVideosAllowed(_settings)) return;
+        if (ArtistVideoFetcherProvider() is not { } fetcher) return;
+        var (id, name, cap) = (Artist.Id, ArtistName, _settings!.AnimatedArtworkCacheBytes);
+        ArtistVideoShrinkTask = Task.Run(async () =>
+        {
+            try { await fetcher.ShrinkAsync(id, name, width, height, cap, CancellationToken.None); }
+            catch (Exception ex) { DebugLog.Write(ITunesArtworkService.LogSource, $"artist video shrink: {ex.Message}"); }
+        });
     }
 
     /// <summary>

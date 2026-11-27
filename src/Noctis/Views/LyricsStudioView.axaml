@@ -10,16 +10,51 @@
     <!-- Sidebar section: page header with the per-format counts, then the shared Studio
          surface (LyricsStudioPanel) over the songs that still lack the chosen format. -->
     <UserControl.Styles>
-        <!-- Workbench header: the four library counts as compact pills on the title row,
-             instead of the tall tiles that used to own a band of their own. They are a
-             readout, not a control, so they stay quiet — one weight for the number, one
-             dimmer for its format. -->
-        <Style Selector="Border.studio-count">
+        <!-- Header readout (11-26 redesign): the four library counts in ONE quiet filled pill, so
+             they read as status, not as four buttons. -->
+        <Style Selector="Border.studio-counts">
             <Setter Property="CornerRadius" Value="999"/>
-            <Setter Property="Padding" Value="11,4"/>
-            <Setter Property="Margin" Value="0,0,6,0"/>
+            <Setter Property="Padding" Value="14,6"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource ChipBackground}"/>
+        </Style>
+
+        <!-- The backdrops card: the Settings card fill and radius, two rows split by a hairline. -->
+        <Style Selector="Border.studio-backdrops">
+            <Setter Property="CornerRadius" Value="20"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
+        </Style>
+        <Style Selector="Grid.backdrop-row">
+            <Setter Property="Margin" Value="22,14"/>
+            <Setter Property="ColumnSpacing" Value="32"/>
+        </Style>
+        <Style Selector="TextBlock.backdrop-title">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style Selector="TextBlock.backdrop-hint">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Opacity" Value="0.5"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+        <Style Selector="TextBlock.backdrop-label">
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Opacity" Value="0.85"/>
+            <Setter Property="TextAlignment" Value="Right"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,10,0"/>
+        </Style>
+        <Style Selector="TextBlock.backdrop-label:disabled">
+            <Setter Property="Opacity" Value="0.4"/>
+        </Style>
+        <Style Selector="Border.backdrop-divider">
+            <Setter Property="Height" Value="1"/>
+            <Setter Property="Margin" Value="22,0"/>
+            <Setter Property="Background" Value="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+            <Setter Property="Opacity" Value="0.5"/>
         </Style>
 
         <!-- Choose songs: the same quiet chip as Backdrops, as a plain button (09-19). -->
@@ -45,8 +80,8 @@
         <Style Selector="Button.studio-chip:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)"/>
         </Style>
-        <!-- Backdrops disclosure: same quiet chip as Add Rule, and it takes the accent only
-             while the section is open so the header shows what is folded out. -->
+        <!-- Backdrops disclosure: the same quiet chip; open, it keeps the hover fill and its chevron
+             turns, so the accent stays for the page's real actions (11-26). -->
         <Style Selector="ToggleButton.studio-disclosure">
             <Setter Property="CornerRadius" Value="999"/>
             <Setter Property="Padding" Value="16,7"/>
@@ -71,8 +106,29 @@
         <Style Selector="ToggleButton.studio-disclosure:checked /template/ ContentPresenter,
                          ToggleButton.studio-disclosure:checked:pointerover /template/ ContentPresenter,
                          ToggleButton.studio-disclosure:checked:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource ChipHoverBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+        </Style>
+        <Style Selector="ToggleButton.studio-disclosure:pointerover, ToggleButton.studio-disclosure:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <!-- The chevron turns with the fold: a transition, never a keyframe animation (those cannot
+             drive RenderTransform); the rest pose is a style so the :checked one can win. -->
+        <Style Selector="ToggleButton.studio-disclosure PathIcon.disclosure-chevron">
+            <Setter Property="Opacity" Value="0.7"/>
+            <Setter Property="RenderTransform" Value="rotate(0deg)"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22">
+                        <TransformOperationsTransition.Easing>
+                            <CubicEaseInOut/>
+                        </TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="ToggleButton.studio-disclosure:checked PathIcon.disclosure-chevron">
+            <Setter Property="RenderTransform" Value="rotate(180deg)"/>
         </Style>
 
         <!-- Loading spinner: the Settings rotating-arc recipe. Animation keyed on
@@ -97,109 +153,111 @@
     </UserControl.Styles>
 
     <DockPanel Margin="24,20,24,0">
-        <!-- Header: library counts on the left, the lyrics-page Backdrops disclosure on the right.
-             Choose songs moved into the queue header it fills (09-23), so this row is readout +
-             settings only. -->
-        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
-            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                <ItemsControl ItemsSource="{Binding Counts}" IsVisible="{Binding HasCounts}" VerticalAlignment="Center">
+        <!-- Header (11-26 redesign): the library counts as one quiet readout on the left (status, not
+             buttons), the lyrics-page Backdrops disclosure as a quiet secondary button on the right.
+             The page title itself is the top bar's. -->
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" ColumnSpacing="12" Margin="0,0,0,12">
+            <Border Grid.Column="0" Classes="studio-counts" IsVisible="{Binding HasCounts}">
+                <ItemsControl ItemsSource="{Binding Counts}" VerticalAlignment="Center">
                     <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                        <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="16"/></ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:LyricsStudioCount">
-                            <Border Classes="studio-count">
-                                <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Count}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                    <!-- ELRC / LRC carry a short tag; the other two only have a
-                                         label ("Plain only", "No lyrics"), so one or the other shows. -->
-                                    <TextBlock Text="{Binding Tag}" FontSize="10.5" FontWeight="SemiBold" Opacity="0.45" VerticalAlignment="Center"
-                                               IsVisible="{Binding Tag, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                                    <TextBlock Text="{Binding Label}" FontSize="10.5" FontWeight="SemiBold" Opacity="0.45" VerticalAlignment="Center"
-                                               IsVisible="{Binding Tag, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
-                                </StackPanel>
-                            </Border>
+                            <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Count}" FontSize="13" FontWeight="SemiBold" FontFeatures="+tnum" VerticalAlignment="Center"/>
+                                <!-- ELRC / LRC carry a short tag; the other two only have a
+                                     label ("Plain only", "No lyrics"), so one or the other shows. -->
+                                <TextBlock Text="{Binding Tag}" FontSize="11" FontWeight="SemiBold" Opacity="0.45" VerticalAlignment="Center"
+                                           IsVisible="{Binding Tag, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                <TextBlock Text="{Binding Label}" FontSize="11" FontWeight="SemiBold" Opacity="0.45" VerticalAlignment="Center"
+                                           IsVisible="{Binding Tag, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                            </StackPanel>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-            </StackPanel>
+            </Border>
             <ToggleButton Grid.Column="1" Classes="studio-disclosure"
-                          Content="{loc:T LyricsStudio.Backdrops}"
                           ToolTip.Tip="{loc:T LyricsStudio.BackdropsTip}"
-                          IsChecked="{Binding ShowBackdrops}"/>
+                          AutomationProperties.Name="{loc:T LyricsStudio.Backdrops}"
+                          IsChecked="{Binding ShowBackdrops}">
+                <StackPanel Orientation="Horizontal" Spacing="7">
+                    <TextBlock Text="{loc:T LyricsStudio.Backdrops}" VerticalAlignment="Center"/>
+                    <PathIcon Classes="disclosure-chevron" Data="{StaticResource ChevronDownThinIcon}" Width="10" Height="10" VerticalAlignment="Center"/>
+                </StackPanel>
+            </ToggleButton>
         </Grid>
 
-        <!-- Backdrops, folded. Both cards are settings for the LYRICS PAGE, not studio work,
-             so the Workbench layout keeps them out of the way and gives the queue + review the
-             height instead. Glide is the Settings sub-block reveal (CollapsibleContent). -->
+        <!-- Backdrops, folded. Both blocks are settings for the LYRICS PAGE, not studio work, so they
+             stay out of the way: one card, two rows, every control on the card's right edge. Glide is
+             the Settings sub-block reveal (CollapsibleContent); its gap is the card's margin. -->
         <controls:CollapsibleContent DockPanel.Dock="Top" IsOpen="{Binding ShowBackdrops}" Lift="10" Motion="Glide">
-        <StackPanel>
-
-        <!-- Lyrics Background Video: the clip behind the lyrics page and its pause toggle.
-             Moved here from Settings > Lyrics (user ask 09-08). Binds the app's SettingsViewModel
-             through the window; the Modify button opens the same picker Settings used. -->
-        <Border CornerRadius="16" Padding="18,12" Margin="0,0,0,12"
-                Background="{DynamicResource SystemControlBackgroundListLowBrush}"
+        <Border Classes="studio-backdrops" Grid.IsSharedSizeScope="True"
                 DataContext="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings}"
                 x:DataType="vm:SettingsViewModel">
-            <Grid ColumnDefinitions="*,Auto,Auto">
-                <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
-                    <TextBlock Text="{loc:T Settings.LyricsBackgroundVideo}" FontSize="15" FontWeight="SemiBold"/>
-                    <TextBlock Text="{loc:T Settings.LoopVideoGIFBehind}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                    <TextBlock Text="{Binding LyricsBackgroundMediaName}" FontSize="12" Opacity="0.7" Margin="0,4,0,0"
-                               TextTrimming="CharacterEllipsis" IsVisible="{Binding HasLyricsBackgroundMedia}"/>
-                </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="24,0,20,0"
-                            ToolTip.Tip="{loc:T Settings.PauseVideoWithPlaybackDesc}">
-                    <TextBlock Text="{loc:T Settings.PauseVideoWithPlayback}" FontSize="12.5" FontWeight="SemiBold" Opacity="0.85" VerticalAlignment="Center"/>
-                    <controls:LottieToggle IsChecked="{Binding LyricsBackgroundPausesWithPlayback}" VerticalAlignment="Center"/>
-                </StackPanel>
-                <Button Grid.Column="2" Classes="accent-btn"
-                        Content="{loc:T Settings.Modify}"
-                        Padding="16,7" CornerRadius="999" FontSize="12.5"
-                        Background="{DynamicResource AccentButtonBackground}"
-                        Foreground="{DynamicResource AccentForegroundBrush}"
-                        FontWeight="SemiBold" Cursor="Hand" VerticalAlignment="Center"
-                        Click="OnModifyLyricsBackgroundClick"/>
-            </Grid>
-        </Border>
+            <StackPanel>
+                <!-- Lyrics Background Video: the clip behind the lyrics page and its pause toggle.
+                     Moved here from Settings > Lyrics (user ask 09-08). Binds the app's SettingsViewModel
+                     through the window; Modify opens the same picker Settings used. -->
+                <Grid Classes="backdrop-row" ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Classes="backdrop-title" Text="{loc:T Settings.LyricsBackgroundVideo}"/>
+                        <TextBlock Classes="backdrop-hint" Text="{loc:T Settings.LoopVideoGIFBehind}"/>
+                        <TextBlock Text="{Binding LyricsBackgroundMediaName}" FontSize="12" Opacity="0.7" Margin="0,4,0,0"
+                                   TextTrimming="CharacterEllipsis" IsVisible="{Binding HasLyricsBackgroundMedia}"/>
+                    </StackPanel>
+                    <Grid Grid.Column="1" VerticalAlignment="Center" RowDefinitions="Auto">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="BackdropLabelA"/>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="BackdropToggleA"/>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="BackdropLabelB"/>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="BackdropToggleB"/>
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0" Grid.ColumnSpan="2" Classes="studio-chip" HorizontalAlignment="Right" Margin="0,0,24,0"
+                                Content="{loc:T Settings.Modify}"
+                                Click="OnModifyLyricsBackgroundClick"/>
+                        <TextBlock Grid.Column="2" Classes="backdrop-label" Text="{loc:T Settings.PauseVideoWithPlayback}"
+                                   ToolTip.Tip="{loc:T Settings.PauseVideoWithPlaybackDesc}"/>
+                        <controls:LottieToggle Grid.Column="3" IsChecked="{Binding LyricsBackgroundPausesWithPlayback}" VerticalAlignment="Center"
+                                               ToolTip.Tip="{loc:T Settings.PauseVideoWithPlaybackDesc}"/>
+                    </Grid>
+                </Grid>
 
-        <!-- Music videos (Discord, aaron 09-15): a clip named like the song, next to it or in a
-             videos folder, replaces the cover on the lyrics page and follows playback. -->
-        <Border CornerRadius="16" Padding="18,12" Margin="0,0,0,12"
-                Background="{DynamicResource SystemControlBackgroundListLowBrush}"
-                DataContext="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings}"
-                x:DataType="vm:SettingsViewModel">
-            <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto">
-                <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
-                    <TextBlock Text="{loc:T Settings.MusicVideos}" FontSize="15" FontWeight="SemiBold"/>
-                    <TextBlock Text="{loc:T Settings.MusicVideosHint}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                </StackPanel>
-                <!-- Every toggle carries its label (09-23): the on/off switch first, then its
-                     sub-option, which greys out while music videos are off. -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="24,0,20,0">
-                    <TextBlock Text="{loc:T LyricsStudio.ShowMusicVideos}" FontSize="12.5" FontWeight="SemiBold" Opacity="0.85" VerticalAlignment="Center"/>
-                    <controls:LottieToggle IsChecked="{Binding MusicVideosEnabled}" VerticalAlignment="Center"/>
-                </StackPanel>
-                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"
-                            ToolTip.Tip="{loc:T Settings.MusicVideoRoundedHint}" IsEnabled="{Binding MusicVideosEnabled}">
-                    <TextBlock Text="{loc:T LyricsStudio.RoundedCorners}" FontSize="12.5" FontWeight="SemiBold" Opacity="0.85" VerticalAlignment="Center"/>
-                    <controls:LottieToggle IsChecked="{Binding MusicVideoRoundedCorners}" VerticalAlignment="Center"/>
-                </StackPanel>
-                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="20,0,0,0"
-                            ToolTip.Tip="{loc:T Settings.MusicVideoAudioHint}" IsEnabled="{Binding MusicVideosEnabled}">
-                    <TextBlock Text="{loc:T LyricsStudio.MusicVideoAudio}" FontSize="12.5" FontWeight="SemiBold" Opacity="0.85" VerticalAlignment="Center"/>
-                    <controls:LottieToggle IsChecked="{Binding MusicVideoUseVideoAudio}" VerticalAlignment="Center"/>
-                </StackPanel>
-                <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="20,0,0,0"
-                            ToolTip.Tip="{loc:T Settings.MusicVideoBehindLyricsHint}" IsEnabled="{Binding MusicVideosEnabled}">
-                    <TextBlock Text="{loc:T LyricsStudio.MusicVideoBehindLyrics}" FontSize="12.5" FontWeight="SemiBold" Opacity="0.85" VerticalAlignment="Center"/>
-                    <controls:LottieToggle IsChecked="{Binding MusicVideoAsBackground}" VerticalAlignment="Center"/>
-                </StackPanel>
-            </Grid>
-        </Border>
+                <Border Classes="backdrop-divider"/>
 
-        </StackPanel>
+                <!-- Music videos (Discord, aaron 09-15): a clip named like the song, next to it or in a
+                     videos folder, replaces the cover on the lyrics page and follows playback. Every
+                     toggle carries its label (09-23); the sub-options grey out while music videos are off. -->
+                <Grid Classes="backdrop-row" ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Classes="backdrop-title" Text="{loc:T Settings.MusicVideos}"/>
+                        <TextBlock Classes="backdrop-hint" Text="{loc:T Settings.MusicVideosHint}"/>
+                    </StackPanel>
+                    <Grid Grid.Column="1" VerticalAlignment="Center" RowDefinitions="Auto,Auto" RowSpacing="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="BackdropLabelA"/>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="BackdropToggleA"/>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="BackdropLabelB"/>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="BackdropToggleB"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Classes="backdrop-label" Text="{loc:T LyricsStudio.ShowMusicVideos}"/>
+                        <controls:LottieToggle Grid.Row="0" Grid.Column="1" Margin="0,0,24,0" IsChecked="{Binding MusicVideosEnabled}" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Row="0" Grid.Column="2" Classes="backdrop-label" Text="{loc:T LyricsStudio.RoundedCorners}"
+                                   ToolTip.Tip="{loc:T Settings.MusicVideoRoundedHint}" IsEnabled="{Binding MusicVideosEnabled}"/>
+                        <controls:LottieToggle Grid.Row="0" Grid.Column="3" IsChecked="{Binding MusicVideoRoundedCorners}" VerticalAlignment="Center"
+                                               ToolTip.Tip="{loc:T Settings.MusicVideoRoundedHint}" IsEnabled="{Binding MusicVideosEnabled}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Classes="backdrop-label" Text="{loc:T LyricsStudio.MusicVideoAudio}"
+                                   ToolTip.Tip="{loc:T Settings.MusicVideoAudioHint}" IsEnabled="{Binding MusicVideosEnabled}"/>
+                        <controls:LottieToggle Grid.Row="1" Grid.Column="1" Margin="0,0,24,0" IsChecked="{Binding MusicVideoUseVideoAudio}" VerticalAlignment="Center"
+                                               ToolTip.Tip="{loc:T Settings.MusicVideoAudioHint}" IsEnabled="{Binding MusicVideosEnabled}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="2" Classes="backdrop-label" Text="{loc:T LyricsStudio.MusicVideoBehindLyrics}"
+                                   ToolTip.Tip="{loc:T Settings.MusicVideoBehindLyricsHint}" IsEnabled="{Binding MusicVideosEnabled}"/>
+                        <controls:LottieToggle Grid.Row="1" Grid.Column="3" IsChecked="{Binding MusicVideoAsBackground}" VerticalAlignment="Center"
+                                               ToolTip.Tip="{loc:T Settings.MusicVideoBehindLyricsHint}" IsEnabled="{Binding MusicVideosEnabled}"/>
+                    </Grid>
+                </Grid>
+            </StackPanel>
+        </Border>
         </controls:CollapsibleContent>
 
         <!-- Body -->

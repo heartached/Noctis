@@ -460,6 +460,24 @@ public class AlbumTownFeedbackTests
         var said = Enumerable.Range(0, 20).Select(i => TalkLines.Hello(album, Now, new Random(i), view.LyricFor)).ToList();
         Assert.Contains("\"Every light in this town is mine\"", said);
     }
+
+    /// <summary>On a Noctis without plugin API 1.7 (1.6.6) the call fails with MissingMethodException,
+    /// which the old filter let through: the read faulted unobserved and the album never settled.</summary>
+    [AvaloniaFact]
+    public void Residents_OnANoctisWithoutLyricLines_JustDoNotQuote()
+    {
+        var host = new FakeTownHost { LyricsFailure = new MissingMethodException("ILibraryReader.GetLyricLines") };
+        host.Tracks.AddRange(Albums(2, songs: 2));
+        var view = new AlbumTownView(host, new Random(1));
+        var town = AlbumGrouping.Group(host.Tracks, out var byFile, out _);
+        view.SetTown(town, byFile, Array.Empty<string>());
+        var album = town[0];
+        Assert.Null(view.LyricFor(album));
+        var until = DateTime.UtcNow.AddSeconds(5);
+        while (view.LyricsOf(album.Key) is null && DateTime.UtcNow < until) Dispatcher.UIThread.RunJobs();
+        Assert.Empty(view.LyricsOf(album.Key)!);
+        Assert.Null(view.LyricFor(album));
+    }
 }
 
 /// <summary>Plugin API 1.7: <see cref="ILibraryReader.GetLyricLines"/> (Album Town's quotes).</summary>

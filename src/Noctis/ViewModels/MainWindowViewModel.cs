@@ -67,6 +67,8 @@ public partial class MainWindowViewModel : ViewModelBase
     partial void OnIsSettingsModalOpenChanged(bool value)
     {
         UpdateSectionActiveFlags();
+        // An artist page's hero video holds still under the sheet (ArtistDetailViewModel.IsCovered).
+        if (CurrentView is ArtistDetailViewModel coveredArtist) coveredArtist.IsCovered = value;
         // A plugin view open in place of its page goes with the sheet (its control is released).
         if (!value) Settings.LeavePluginView();
     }
@@ -1982,7 +1984,12 @@ public partial class MainWindowViewModel : ViewModelBase
         if (ReferenceEquals(oldValue, _statisticsVm) && !ReferenceEquals(newValue, _statisticsVm)) _statisticsVm.OnPageLeft();
         // Settings left: its Connect a phone panel folds, so no sign-in QR stays live off screen.
         if (ReferenceEquals(oldValue, Settings) && !ReferenceEquals(newValue, Settings)) Settings.OnSettingsLeft();
-        if (newValue is ArtistDetailViewModel artistPage) artistPage.IsActive = true;
+        if (oldValue is ArtistDetailViewModel uncoveredArtist) uncoveredArtist.IsCovered = false;
+        if (newValue is ArtistDetailViewModel artistPage)
+        {
+            artistPage.IsCovered = IsSettingsModalOpen;
+            artistPage.IsActive = true;
+        }
         // GitHub #167: an album page fetches its animated cover only while it is on screen.
         if (oldValue is AlbumDetailViewModel leftAlbumPage && !ReferenceEquals(oldValue, newValue)) leftAlbumPage.StopAutoFetch();
         if (newValue is AlbumDetailViewModel albumPage) albumPage.StartAutoFetch();

@@ -446,6 +446,31 @@ public class AlbumRoulettePluginTests
 
     // ── Pictures (real Skia) ──
 
+    /// <summary>At the smallest window the reel was squeezed up over the filter chips: the window's
+    /// minimum (360 x 560) was ~110 DIP shorter than the view needs with three rows of chips.</summary>
+    [AvaloniaFact]
+    public void SmallestWindow_FitsTheChipsReelTitleAndPills_InBothModes()
+    {
+        AddToPlaylistDialogTests.EnsureAppStyles();
+        var title = "The Extraordinarily Long Title of a Song That Never Seems to End (Remastered Deluxe Edition)";
+        var tracks = new List<TrackInfo> { T(title, title, "Juniper Hollow and the Midnight Orchestra of Somewhere Far Away", albumId: "a1") };
+        foreach (var mode in new[] { RouletteMode.Albums, RouletteMode.Songs })
+        {
+            var view = new RouletteView(new FakeRouletteHost(), new Random(1), () => Now);
+            var window = new Window { Content = view, Width = RouletteView.MinWindowWidth, Height = RouletteView.MinWindowHeight };
+            window.Show();
+            view.SetLibrary(AlbumCatalog.Group(tracks), SongCatalog.Build(tracks, Now));
+            view.SetMode(mode);
+            view.Spin();
+            view.Spin(); // lands at once
+            Assert.NotNull(view.Pick);
+            Dispatcher.UIThread.RunJobs();
+            view.Measure(new Size(RouletteView.MinWindowWidth, double.PositiveInfinity));
+            Assert.True(view.DesiredSize.Height <= RouletteView.MinWindowHeight, $"{mode}: needs {view.DesiredSize.Height}");
+            window.Close();
+        }
+    }
+
     [AvaloniaFact]
     public void Preview_TheWindowAt125Percent()
     {

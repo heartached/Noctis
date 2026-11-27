@@ -242,6 +242,10 @@ public partial class LyricsStudioViewModel : ViewModelBase
 
     public event EventHandler? Closed;
 
+    /// <summary>A song's lyrics were written (raised on the UI thread after the files are on disk):
+    /// the page updates that one song's format and its counts instead of rescanning the library.</summary>
+    public event EventHandler<Track>? LyricsSaved;
+
     /// <summary>
     /// Appends songs the user picked (Choose songs) to a Studio that is mid-run or mid-review,
     /// so the work on screen is kept. Non-local songs and songs already queued are skipped;
@@ -1347,11 +1351,17 @@ public partial class LyricsStudioViewModel : ViewModelBase
         if (Selected is not { Status: StudioStatus.Ready or StudioStatus.Loaded, Result: not null } item || ReviewLines.Count == 0) return;
         // Never replace lyrics without asking: sidecar files, and with "write into the file's tags"
         // on, the lyrics already stored in the audio file's tags too.
-        var existing = ExistingLyricsFiles(item.Track);
         // Settings ▸ Lyrics ▸ Save lyrics to (GitHub #135) may put them inside the file too.
         var intoTags = EmbedTags || SafeSaveTarget().WritesTags();
-        if (intoTags && (!string.IsNullOrWhiteSpace(item.Track.Lyrics) || !string.IsNullOrWhiteSpace(item.Track.SyncedLyrics)))
-            existing.Add("lyrics in the audio file's tags");
+        // Off the UI thread: folder listings and the track's lyrics store (a disk read) on a slow drive.
+        var existing = await Task.Run(() =>
+        {
+            var found = ExistingLyricsFiles(item.Track);
+            if (intoTags && (!string.IsNullOrWhiteSpace(item.Track.Lyrics) || !string.IsNullOrWhiteSpace(item.Track.SyncedLyrics)))
+                found.Add("lyrics in the audio file's tags");
+            return found;
+        });
+        if (!ReferenceEquals(Selected, item)) return;
         // macOS/Linux say "Trash": there is no Recycle Bin there (the lyrics page's prompt does the same).
         var bin = OperatingSystem.IsWindows() ? "Recycle Bin" : "Trash";
         if (existing.Count > 0 && !await ConfirmAsync(
@@ -1392,6 +1402,8 @@ public partial class LyricsStudioViewModel : ViewModelBase
                 : $"Saved · {format}";
             _savedCount++;
             OnPropertyChanged(nameof(SummaryText));
+            try { LyricsSaved?.Invoke(this, item.Track); }
+            catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.Lyrics, "LyricsStudio.SavedNotifyFailed", ex.Message); }
             // A preview of this review would now hide the file just written.
             try { ClearLyricsPagePreview?.Invoke(); } catch { }
         }

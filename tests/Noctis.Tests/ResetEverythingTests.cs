@@ -48,7 +48,7 @@ public class ResetEverythingTests : IDisposable
         "animated_artwork_bulk_ledger.json", "lyrics_bulk_ledger.json", "mp3_decoder_fallback.txt", "whats_new_cache.json",
         "animated_artwork_no_autofetch.json", "animated_artwork_autofetch_ledger.json",
         "artist_video_no_autofetch.json", "artist_video_autofetch_ledger.json", "artist_video_index.json",
-        "musixmatch_token", "computers.json", "replaygain-backfill.progress", "label-backfill.progress",
+        "artist_video_shrink_tried.json", "musixmatch_token", "computers.json", "replaygain-backfill.progress", "label-backfill.progress",
         "genre-backfill.progress", "library.json.corrupt-20261101-120000", "settings.json.bak",
         "artwork/album.jpg", "artwork/artists/a.jpg", "artwork/similar/s.jpg", "animated_covers/a.mp4",
         "playlist_covers/p.jpg", "cache/artwork_thumbs/t.png", "cache/waveforms/w.bin",

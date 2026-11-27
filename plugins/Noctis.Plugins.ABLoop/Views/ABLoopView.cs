@@ -45,6 +45,7 @@ public sealed class ABLoopView : UserControl
     private readonly TextBlock _listEmpty;
     private readonly TextBlock _savedHeader;
     private readonly TextBlock _noSong;
+    private readonly ScrollViewer _scroller;
     private readonly Grid _body;
     private readonly List<(Button Button, TextBlock Label)> _buttons = new();
     private readonly List<TextBlock> _faintTexts = new();
@@ -131,7 +132,14 @@ public sealed class ABLoopView : UserControl
         _listEmpty = Faint();
         _listEmpty.Text = "Set A and B, then save the loop to keep it with this song.";
         _listEmpty.TextWrapping = TextWrapping.Wrap;
-        var scroller = new ScrollViewer { Content = new StackPanel { Children = { _listEmpty, _list } } };
+        // Rows fit the window: a long loop name scrolls inside its box instead of pushing
+        // "Loop it" and the delete button out of sight (the app's ScrollViewer scrolls sideways).
+        var scroller = new ScrollViewer
+        {
+            HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
+            Content = new StackPanel { Children = { _listEmpty, _list } },
+        };
+        _scroller = scroller;
 
         _body = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,Auto,Auto,Auto,Auto,*") };
         var rows = new Control[] { header, _strip, times, actions, nudges, savedRow, scroller };
@@ -162,6 +170,7 @@ public sealed class ABLoopView : UserControl
     public bool LoopOn => _session.Engine.Enabled;
     public int SavedRows => _list.Children.Count;
     public bool NoSongShown => _noSong.IsVisible;
+    public ScrollViewer SavedScroller => _scroller;
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {

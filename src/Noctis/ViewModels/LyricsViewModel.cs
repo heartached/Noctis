@@ -2944,10 +2944,23 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     public void ClearPreview()
     {
         var previewTrackId = _previewTrackId;
+        var previewShown = IsPreviewActive;
+        // Lit before the reload resets the timeline: those lines are always rebuilt (UpdatePreview's rule).
+        var lit = previewShown ? new HashSet<LyricLine>(_timeline.ActiveLines) : null;
         DropPreview();
         if (previewTrackId != null && _currentTrack is { } current && current.Id == previewTrackId)
+        {
             LoadLyricsForTrack(current);
+            // Owner 11-26: Save in the Studio froze the app 1-4 s. Save drops the preview, and the
+            // reload of the file just written replaced every line on screen, so each open lyrics
+            // view rebuilt every word cell (~1 GB, 4.5 s in LyricsStudioSavePerfTests) for the
+            // very lines the preview showed. The reload swaps only the lines that differ.
+            if (lit is not null) _previewReload = (_searchGeneration, lit);
+        }
     }
+
+    /// <summary>Set by <see cref="ClearPreview"/>: the reload of this generation patches the preview's lines in place.</summary>
+    private (int Generation, HashSet<LyricLine> Lit)? _previewReload;
 
     private void DropPreview()
     {
@@ -3516,7 +3529,11 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                     // realizes the new line controls has run — Loaded-priority work
                     // runs after layout. Off → no stopwatch, no extra post.
                     var swapClock = DebugLogger.IsEnabled ? System.Diagnostics.Stopwatch.StartNew() : null;
-                    ApplyLocalLyricsResult(track, probe);
+                    var reload = _previewReload is { } r && r.Generation == generation ? r.Lit : null;
+                    _previewReload = null;
+                    _previewRelit = reload;
+                    try { ApplyLocalLyricsResult(track, probe); }
+                    finally { _previewRelit = null; }
                     LyricsSwapped?.Invoke(this, EventArgs.Empty);
                     MaybeUpgradePlainLyrics();
                     if (swapClock != null)

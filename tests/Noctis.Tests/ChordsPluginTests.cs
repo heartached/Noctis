@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
@@ -343,6 +344,29 @@ public class ChordsPluginTests : IDisposable
         Assert.Equal("Try again", view.ActionText);
     }
 
+    /// <summary>"Analyze again" sat flush against the chord lane, and the smallest window was a
+    /// little shorter than the view needs.</summary>
+    [AvaloniaFact]
+    public void SmallestWindow_FitsTheView_AndAnalyzeAgainKeepsAGapBelowTheLane()
+    {
+        var host = new FakeHost { DataDirectory = null, TrackPath = Song("pop.flac"), Position = TimeSpan.FromSeconds(5.1) };
+        using var session = new ChordsSession(host);
+        session.Find();
+        session.Running!.Wait(TimeSpan.FromSeconds(30));
+        host.Drain();
+        var view = new ChordsView(session);
+        var window = new Window { Content = view, Width = ChordsView.MinWindowWidth, Height = ChordsView.MinWindowHeight };
+        window.Show();
+        view.Refresh();
+        window.UpdateLayout();
+        var laneBottom = view.Lane.TranslatePoint(new Avalonia.Point(0, view.Lane.Bounds.Height), view)!.Value.Y;
+        var againTop = view.AgainButton.TranslatePoint(new Avalonia.Point(0, 0), view)!.Value.Y;
+        Assert.True(againTop - laneBottom >= 6, $"gap {againTop - laneBottom}");
+        view.Measure(new Avalonia.Size(ChordsView.MinWindowWidth, double.PositiveInfinity));
+        Assert.True(view.DesiredSize.Height <= ChordsView.MinWindowHeight, $"needs {view.DesiredSize.Height}");
+        window.Close();
+    }
+
     [AvaloniaFact]
     public void Preview_TheWindowAt125Percent()
     {
@@ -400,7 +424,7 @@ public class ChordsPluginTests : IDisposable
     [AvaloniaFact]
     public void ReleaseZip_InstallsFromFile_AndRuns()
     {
-        var zip = PluginSandbox.RepoFile("plugins/Noctis.Plugins.Chords/bin/Release/Noctis.Plugins.Chords-1.0.0.zip");
+        var zip = PluginSandbox.RepoFile("plugins/Noctis.Plugins.Chords/bin/Release/Noctis.Plugins.Chords-1.0.1.zip");
         if (!File.Exists(zip)) Assert.Skip("build it first: dotnet build plugins/Noctis.Plugins.Chords -c Release");
 
         using (var archive = ZipFile.OpenRead(zip))
@@ -417,7 +441,7 @@ public class ChordsPluginTests : IDisposable
         var result = host.InstallPackage(zip, allowUpdate: false);
         Assert.Equal(PluginInstallOutcome.Installed, result.Outcome);
         var plugin = result.Plugin!;
-        Assert.Equal(("Chords", "1.0.0", "Noctis"), (plugin.Name, plugin.Version, plugin.Manifest?.Author));
+        Assert.Equal(("Chords", "1.0.1", "Noctis"), (plugin.Name, plugin.Version, plugin.Manifest?.Author));
         Assert.Empty(plugin.Manifest!.Warnings);
         Assert.Equal(new[] { "audio.decode", "playback.control", "menu.commands" }, plugin.Manifest.Permissions);
         Assert.Equal(new[] { "autoFind", "sevenths" }, plugin.Manifest.Settings.Select(s => s.Key));
