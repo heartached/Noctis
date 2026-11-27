@@ -131,8 +131,7 @@ public class LyricsStudioRunAndReviewTests : IDisposable
         Dispatcher.UIThread.RunJobs();
         Assert.Equal(start + TimeSpan.FromMilliseconds(100), vm.ReviewLines[0].Start);
 
-        var row = panel.GetVisualDescendants().OfType<TextBox>().First(t => t.Classes.Contains("line-edit"));
-        row.Focus();
+        var row = panel.GetVisualDescendants().OfType<Noctis.Controls.EditOnDemandText>().First().Edit();
         win.KeyPress(Key.OemOpenBrackets, RawInputModifiers.None, PhysicalKey.BracketLeft, "[");
         Dispatcher.UIThread.RunJobs();
         Assert.Equal(start + TimeSpan.FromMilliseconds(100), vm.ReviewLines[0].Start);

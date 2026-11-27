@@ -323,7 +323,7 @@ public class LyricsStudioPolishTests : IDisposable
             Settle(win);
             var row = Row(panel, 0);
             var time = row.GetVisualDescendants().OfType<Button>().Single(b => b.Classes.Contains("time-pill"));
-            var text = row.GetVisualDescendants().OfType<TextBox>().Single(t => t.Classes.Contains("line-edit"));
+            var text = row.GetVisualDescendants().OfType<Noctis.Controls.EditOnDemandText>().Single();
             var toggle = WordToggle(row);
             Point Left(Control c) => c.TranslatePoint(new Point(0, 0), row)!.Value;
 
