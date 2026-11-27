@@ -184,6 +184,94 @@ public class PluginHostApiTests : IDisposable
         Assert.Empty(host.TrackCommands);
     }
 
+    /// <summary>The official list with Track Tools at <paramref name="version"/> and zip hash <paramref name="sha"/>.</summary>
+    private static PluginCatalog TrackToolsListing(string version, string sha)
+        => PluginCatalog.Parse(PluginCatalogTests.Index(PluginCatalogTests.Entry(
+            id: "dev.noctis.samples.tracktools", name: "Track Tools", version: version, sha256: sha, minAppVersion: null)));
+
+    /// <summary>
+    /// 11-27: an old local copy of A-B Loop ran with Community plugins off. Its record said the
+    /// version it was installed at; the list has since rebuilt that version's zip (another hash).
+    /// The card asked the hash ("Local copy · not verified"), the loader asked only the version.
+    /// One check now: the copy is a community plugin, off while the switch is off.
+    /// </summary>
+    [AvaloniaFact]
+    public void CopyWhoseRecordedHashIsNotTheLists_IsRestrictedWithCommunityOff_AndRunsWithItOn()
+    {
+        _box.Settings.CommunityPluginsEnabled = false;
+        _box.Settings.PluginPermissionGrants["dev.noctis.samples.tracktools"] = new List<string> { "menu.commands", "library.read", "lyrics.provider", "notifications" };
+        InstallTrackTools();
+        _box.Settings.VerifiedOfficialPlugins["dev.noctis.samples.tracktools"] = TrackToolsVersion() + "|" + new string('a', 64);
+        var host = _box.NewHost();
+        // What the app holds at startup: the list built into it, here with the rebuilt zip's hash.
+        var list = TrackToolsListing(TrackToolsVersion(), new string('b', 64));
+        host.SetOfficialList(list);
+        host.LoadAll();
+        var plugin = host.Plugins.Single();
+
+        Assert.False(host.IsTrustedOfficial(plugin));
+        Assert.False(host.IsVerifiedOfficial(plugin, list.Plugins.Single())); // the card agrees
+        Assert.Equal(PluginStatus.Restricted, plugin.Status);
+        Assert.Empty(host.TrackCommands);
+
+        host.SetCommunityPluginsEnabled(true);
+        Assert.Equal(PluginStatus.Running, plugin.Status);
+        host.SetCommunityPluginsEnabled(false);
+        Assert.Equal(PluginStatus.Restricted, plugin.Status);
+    }
+
+    [AvaloniaFact]
+    public void LoadedList_DecidesTrustLive_TheVerifiedCopyStarts_AndAMismatchStops()
+    {
+        _box.Settings.CommunityPluginsEnabled = false;
+        _box.Settings.PluginPermissionGrants["dev.noctis.samples.tracktools"] = new List<string> { "menu.commands", "library.read", "lyrics.provider", "notifications" };
+        InstallTrackTools();
+        var sha = new string('a', 64);
+        _box.Settings.VerifiedOfficialPlugins["dev.noctis.samples.tracktools"] = TrackToolsVersion() + "|" + sha;
+        var host = _box.NewHost();
+        host.SetOfficialList(TrackToolsListing(TrackToolsVersion(), new string('b', 64)));
+        host.LoadAll();
+        var plugin = host.Plugins.Single();
+        Assert.Equal(PluginStatus.Restricted, plugin.Status);
+
+        // The Plugins page fetched the live list: it lists the recorded hash, so the copy is verified.
+        host.SetOfficialList(TrackToolsListing(TrackToolsVersion(), sha));
+        Assert.True(host.IsTrustedOfficial(plugin));
+        Assert.Equal(PluginStatus.Running, plugin.Status);
+        Assert.NotEmpty(host.TrackCommands);
+
+        // A newer version on the list says nothing about this one's zip: the record stands.
+        host.SetOfficialList(TrackToolsListing("99.0.0", new string('c', 64)));
+        Assert.Equal(PluginStatus.Running, plugin.Status);
+
+        // A list whose entry for this version has another hash stops it.
+        host.SetOfficialList(TrackToolsListing(TrackToolsVersion(), new string('d', 64)));
+        Assert.Equal(PluginStatus.Restricted, plugin.Status);
+        Assert.Empty(host.TrackCommands);
+    }
+
+    [AvaloniaFact]
+    public void BuiltInList_IsTheStartupCheck_TheOldA_BLoopHashIsNotTrusted_TheListedOneIs()
+    {
+        // The real case: A-B Loop 1.0.1 was listed with one hash (ecbdaa31), then rebuilt at the
+        // same version (3ac8c7a5). No list is fetched (offline): the copy built into the app decides.
+        var listed = PluginCatalog.LoadEmbedded().Plugins.Single(e => e.Id == "dev.noctis.plugins.abloop");
+        _box.Settings.CommunityPluginsEnabled = false;
+        _box.WriteFolder("abloop", PluginSandbox.Manifest(id: listed.Id, name: "A-B Loop", version: listed.Version, author: "Noctis"),
+            ("Test.Plugin.dll", new byte[] { 1 }));
+        _box.Settings.VerifiedOfficialPlugins[listed.Id] = listed.Version + "|" + new string('0', 64);
+        var host = _box.NewHost();
+        host.LoadAll();
+        var copy = host.Plugins.Single();
+
+        Assert.False(host.IsTrustedOfficial(copy));
+        Assert.Equal(PluginStatus.Restricted, copy.Status);
+
+        _box.Settings.VerifiedOfficialPlugins[listed.Id] = listed.Version + "|" + listed.Sha256;
+        Assert.True(host.IsTrustedOfficial(copy));
+        Assert.True(host.IsVerifiedOfficial(copy, listed));
+    }
+
     // ── First-enable approval ──
 
     [AvaloniaFact]

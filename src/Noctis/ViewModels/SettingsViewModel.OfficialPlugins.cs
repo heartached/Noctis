@@ -92,6 +92,8 @@ public partial class SettingsViewModel
     {
         // A download in progress keeps its row; the new list shows on the next refresh.
         if (OfficialPlugins.Any(p => p.IsBusy)) return;
+        // The loader checks the same list the cards do (one trust check, PluginHost.IsTrustedOfficial).
+        Plugins?.SetOfficialList(catalog);
         OfficialPlugins.Clear();
         foreach (var entry in catalog.Plugins) OfficialPlugins.Add(new OfficialPluginItem(entry));
         RefreshOfficialPluginStates();
@@ -112,7 +114,7 @@ public partial class SettingsViewModel
                 // against the list at install time (PluginHost.IsVerifiedOfficial) is the official
                 // one; any other (installed from a file, a hand-copied build, a zip rebuilt since)
                 // shows on this card as a local copy: no verified mark, Replace with official, and
-                // it still needs the Community switch to run (PluginHost.IsTrustedOfficial).
+                // it needs the Community switch to run (PluginHost.IsTrustedOfficial, the same check).
                 var verified = copy is not null && (!item.IsOfficial || Plugins.IsVerifiedOfficial(copy, item.Entry));
                 item.HasUnverifiedCopy = copy is not null && !verified;
                 item.Installed = copy;

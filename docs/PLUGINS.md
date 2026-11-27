@@ -745,11 +745,18 @@ it was installed:
 
 *Get plugins* downloads always go through that check. *Install from file* does too, when the zip
 is the listed id and version, so the official zip installed by hand is still official. Anything
-else with an official plugin's id shows as a separate community card, and the official card
-offers **Replace with official** (downloads the listed zip and puts it in place; data and
-settings are kept). A copy installed before this check existed shows the same way until replaced
-or updated once. The result is kept per plugin id in settings.json (`VerifiedOfficialPlugins`)
-and dropped when the plugin is removed or replaced by another zip.
+else with an official plugin's id shows on the official card as **Local copy · not verified**,
+and the card offers **Replace with official** (downloads the listed zip and puts it in place;
+data and settings are kept). Such a copy is a community plugin: it only runs while *Community
+plugins* is on. A copy installed before this check existed shows the same way until replaced
+or updated once. The result is kept per plugin id in settings.json (`VerifiedOfficialPlugins`:
+version and zip SHA-256) and dropped when the plugin is removed or replaced by another zip.
+
+Every start checks that record again, against the list built into the app (so it holds
+offline), and again once the Plugins page has loaded the live list: when the list has the
+recorded version with another SHA-256 (a zip rebuilt at the same version), the copy is no longer
+verified and stops while *Community plugins* is off. With `NOCTIS_PLUGIN_INDEX` set, the
+built-in list is not used for this; the record alone decides until the test list is loaded.
 
 ## Official plugins (Get plugins)
 

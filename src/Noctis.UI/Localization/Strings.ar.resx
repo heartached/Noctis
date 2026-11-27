@@ -6564,6 +6564,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Plugins.Detail.Enabled" xml:space="preserve"><value>مفعّلة</value></data>
   <data name="Plugins.Detail.EnableLine" xml:space="preserve"><value>أوقفها لإيقاف الإضافة دون إزالتها.</value></data>
   <data name="Plugins.Detail.RestrictedLine" xml:space="preserve"><value>شغّل إضافات المجتمع لاستخدامها.</value></data>
+  <data name="Plugins.Detail.LocalCopyRestrictedLine" xml:space="preserve"><value>هذه النسخة غير موثقة، لذا تبقى متوقفة ما دامت إضافات المجتمع متوقفة. استبدلها بالنسخة الرسمية لاستخدامها.</value></data>
   <data name="Plugins.Detail.Files" xml:space="preserve"><value>ملفات الإضافة</value></data>
   <data name="Plugins.Detail.FilesLine" xml:space="preserve"><value>عند إزالتها تُحفظ إعداداتها وبياناتها ما لم تختر غير ذلك.</value></data>
   <data name="Plugins.Detail.More" xml:space="preserve"><value>المزيد</value></data>

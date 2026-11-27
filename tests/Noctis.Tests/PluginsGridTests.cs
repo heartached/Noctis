@@ -336,6 +336,10 @@ public class PluginsGridTests : IDisposable
         Assert.True(m.Vm.ShowOfficialSection);
         Assert.Contains(card, m.Vm.OfficialCards);
         Assert.Equal(Loc.T("Plugins.Card.Blocked"), card.ChipText);
+        // The page says why, and its Replace with official stays on offer.
+        Assert.Equal(Loc.T("Plugins.Detail.LocalCopyRestrictedLine"), card.EnableLine);
+        Assert.True(card.ShowInlineButton);
+        Assert.Equal(Loc.T("Plugins.Get.Replace"), card.Listing!.ButtonText);
 
         // A copy installed from the list whose zip was rebuilt at the same version since (A-B Loop,
         // 8c402942): the list's hash wins, so it is a local copy too, still the one card.
@@ -345,6 +349,10 @@ public class PluginsGridTests : IDisposable
         await m.Vm.LoadOfficialPluginsAsync();
         Assert.Single(m.Vm.OfficialCards.Concat(m.Vm.CommunityCards), c => c.Id == OfficialId);
         Assert.True(m.Vm.OfficialCards.Single().IsLocalCopy);
+        // 11-27: and it no longer runs with Community plugins off (the loader checks the same hash).
+        Assert.False(m.Host.IsTrustedOfficial(m.Host.FindById(OfficialId)!));
+        m.Host.SetCommunityPluginsEnabled(false);
+        Assert.True(m.Host.FindById(OfficialId)!.IsRestricted);
     }
 
     /// <summary>Every card has a state pill (owner 11-26: three official cards had none because

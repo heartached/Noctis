@@ -6564,6 +6564,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Plugins.Detail.Enabled" xml:space="preserve"><value>已启用</value></data>
   <data name="Plugins.Detail.EnableLine" xml:space="preserve"><value>关闭后插件将停止运行，但不会被移除。</value></data>
   <data name="Plugins.Detail.RestrictedLine" xml:space="preserve"><value>开启社区插件后才能使用。</value></data>
+  <data name="Plugins.Detail.LocalCopyRestrictedLine" xml:space="preserve"><value>此副本未经验证，社区插件关闭时它会保持关闭。替换为官方版即可使用。</value></data>
   <data name="Plugins.Detail.Files" xml:space="preserve"><value>插件文件</value></data>
   <data name="Plugins.Detail.FilesLine" xml:space="preserve"><value>移除后会保留其设置和数据，除非你另行选择。</value></data>
   <data name="Plugins.Detail.More" xml:space="preserve"><value>更多</value></data>

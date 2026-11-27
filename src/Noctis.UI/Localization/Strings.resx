@@ -2586,6 +2586,7 @@ Years: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar sear
   <data name="Plugins.Detail.Enabled" xml:space="preserve"><value>Enabled</value></data>
   <data name="Plugins.Detail.EnableLine" xml:space="preserve"><value>Turn it off to stop the plugin without removing it.</value></data>
   <data name="Plugins.Detail.RestrictedLine" xml:space="preserve"><value>Turn on Community plugins to use it.</value></data>
+  <data name="Plugins.Detail.LocalCopyRestrictedLine" xml:space="preserve"><value>This copy isn't verified, so it stays off while Community plugins are off. Replace it with the official one to use it.</value></data>
   <data name="Plugins.Detail.Files" xml:space="preserve"><value>Plugin files</value></data>
   <data name="Plugins.Detail.FilesLine" xml:space="preserve"><value>Removing it keeps its settings and data unless you choose otherwise.</value></data>
   <data name="Plugins.Detail.More" xml:space="preserve"><value>More</value></data>
