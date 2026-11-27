@@ -416,7 +416,8 @@ public class AlbumTownPluginTests
         public void SaveApartments(ApartmentLayout layout) { Layout = layout; LayoutSaves++; }
         public string MenuBar { get; set; } = "Top (horizontal)";
         public Dictionary<string, string[]> Lyrics { get; } = new();
-        public IReadOnlyList<string> LoadLyricLines(string trackId) => Lyrics.GetValueOrDefault(trackId) ?? Array.Empty<string>();
+        public Exception? LyricsFailure;
+        public IReadOnlyList<string> LoadLyricLines(string trackId) => LyricsFailure is { } fail ? throw fail : Lyrics.GetValueOrDefault(trackId) ?? Array.Empty<string>();
     }
 
     private static (AlbumTownView View, FakeTownHost Host) NewView(int albums, int crowd = 40)
@@ -1567,9 +1568,9 @@ public class AlbumTownPluginTests
         Assert.Empty(manifest.Warnings);
         // The author is Jafezy JD: Noctis is not credited as the author anywhere a user reads it.
         Assert.Equal("Jafezy JD", manifest.Author);
-        Assert.Equal("1.0.2", manifest.Version);
+        Assert.Equal("1.0.3", manifest.Version);
         var plugin = new AlbumTownPlugin();
-        Assert.Equal(("Jafezy JD", "1.0.2", AlbumTownPlugin.About), (plugin.Info.Author, plugin.Info.Version, plugin.Info.Description));
+        Assert.Equal(("Jafezy JD", "1.0.3", AlbumTownPlugin.About), (plugin.Info.Author, plugin.Info.Version, plugin.Info.Description));
         // No by-line in the description: the card already says "by Jafezy JD".
         Assert.Equal(AlbumTownPlugin.About, manifest.Description);
         Assert.DoesNotContain("Jafezy", manifest.Description);
@@ -1626,7 +1627,7 @@ public class AlbumTownPluginTests
     [AvaloniaFact]
     public void ReleaseZip_InstallsFromFile_AndRuns()
     {
-        var zip = PluginSandbox.RepoFile("plugins/Noctis.Plugins.AlbumTown/bin/Release/Noctis.Plugins.AlbumTown-1.0.2.zip");
+        var zip = PluginSandbox.RepoFile("plugins/Noctis.Plugins.AlbumTown/bin/Release/Noctis.Plugins.AlbumTown-1.0.3.zip");
         if (!File.Exists(zip)) Assert.Skip("build it first: dotnet build plugins/Noctis.Plugins.AlbumTown -c Release");
 
         using (var archive = ZipFile.OpenRead(zip))
@@ -1644,7 +1645,7 @@ public class AlbumTownPluginTests
         var result = host.InstallPackage(zip, allowUpdate: false);
         Assert.Equal(PluginInstallOutcome.Installed, result.Outcome);
         var plugin = result.Plugin!;
-        Assert.Equal(("Album Town", "1.0.2", "Jafezy JD"), (plugin.Name, plugin.Version, plugin.Manifest?.Author));
+        Assert.Equal(("Album Town", "1.0.3", "Jafezy JD"), (plugin.Name, plugin.Version, plugin.Manifest?.Author));
         Assert.Equal(PluginStatus.Disabled, plugin.Status); // waits for the user's approval
 
         host.SetEnabled(plugin, true);

@@ -149,6 +149,7 @@ public sealed class YouTubeImporter : IYouTubeImporter
         var produced = await Tool.DownloadAsync(info.Url, folder, ffmpeg, null, ct,
             status => progress?.Report(new YouTubeImportProgress(status, 0.05)), format, downloadDetail).ConfigureAwait(false);
 
+        string? moved = null;
         try
         {
             progress?.Report(new YouTubeImportProgress("Tagging", 0.85));
@@ -156,6 +157,7 @@ public sealed class YouTubeImporter : IYouTubeImporter
             var ext = Path.GetExtension(produced);
             var final = UniquePath(Path.Combine(folder, YtDlpParsing.BuildFileName(artist, title, ext)));
             File.Move(produced, final);
+            moved = final;
             YtDlpTool.CleanupScratch(produced);
 
             var album = string.IsNullOrWhiteSpace(info.Album) ? title : info.Album!;
@@ -192,6 +194,19 @@ public sealed class YouTubeImporter : IYouTubeImporter
             progress?.Report(new YouTubeImportProgress("Done", 1));
             Log($"YouTube.Imported: {artist} - {title} → {Path.GetFileName(final)} ({format.Key}, in library: {added})");
             return new YouTubeImportResult(final, artist, title, added);
+        }
+        catch (OperationCanceledException)
+        {
+            // Stopped (Noctis closing, the plugin switched off) after the file reached the music
+            // folder: it is untagged and not in the library, so it would turn up half-made on the
+            // next rescan. Take it back out.
+            if (moved is not null)
+            {
+                try { File.Delete(moved); }
+                catch (Exception ex) { Log("YouTube.CancelCleanupFailed: " + ex.Message); }
+            }
+            YtDlpTool.CleanupScratch(produced);
+            throw;
         }
         catch
         {

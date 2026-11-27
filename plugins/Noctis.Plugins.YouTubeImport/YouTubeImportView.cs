@@ -32,6 +32,9 @@ public sealed class YouTubeImportView : UserControl
         EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
         GradientStops = { new GradientStop(Color.FromRgb(0xFF, 0x7A, 0x6B), 0), new GradientStop(Color.FromRgb(0xF0, 0x44, 0x4E), 1) },
     };
+    // A grey that shows on both themes: the white tint the thumbnail box and the loading bones had
+    // vanished on the light page.
+    internal static readonly IBrush PlaceholderBrush = new SolidColorBrush(Color.FromArgb(0x24, 0x80, 0x80, 0x80));
     private static readonly IBrush FailedBrush = new SolidColorBrush(Color.FromRgb(0xFF, 0x8A, 0x80));
     // Drawn in its own 22 px box (Stretch.None): Uniform drew the 17 px-wide triangle at the
     // box's left edge. The box centre is 11; the triangle's is 12.2, 7% of its width to the
@@ -119,7 +122,7 @@ public sealed class YouTubeImportView : UserControl
         var results = new ScrollViewer { HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled, Content = ResultsList, Padding = new Thickness(0, 0, 12, 0) };
         results.Bind(IsVisibleProperty, new Binding(nameof(vm.ShowResults)));
 
-        var body = new Panel { MinHeight = 220, Children = { BuildSetup(vm), BuildSkeleton(vm), BuildEmpty(vm), results } };
+        var body = new Panel { MinHeight = 180, Children = { BuildSetup(vm), BuildSkeleton(vm), BuildEmpty(vm), results } };
 
         // ── Recent downloads. ──
         RecentList = new ItemsControl { Name = "RecentList", ItemTemplate = new FuncDataTemplate<RecentDownload>((_, _) => BuildRecentRow(), supportsRecycling: false) };
@@ -133,7 +136,8 @@ public sealed class YouTubeImportView : UserControl
         var recent = new StackPanel
         {
             Margin = new Thickness(0, 12, 0, 0),
-            Children = { recentHeader, new ScrollViewer { MaxHeight = 150, Content = RecentList, Padding = new Thickness(0, 0, 12, 0) } },
+            // Titles trim to the window: never a sideways scroll (the app's ScrollViewer default is Auto).
+            Children = { recentHeader, new ScrollViewer { MaxHeight = 150, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled, Content = RecentList, Padding = new Thickness(0, 0, 12, 0) } },
         };
         recent.Bind(IsVisibleProperty, new Binding(nameof(vm.HasRecent)));
 
@@ -308,7 +312,7 @@ public sealed class YouTubeImportView : UserControl
         static Border Bone(double width, double height, double radius = -1) => new()
         {
             Width = width, Height = height, CornerRadius = new CornerRadius(radius < 0 ? height / 2 : radius),
-            HorizontalAlignment = HorizontalAlignment.Left, Background = new SolidColorBrush(Color.FromArgb(0x17, 0xFF, 0xFF, 0xFF)),
+            HorizontalAlignment = HorizontalAlignment.Left, Background = PlaceholderBrush,
         };
     }
 
@@ -328,7 +332,7 @@ public sealed class YouTubeImportView : UserControl
     {
         var thumb = new Image { Stretch = Stretch.UniformToFill };
         thumb.Bind(Image.SourceProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.Thumbnail)));
-        var art = new Border { Width = 56, Height = 56, CornerRadius = new CornerRadius(12), ClipToBounds = true, Background = new SolidColorBrush(Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF)), Child = thumb, VerticalAlignment = VerticalAlignment.Center };
+        var art = new Border { Width = 56, Height = 56, CornerRadius = new CornerRadius(12), ClipToBounds = true, Background = PlaceholderBrush, Child = thumb, VerticalAlignment = VerticalAlignment.Center };
 
         var title = new TextBlock { FontSize = 13.5, FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis };
         title.Bind(TextBlock.TextProperty, new Binding(nameof(YouTubeImportViewModel.ResultRow.Title)));

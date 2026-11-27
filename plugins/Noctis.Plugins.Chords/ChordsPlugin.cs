@@ -14,7 +14,7 @@ namespace Noctis.Plugins.Chords;
 public sealed class ChordsPlugin : INoctisPlugin, IPluginViewProvider
 {
     public const string Id = "dev.noctis.plugins.chords";
-    public const string Version = "1.0.0";
+    public const string Version = "1.0.1";
     public const string About = "Shows the playing song's chords, found from its audio.";
     public const string ShowChordsLabel = "Show chords";
     // Piano keys (Material Icons "piano", 24x24 box).
