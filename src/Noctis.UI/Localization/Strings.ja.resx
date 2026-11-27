@@ -7277,7 +7277,6 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="StudioPicker.Clear" xml:space="preserve"><value>選択解除</value><comment>Choose songs footer: Select all once every row on show is ticked (unticks them)</comment></data>
   <data name="StudioPicker.OneSong" xml:space="preserve"><value>1曲</value><comment>Choose songs: tag on an album row with one local song</comment></data>
   <data name="StudioPicker.SongCount" xml:space="preserve"><value>{0}曲</value><comment>Choose songs: tag on an album row ({0} = local songs on it)</comment></data>
-  <data name="LyricsStudio.Queue" xml:space="preserve">
     <value>曲</value>
     <comment>Queue column header</comment>
   </data>
@@ -7354,7 +7353,6 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="LyricsStudio.TranscribeDraft" xml:space="preserve"><value>聴き取りで書き起こす · 試験的</value><comment>Lyrics box button: transcribe the song into the box</comment></data>
   <data name="LyricsStudio.TranscribeDraftTip" xml:space="preserve"><value>Lullaby が聞こえた言葉を書き起こします。歌声はうまく書き起こせないことが多いため、タイミングを合わせる前に言葉を修正してください。</value><comment>Tooltip "Lullaby" is the model's name: keep it untranslated.</comment></data>
   <data name="LyricsStudio.Align" xml:space="preserve"><value>タイミングを合わせる</value><comment>Lyrics box primary button</comment></data>
-  <data name="LyricsStudio.Beta" xml:space="preserve"><value>ベータ</value><comment>Pill next to the Lyrics Studio title (top bar and dialog header)</comment></data>
   <data name="LyricsStudio.Preview" xml:space="preserve"><value>プレビュー</value><comment>Review button: play the song on the lyrics page with the unsaved timings</comment></data>
   <data name="LyricsStudio.PreviewTip" xml:space="preserve"><value>曲を再生し、未保存のタイミングを選択した形式で歌詞ページに表示します。何も保存されません。</value><comment>Tooltip</comment></data>
   <data name="LyricsStudio.AlignTip" xml:space="preserve"><value>選択した形式でこの歌詞を曲に合わせてタイミングを付け、保存前に確認します</value><comment>Tooltip</comment></data>

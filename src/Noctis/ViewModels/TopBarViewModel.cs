@@ -24,11 +24,7 @@ public partial class TopBarViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(PageTitleDisplay))]
     [NotifyPropertyChangedFor(nameof(CurrentTabTitle))]
     [NotifyPropertyChangedFor(nameof(IsSearchActionAvailable))]
-    [NotifyPropertyChangedFor(nameof(IsBetaPage))]
     private string _currentTabName = "Library";
-
-    /// <summary>Sections still in beta carry a "Beta" pill next to the header title (Lyrics Studio, 09-23).</summary>
-    public bool IsBetaPage => CurrentTabName == "Lyrics Studio";
 
     /// <summary>Localized display name of the current section.</summary>
     public string CurrentTabTitle => Loc.T(TabTitleKey(CurrentTabName));

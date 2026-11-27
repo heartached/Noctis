@@ -7277,7 +7277,6 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="StudioPicker.Clear" xml:space="preserve"><value>清除</value><comment>Choose songs footer: Select all once every row on show is ticked (unticks them)</comment></data>
   <data name="StudioPicker.OneSong" xml:space="preserve"><value>1 首歌曲</value><comment>Choose songs: tag on an album row with one local song</comment></data>
   <data name="StudioPicker.SongCount" xml:space="preserve"><value>{0} 首歌曲</value><comment>Choose songs: tag on an album row ({0} = local songs on it)</comment></data>
-  <data name="LyricsStudio.Queue" xml:space="preserve">
     <value>歌曲</value>
     <comment>Queue column header</comment>
   </data>
@@ -7354,7 +7353,6 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="LyricsStudio.TranscribeDraft" xml:space="preserve"><value>改为聆听 · 实验性</value><comment>Lyrics box button: transcribe the song into the box</comment></data>
   <data name="LyricsStudio.TranscribeDraftTip" xml:space="preserve"><value>Lullaby 会写下它听到的内容。演唱的人声常常转录不准：对齐前请修正文字。</value><comment>Tooltip "Lullaby" is the model's name: keep it untranslated.</comment></data>
   <data name="LyricsStudio.Align" xml:space="preserve"><value>对齐歌词</value><comment>Lyrics box primary button</comment></data>
-  <data name="LyricsStudio.Beta" xml:space="preserve"><value>Beta</value><comment>Pill next to the Lyrics Studio title (top bar and dialog header)</comment></data>
   <data name="LyricsStudio.Preview" xml:space="preserve"><value>预览</value><comment>Review button: play the song on the lyrics page with the unsaved timings</comment></data>
   <data name="LyricsStudio.PreviewTip" xml:space="preserve"><value>播放歌曲，并在歌词页面以所选格式查看这些未保存的时间轴。不会保存任何内容。</value><comment>Tooltip</comment></data>
   <data name="LyricsStudio.AlignTip" xml:space="preserve"><value>按所选格式将这些歌词与歌曲对齐计时，保存前可先检查</value><comment>Tooltip</comment></data>

@@ -491,15 +491,7 @@
         <Grid DockPanel.Dock="Top" Margin="24,18,24,10" ColumnDefinitions="*,Auto"
               IsVisible="{Binding $parent[views:LyricsStudioPanel].ShowHeader}">
             <StackPanel Grid.Column="0" Spacing="2">
-                <StackPanel Orientation="Horizontal" Spacing="10">
-                    <TextBlock Text="{loc:T LyricsStudio.Title}" FontSize="20" FontWeight="Bold" VerticalAlignment="Center" />
-                    <!-- Same "Beta" pill as the sidebar page's header title. -->
-                    <Border CornerRadius="999" Padding="6,0,6,1" Margin="0,1,0,0" VerticalAlignment="Center"
-                            BorderBrush="{DynamicResource AccentColorBrush}" BorderThickness="1.5" UseLayoutRounding="True">
-                        <TextBlock Text="{loc:T LyricsStudio.Beta}" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center"
-                                   Foreground="{DynamicResource AccentColorBrush}" />
-                    </Border>
-                </StackPanel>
+                <TextBlock Text="{loc:T LyricsStudio.Title}" FontSize="20" FontWeight="Bold" />
                 <TextBlock Text="{loc:T LyricsStudio.Subtitle}" FontSize="12" Opacity="0.6" TextWrapping="Wrap" />
             </StackPanel>
             <Button Grid.Column="1" Classes="dialog-close" Command="{Binding CloseCommand}"
