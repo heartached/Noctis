@@ -1222,6 +1222,14 @@ public partial class MainWindowViewModel : ViewModelBase
         // hand them back once everything has gone quiet (see MemoryTrim). While music
         // plays the trim must not block: a forced compacting GC stalls the render thread.
         Services.MemoryTrim.IsAudioPlaying = () => Player.IsPlaying;
+        // GC latency follows playback (background-only gen2 while music plays), and a
+        // compacting trim skipped while playing runs once it stops (see SetAudioPlaying).
+        Services.MemoryTrim.SetAudioPlaying(Player.IsPlaying);
+        Player.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(PlayerViewModel.State))
+                Services.MemoryTrim.SetAudioPlaying(Player.IsPlaying);
+        };
         Services.MemoryTrim.RequestAfterIdle("startup");
 
         // Refresh non-visible content VMs so their data is ready when navigated to.
