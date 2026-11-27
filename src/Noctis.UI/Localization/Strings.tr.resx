@@ -4106,6 +4106,11 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>Puanlar</value></data>
   <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>Favoriler</value></data>
   <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>Her şarkı satırının sonunda yıldızlar ya da kalp</value></data>
+  <data name="Mobile.Settings.ScanSchedule" xml:space="preserve"><value>Kitaplığı Tara</value><comment>Settings › Library row: when a start of the app rescans the folders</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.EveryStart" xml:space="preserve"><value>Her Açılışta</value><comment>Scan Library choice: a scan at each start</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Daily" xml:space="preserve"><value>Günlük</value><comment>Scan Library choice: at the first start of a day</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Weekly" xml:space="preserve"><value>Haftalık</value><comment>Scan Library choice: at a start 7+ days after the last scan</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Manual" xml:space="preserve"><value>Yalnızca Elle</value><comment>Scan Library choice: only with Rescan Library</comment></data>
   <data name="Mobile.Rate" xml:space="preserve"><value>Puanla</value></data>
   <data name="Mobile.RateStars" xml:space="preserve"><value>5 üzerinden {0} puan ver</value></data>
   <data name="Mobile.ClearRating" xml:space="preserve"><value>Puanı temizle</value></data>

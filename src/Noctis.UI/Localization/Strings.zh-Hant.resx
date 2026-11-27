@@ -9054,6 +9054,11 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>評分</value></data>
   <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>收藏</value></data>
   <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>在每行歌曲末尾顯示星級或愛心</value></data>
+  <data name="Mobile.Settings.ScanSchedule" xml:space="preserve"><value>掃描資料庫</value><comment>Settings › Library row: when a start of the app rescans the folders</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.EveryStart" xml:space="preserve"><value>每次啟動</value><comment>Scan Library choice: a scan at each start</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Daily" xml:space="preserve"><value>每天</value><comment>Scan Library choice: at the first start of a day</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Weekly" xml:space="preserve"><value>每週</value><comment>Scan Library choice: at a start 7+ days after the last scan</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Manual" xml:space="preserve"><value>僅手動</value><comment>Scan Library choice: only with Rescan Library</comment></data>
   <data name="Mobile.Rate" xml:space="preserve"><value>評分</value></data>
   <data name="Mobile.RateStars" xml:space="preserve"><value>評為 {0} 星（滿分 5）</value></data>
   <data name="Mobile.ClearRating" xml:space="preserve"><value>清除評分</value></data>

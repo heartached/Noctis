@@ -9054,6 +9054,11 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>التقييمات</value></data>
   <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>المفضلة</value></data>
   <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>نجوم أو قلب في نهاية كل صف أغنية</value></data>
+  <data name="Mobile.Settings.ScanSchedule" xml:space="preserve"><value>فحص المكتبة</value><comment>Settings › Library row: when a start of the app rescans the folders</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.EveryStart" xml:space="preserve"><value>عند كل تشغيل</value><comment>Scan Library choice: a scan at each start</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Daily" xml:space="preserve"><value>يوميًا</value><comment>Scan Library choice: at the first start of a day</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Weekly" xml:space="preserve"><value>أسبوعيًا</value><comment>Scan Library choice: at a start 7+ days after the last scan</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Manual" xml:space="preserve"><value>يدويًا فقط</value><comment>Scan Library choice: only with Rescan Library</comment></data>
   <data name="Mobile.Rate" xml:space="preserve"><value>تقييم</value></data>
   <data name="Mobile.RateStars" xml:space="preserve"><value>تقييم {0} من 5</value></data>
   <data name="Mobile.ClearRating" xml:space="preserve"><value>مسح التقييم</value></data>

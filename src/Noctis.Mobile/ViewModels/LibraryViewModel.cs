@@ -184,8 +184,12 @@ public sealed partial class LibraryViewModel : ObservableObject
     private bool _isScanning;
     [ObservableProperty] private int _scanProgress;
 
-    /// <summary>When this run's last scan finished (local time); null until one has. Settings → Rescan Library says so.</summary>
+    /// <summary>When the last scan finished (local time), this run's or the saved one
+    /// (AppSettings.PhoneLastScanUtc); null until one has. Settings → Rescan Library says so.</summary>
     [ObservableProperty] private DateTime? _lastScanLocal;
+
+    /// <summary>The clock Scan Library's Daily and Weekly read (tests set it).</summary>
+    internal Func<DateTime> UtcNow { get; init; } = () => DateTime.UtcNow;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasMusic), nameof(ShowConnectCard), nameof(HasNotice), nameof(ShowSections))]
@@ -764,8 +768,12 @@ public sealed partial class LibraryViewModel : ObservableObject
         {
             _applyingSettings = true;
             ScanOnStartup = settings.ScanOnStartup;
+            _scanInterval = ScanSchedules.ParseInterval(settings.PhoneScanSchedule);
             _applyingSettings = false;
+            OnPropertyChanged(nameof(ScanSchedule));
         }
+        // A scan this run already finished is newer than the saved one.
+        LastScanLocal ??= settings.PhoneLastScanUtc?.ToLocalTime();
         _pinnedAlbumIds = settings.PinnedAlbumIds.ToList();
         _pinnedArtistNames = settings.PinnedArtistNames.ToList();
         _pinnedTrackIds = settings.PinnedTrackIds.ToList();
@@ -933,6 +941,7 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     partial void OnScanOnStartupChanged(bool value)
     {
+        OnPropertyChanged(nameof(ScanSchedule));
         if (_applyingSettings) return;
         _scanOnStartupSetByUser = true;
         _ = SaveScanOnStartupAsync(value);
@@ -941,8 +950,41 @@ public sealed partial class LibraryViewModel : ObservableObject
     private Task SaveScanOnStartupAsync(bool value) =>
         UpdateSettingsAsync(s => s.ScanOnStartup = value, "Scan on startup");
 
-    /// <summary>The host calls this once the library has loaded at launch.</summary>
-    public Task ScanAtStartupAsync() => ScanOnStartup && (HasFolders || AllMusic) ? ScanAsync() : Task.CompletedTask;
+    /// <summary>How often a start scans while <see cref="ScanOnStartup"/> is on (AppSettings.PhoneScanSchedule).</summary>
+    private ScanSchedule _scanInterval;
+
+    /// <summary>Settings › Library › Scan Library: Every Start (the default), Daily, Weekly, or
+    /// Manual Only (<see cref="ScanOnStartup"/> off). Set through <see cref="SetScanSchedule"/>.</summary>
+    public ScanSchedule ScanSchedule => ScanOnStartup ? _scanInterval : ScanSchedule.Manual;
+
+    /// <summary>A pick on the Scan Library menu: applied at once, saved in one write.</summary>
+    public void SetScanSchedule(ScanSchedule schedule)
+    {
+        var on = schedule != ScanSchedule.Manual;
+        if (on) _scanInterval = schedule;
+        var interval = _scanInterval;
+        _scanOnStartupSetByUser = true;
+        _applyingSettings = true;
+        ScanOnStartup = on;
+        _applyingSettings = false;
+        OnPropertyChanged(nameof(ScanSchedule));
+        _ = UpdateSettingsAsync(s =>
+        {
+            s.ScanOnStartup = on;
+            s.PhoneScanSchedule = ScanSchedules.Key(interval);
+        }, nameof(AppSettings.PhoneScanSchedule));
+    }
+
+    /// <summary>The host calls this once the library has loaded at launch: a scan when Scan Library
+    /// says one is due by the last scan's time (<see cref="ScanSchedules.IsDue"/>).</summary>
+    public Task ScanAtStartupAsync()
+    {
+        if (!(HasFolders || AllMusic)) return Task.CompletedTask;
+        var last = LastScanLocal?.ToUniversalTime();
+        if (ScanSchedules.IsDue(ScanSchedule, last, UtcNow())) return ScanAsync();
+        DebugLog.Write("Library", $"Start scan skipped: {ScanSchedule}, last scan {last:u}");
+        return Task.CompletedTask;
+    }
 
     /// <summary>Set when a scan is asked for while one runs: the running one goes again once it
     /// ends, so a folder added or removed mid-scan is never left out of (or in) the library.</summary>
@@ -1002,7 +1044,13 @@ public sealed partial class LibraryViewModel : ObservableObject
             }
             while (_scanAgain);
             if (StatusText == Loc.T("Mobile.Library.Scanning")) StatusText = string.Empty; // ScanAborted may have replaced it
-            if ((HasFolders || AllMusic) && !NeedsReconnect) LastScanLocal = DateTime.Now;
+            if ((HasFolders || AllMusic) && !NeedsReconnect)
+            {
+                // Saved: Scan Library's Daily and Weekly count from it on the next starts.
+                var finished = UtcNow();
+                LastScanLocal = finished.ToLocalTime();
+                _ = UpdateSettingsAsync(s => s.PhoneLastScanUtc = finished, nameof(AppSettings.PhoneLastScanUtc));
+            }
         }
         catch (Exception ex)
         {
