@@ -7,6 +7,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -41,6 +42,9 @@ public partial class ArtistDetailView : UserControl
             if (e.Property == VideoBackdrop.HasFrameProperty) ApplyHeroVideoFrame(HeroVideo.HasFrame);
         };
         PageScrollViewer.ScrollChanged += (_, _) => UpdateHeroVideoPause();
+        // Follows a theme or accent tint swapping the page colour.
+        HeroPageFade.Bind(Border.BackgroundProperty,
+            this.GetResourceObservable("AppMainBackground", o => HeroFadeBrush(o as IBrush)));
     }
 
     // ── Artist video in the hero ──
@@ -63,12 +67,49 @@ public partial class ArtistDetailView : UserControl
         UpdateHeroVideoPause();
     }
 
-    /// <summary>The video holds its frame while the window is in the background or the hero is
-    /// scrolled out of view (VideoBackdrop parks it while the window is minimized on its own).</summary>
+    /// <summary>Share of the hero that must still be on screen for its video to play.</summary>
+    internal const double HeroVisibleToPlay = 0.3;
+
+    /// <summary>The video holds its frame while the window is in the background, the Settings
+    /// sheet covers the page, or less than <see cref="HeroVisibleToPlay"/> of the hero is
+    /// scrolled into view (VideoBackdrop parks it while the window is minimized on its own).</summary>
     internal void UpdateHeroVideoPause()
     {
-        var heroOnScreen = PageScrollViewer.Offset.Y < Math.Max(1, Hero.Bounds.Height);
-        HeroVideo.IsPaused = !(_heroWindowActive && heroOnScreen);
+        var heroHeight = Math.Max(1, Hero.Bounds.Height);
+        var heroOnScreen = PageScrollViewer.Offset.Y < heroHeight * (1 - HeroVisibleToPlay);
+        var covered = _trackedVm?.IsCovered == true;
+        HeroVideo.IsPaused = !(_heroWindowActive && heroOnScreen && !covered);
+    }
+
+    private void OnTrackedVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ArtistDetailViewModel.IsCovered)) UpdateHeroVideoPause();
+    }
+
+    /// <summary>
+    /// The hero's fade into the page: the page colour as a vertical gradient, transparent at the
+    /// top. It was a page-coloured Border under a gradient OpacityMask, which is an offscreen
+    /// layer the size of the hero redrawn with every video frame (probe, real Skia at 1600x900:
+    /// 20.5-25.6 ms a frame with it, 13.8 without). Same pixels: the colour keeps its own alpha
+    /// and the brush's opacity, each stop's alpha scaled by the old mask's.
+    /// </summary>
+    internal static IBrush? HeroFadeBrush(IBrush? page)
+    {
+        if (page is not ISolidColorBrush solid) return page;
+        var c = solid.Color;
+        Color At(double mask) => Color.FromArgb((byte)Math.Round(c.A * mask), c.R, c.G, c.B);
+        return new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
+            Opacity = solid.Opacity,
+            GradientStops =
+            {
+                new GradientStop(At(0), 0.4),
+                new GradientStop(At(0xB0 / 255.0), 0.82),
+                new GradientStop(At(1), 1),
+            },
+        };
     }
 
     private void HookHeroWindow()
@@ -146,9 +187,18 @@ public partial class ArtistDetailView : UserControl
     private void TrackViewModel(ArtistDetailViewModel? vm)
     {
         if (ReferenceEquals(_trackedVm, vm)) return;
-        if (_trackedVm != null) _trackedVm.TabChanged -= OnTabChanged;
+        if (_trackedVm != null)
+        {
+            _trackedVm.TabChanged -= OnTabChanged;
+            _trackedVm.PropertyChanged -= OnTrackedVmPropertyChanged;
+        }
         _trackedVm = vm;
-        if (_trackedVm != null) _trackedVm.TabChanged += OnTabChanged;
+        if (_trackedVm != null)
+        {
+            _trackedVm.TabChanged += OnTabChanged;
+            _trackedVm.PropertyChanged += OnTrackedVmPropertyChanged;
+        }
+        UpdateHeroVideoPause();
     }
 
     /// <summary>A tab switch lands at the top of the tab strip: the hero stays above,

@@ -740,9 +740,14 @@
                 </Panel>
                 <!-- The artist's Apple Music motion video, muted and looping, across the whole
                      band under the darkening gradients and the fade below. Paused while the hero
-                     is scrolled away or the window is in the background (code-behind); stopped
+                     is mostly scrolled away, the Settings sheet covers the page or the window is
+                     in the background (code-behind); stopped as too slow on a slow machine;
+                     stopped
                      when the page is left (the VM clears the path) or the window is minimized. -->
                 <ctrl:VideoBackdrop x:Name="HeroVideo"
+                                    LogName="ArtistVideo"
+                                    StopWhenSlow="True"
+                                    MaxFps="30"
                                     Source="{Binding ArtistVideoPath}"
                                     IsActive="{Binding HasArtistVideo}"
                                     IsVisible="{Binding HasArtistVideo}"
@@ -772,15 +777,9 @@
                         </LinearGradientBrush>
                     </Rectangle.Fill>
                 </Rectangle>
-                <Border Background="{DynamicResource AppMainBackground}">
-                    <Border.OpacityMask>
-                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-                            <GradientStop Color="#00000000" Offset="0.4" />
-                            <GradientStop Color="#B0000000" Offset="0.82" />
-                            <GradientStop Color="#FF000000" Offset="1" />
-                        </LinearGradientBrush>
-                    </Border.OpacityMask>
-                </Border>
+                <!-- Fade into the page: the page colour as a gradient (code-behind, HeroFadeBrush),
+                     not an OpacityMask, which redrew an offscreen layer with every video frame. -->
+                <Border x:Name="HeroPageFade" IsHitTestVisible="False" />
 
                 <Grid ColumnDefinitions="*"
                       VerticalAlignment="Bottom"
