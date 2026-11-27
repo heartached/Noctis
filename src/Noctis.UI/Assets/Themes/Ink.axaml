@@ -156,4 +156,6 @@
     <SolidColorBrush x:Key="MenuV2TileHoverBrush" Color="#1FFFFFFF" />
     <SolidColorBrush x:Key="MenuV2TilePressedBrush" Color="#29FFFFFF" />
     <SolidColorBrush x:Key="MenuV2DangerHoverBrush" Color="#24E74856" />
+    <!-- Lit stars: the same gold as the base dark theme. -->
+    <SolidColorBrush x:Key="StarGoldBrush" Color="#F5C518" />
 </ResourceDictionary>
