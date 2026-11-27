@@ -1136,6 +1136,10 @@ public class AppSettings : IJsonOnDeserializing
     /// Off by default to preserve the compact icon rail.</summary>
     public bool SidebarAlwaysExpanded { get; set; } = false;
 
+    /// <summary>Width of the expanded sidebar in DIPs (Discord 11-27): its right edge drags.
+    /// See <see cref="SidebarWidthMetrics"/> for the range.</summary>
+    public double SidebarExpandedWidth { get; set; } = SidebarWidthMetrics.Default;
+
     /// <summary>GitHub #233: the sidebar is hidden entirely (the page takes the full width) and
     /// slides in over the page while the pointer is at the left window edge or on it. Off by
     /// default. Settings greys it out while <see cref="SidebarAlwaysExpanded"/> is on, and
@@ -1801,6 +1805,7 @@ public class AppSettings : IJsonOnDeserializing
         if (PlaybackBarWidth == 626) PlaybackBarWidth = 536;
         PlaybackBarSkipSeconds = PlaybackBarSkipSeconds is 10 or 15 or 30 ? PlaybackBarSkipSeconds : 15;
         QueuePanelWidth = QueuePanelMetrics.Clamp(QueuePanelWidth);
+        SidebarExpandedWidth = SidebarWidthMetrics.Clamp(SidebarExpandedWidth);
     }
 
     /// <summary>

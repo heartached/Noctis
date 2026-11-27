@@ -2598,6 +2598,9 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private double _albumTileTargetSize = 220;
     [ObservableProperty] private bool _sidebarHoverExpand = true;
     [ObservableProperty] private bool _sidebarAlwaysExpanded = false;
+    /// <summary>Discord 11-27: the expanded sidebar's width, set by dragging its right edge
+    /// (SidebarResizeGrip) through <see cref="SetSidebarExpandedWidth"/>.</summary>
+    [ObservableProperty] private double _sidebarExpandedWidth = SidebarWidthMetrics.Default;
     /// <summary>GitHub #233: hide the sidebar until the pointer reaches the left window edge
     /// (MainWindow.UpdateSidebarHidden, SidebarEdgePeek).</summary>
     [ObservableProperty] private bool _sidebarAutoHide;
@@ -4050,6 +4053,7 @@ public partial class SettingsViewModel : ViewModelBase
                 Helpers.AlbumGridMetrics.MinTargetSize, Helpers.AlbumGridMetrics.MaxTargetSize);
             SidebarHoverExpand = _settings.SidebarHoverExpand;
             SidebarAlwaysExpanded = _settings.SidebarAlwaysExpanded;
+            SidebarExpandedWidth = SidebarWidthMetrics.Clamp(_settings.SidebarExpandedWidth);
             SidebarAutoHide = _settings.SidebarAutoHide;
             NewPlaylistsAtTop = _settings.NewPlaylistsAtTop;
             RemoveEmptyPlaylistFolders = _settings.RemoveEmptyPlaylistFolders;
@@ -4673,6 +4677,7 @@ public partial class SettingsViewModel : ViewModelBase
             Helpers.AlbumGridMetrics.MinTargetSize, Helpers.AlbumGridMetrics.MaxTargetSize);
         _settings.SidebarHoverExpand = SidebarHoverExpand;
         _settings.SidebarAlwaysExpanded = SidebarAlwaysExpanded;
+        _settings.SidebarExpandedWidth = SidebarWidthMetrics.Clamp(SidebarExpandedWidth);
         _settings.SidebarAutoHide = SidebarAutoHide;
         _settings.NewPlaylistsAtTop = NewPlaylistsAtTop;
         _settings.RemoveEmptyPlaylistFolders = RemoveEmptyPlaylistFolders;
@@ -5798,6 +5803,21 @@ public partial class SettingsViewModel : ViewModelBase
         if (SidebarAutoHide || SidebarAlwaysExpanded == pinned) return false;
         SidebarAlwaysExpanded = pinned;
         return true;
+    }
+
+    /// <summary>Persists a finished drag of the sidebar's edge (Discord 11-27). MainWindow
+    /// lays the sidebar out at the new width.</summary>
+    public void SetSidebarExpandedWidth(double width) => SidebarExpandedWidth = SidebarWidthMetrics.Clamp(width);
+
+    partial void OnSidebarExpandedWidthChanged(double value)
+    {
+        var clamped = SidebarWidthMetrics.Clamp(value);
+        if (clamped != value)
+        {
+            SidebarExpandedWidth = clamped;
+            return;
+        }
+        if (_settingsLoaded && !_suspendSettingPersistence) QueueSettingsSave();
     }
 
     partial void OnSidebarAlwaysExpandedChanged(bool value)
@@ -9434,6 +9454,7 @@ public partial class SettingsViewModel : ViewModelBase
             MiniPlayerAlbumMarqueeEnabled = true;
             SidebarHoverExpand = defaultSettings.SidebarHoverExpand;
             SidebarAlwaysExpanded = defaultSettings.SidebarAlwaysExpanded;
+            SidebarExpandedWidth = defaultSettings.SidebarExpandedWidth;
             SidebarAutoHide = defaultSettings.SidebarAutoHide;
             NewPlaylistsAtTop = defaultSettings.NewPlaylistsAtTop;
             RemoveEmptyPlaylistFolders = defaultSettings.RemoveEmptyPlaylistFolders;
