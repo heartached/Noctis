@@ -292,8 +292,23 @@ public class ArtistVideoFetchTests : IDisposable
         Assert.True(page.HasArtistVideo);
         Assert.True(page.ArtistVideoPending);
 
-        // The first frame is up (the stills are faded out now).
-        page.OnArtistVideoShown();
+        // The first frame is up: still held back (the stills take a quarter second to fade
+        // out under the video, and the portrait showed through that fade), also past the limit.
+        var limit = ArtistDetailViewModel.ArtistVideoPendingLimit;
+        ArtistDetailViewModel.ArtistVideoPendingLimit = TimeSpan.FromMilliseconds(30);
+        try
+        {
+            page.IsActive = false;
+            page.IsActive = true;
+            await page.ArtistVideoTask;
+            page.OnArtistVideoFrame(true);
+            await Task.Delay(200);
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(page.ArtistVideoPending);
+        }
+        finally { ArtistDetailViewModel.ArtistVideoPendingLimit = limit; }
+        // The video went (too slow, removed): the portrait is back.
+        page.OnArtistVideoFrame(false);
         Assert.False(page.ArtistVideoPending);
 
         // Leaving while it waits lets the portrait back too.
@@ -421,7 +436,9 @@ public class ArtistVideoFetchTests : IDisposable
         Assert.True(stills.Children.OfType<CachedImage>().First().IsVisible);
 
         view.ApplyHeroVideoFrame(true);
-        Assert.False(vm.ArtistVideoPending);
+        // Still held back while the stills fade out under the video.
+        Assert.True(vm.ArtistVideoPending);
+        Assert.False(portrait.IsVisible);
         Assert.Equal(0, Target(stills));
         Assert.Equal(1, Target(video));
 
@@ -435,6 +452,7 @@ public class ArtistVideoFetchTests : IDisposable
         vm.ArtistVideoPath = null;
         Dispatcher.UIThread.RunJobs();
         view.ApplyHeroVideoFrame(video.HasFrame);
+        Assert.False(vm.ArtistVideoPending);
         Assert.False(video.IsVisible);
         Assert.Equal(1, Target(stills));
         win.Close();

@@ -31,9 +31,11 @@ public partial class ArtistDetailViewModel
 
     /// <summary>
     /// The artist's video is in the cache and about to play: the hero holds the sharp portrait
-    /// back meanwhile (only the blurred glow shows), so the page does not flash the portrait
-    /// for the moment the file takes to open. Cleared by the first frame, by the video not
-    /// coming after all, by leaving the page, and after <see cref="ArtistVideoPendingLimit"/>
+    /// back (only the blurred glow shows), so the page does not flash the portrait for the
+    /// moment the file takes to open. It stays held back while the video is on screen: let go
+    /// on the first frame, it came back for the quarter second the still art takes to fade out
+    /// under the video (owner 11-27). Cleared when the video goes or does not come after all,
+    /// by leaving the page, and after <see cref="ArtistVideoPendingLimit"/> without a frame
     /// (a file that never decodes: the portrait comes back).
     /// </summary>
     [ObservableProperty]
@@ -42,14 +44,20 @@ public partial class ArtistDetailViewModel
     /// <summary>How long the portrait waits for a cached video's first frame.</summary>
     internal static TimeSpan ArtistVideoPendingLimit { get; set; } = TimeSpan.FromSeconds(2.5);
 
-    /// <summary>The hero's video put its first frame on screen (the view).</summary>
-    internal void OnArtistVideoShown() => ArtistVideoPending = false;
+    private bool _artistVideoOnScreen;
+
+    /// <summary>The hero's video put its first frame on screen (true) or went away (false): the view.</summary>
+    internal void OnArtistVideoFrame(bool hasFrame)
+    {
+        _artistVideoOnScreen = hasFrame;
+        if (!hasFrame) ArtistVideoPending = false;
+    }
 
     private async Task EndArtistVideoPendingLaterAsync(CancellationToken ct)
     {
         try { await Task.Delay(ArtistVideoPendingLimit, ct); }
         catch (OperationCanceledException) { return; }
-        ArtistVideoPending = false;
+        if (!_artistVideoOnScreen) ArtistVideoPending = false;
     }
 
     /// <summary>
@@ -113,6 +121,7 @@ public partial class ArtistDetailViewModel
     {
         _artistVideoCts?.Cancel();
         _artistVideoCts = null;
+        _artistVideoOnScreen = false;
         ArtistVideoPending = false;
         ArtistVideoPath = null;
     }

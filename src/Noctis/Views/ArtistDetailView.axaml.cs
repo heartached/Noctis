@@ -63,8 +63,8 @@ public partial class ArtistDetailView : UserControl
     {
         HeroVideo.Opacity = hasFrame ? 1 : 0;
         HeroStills.Opacity = hasFrame ? 0 : 1;
-        // The portrait was held back for this video: it may return once the video goes.
-        if (hasFrame) (DataContext as ArtistDetailViewModel)?.OnArtistVideoShown();
+        // The portrait held back for this video stays so while it plays, and returns once it goes.
+        (DataContext as ArtistDetailViewModel)?.OnArtistVideoFrame(hasFrame);
     }
 
     /// <summary>The host window came to the front (true) or went to the background (false).</summary>
