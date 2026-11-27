@@ -497,6 +497,7 @@ public static class MetadataHelper
         {
             // "Sync with lrc.red's model" beside Lullaby (offered while lrc.red is on in Settings).
             LrcRed = App.Services!.GetService<ILrcRedLyricsService>(),
+            ShowNotice = text => main?.ShowNotice(text, TimeSpan.FromSeconds(8)),
         };
     }
 

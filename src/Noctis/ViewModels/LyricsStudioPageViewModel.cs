@@ -78,7 +78,12 @@ public partial class LyricsStudioPageViewModel : ViewModelBase
 
     partial void OnStudioChanged(LyricsStudioViewModel? oldValue, LyricsStudioViewModel? newValue)
     {
-        if (oldValue is not null) oldValue.LyricsSaved -= OnStudioLyricsSaved;
+        if (oldValue is not null)
+        {
+            oldValue.LyricsSaved -= OnStudioLyricsSaved;
+            // Its timers stop with it (a model download kept its tick running).
+            oldValue.Detach();
+        }
         if (newValue is not null) newValue.LyricsSaved += OnStudioLyricsSaved;
     }
 

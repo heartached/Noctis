@@ -34,5 +34,7 @@ internal static class TestAssemblyInit
         };
 
         DebugLog.DescribeBuild = UpdateService.DescribeBuild;
+        // Studio tests check the review right after a selection; the off-thread read has its own tests.
+        Noctis.ViewModels.LyricsStudioViewModel.LoadLyricsInlineDefault = true;
     }
 }

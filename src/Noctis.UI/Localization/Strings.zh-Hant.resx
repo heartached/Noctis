@@ -7287,6 +7287,8 @@ Deezer 和 TIDAL：貼上連結。</value></data>
     <value>還沒有要審查的內容</value>
     <comment>Review pane empty state</comment>
   </data>
+  <data name="LyricsStudio.LoadingLyrics" xml:space="preserve"><value>正在讀取歌曲的歌詞…</value></data>
+  <data name="LyricsStudio.TagWriteFailed" xml:space="preserve"><value>無法將歌詞寫入「{0}」的標籤。</value></data>
   <data name="LyricsStudio.ReviewEmptyBody" xml:space="preserve">
     <value>在清單中選擇一首歌曲。按「開始」後，有歌詞的歌曲會被計時；沒有歌詞的歌曲會開啟一個文字方塊供你貼上歌詞。</value>
     <comment>Review pane empty state</comment>
