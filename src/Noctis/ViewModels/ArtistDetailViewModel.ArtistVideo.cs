@@ -30,6 +30,29 @@ public partial class ArtistDetailViewModel
     public bool HasArtistVideo => !string.IsNullOrEmpty(ArtistVideoPath);
 
     /// <summary>
+    /// The artist's video is in the cache and about to play: the hero holds the sharp portrait
+    /// back meanwhile (only the blurred glow shows), so the page does not flash the portrait
+    /// for the moment the file takes to open. Cleared by the first frame, by the video not
+    /// coming after all, by leaving the page, and after <see cref="ArtistVideoPendingLimit"/>
+    /// (a file that never decodes: the portrait comes back).
+    /// </summary>
+    [ObservableProperty]
+    private bool _artistVideoPending;
+
+    /// <summary>How long the portrait waits for a cached video's first frame.</summary>
+    internal static TimeSpan ArtistVideoPendingLimit { get; set; } = TimeSpan.FromSeconds(2.5);
+
+    /// <summary>The hero's video put its first frame on screen (the view).</summary>
+    internal void OnArtistVideoShown() => ArtistVideoPending = false;
+
+    private async Task EndArtistVideoPendingLaterAsync(CancellationToken ct)
+    {
+        try { await Task.Delay(ArtistVideoPendingLimit, ct); }
+        catch (OperationCanceledException) { return; }
+        ArtistVideoPending = false;
+    }
+
+    /// <summary>
     /// The Settings sheet is over the page (MainWindowViewModel). The hero video holds its
     /// frame meanwhile: under the sheet's live blur every video frame made the blur re-render
     /// the whole app (probe: ~10 stand-in retakes a second for a 24 fps hero).
@@ -77,6 +100,11 @@ public partial class ArtistDetailViewModel
 
         var cts = new CancellationTokenSource();
         _artistVideoCts = cts;
+        if (fetcher.HasCachedVideo(Artist.Id))
+        {
+            ArtistVideoPending = true;
+            _ = EndArtistVideoPendingLaterAsync(cts.Token);
+        }
         ArtistVideoTask = FetchArtistVideoAsync(fetcher, Artist.Id, ArtistName, _settings!.AnimatedArtworkCacheBytes, cts.Token);
     }
 
@@ -85,6 +113,7 @@ public partial class ArtistDetailViewModel
     {
         _artistVideoCts?.Cancel();
         _artistVideoCts = null;
+        ArtistVideoPending = false;
         ArtistVideoPath = null;
     }
 
@@ -95,7 +124,12 @@ public partial class ArtistDetailViewModel
             // Off the UI thread: the cache's file checks, the lookup and the download.
             var path = await Task.Run(() => fetcher.FetchAsync(artistId, name, capBytes, ct), ct);
             // Back on the caller's (UI) thread, as the album page's fetch.
-            if (path is null || ct.IsCancellationRequested) return;
+            if (ct.IsCancellationRequested) return;
+            if (path is null)
+            {
+                ArtistVideoPending = false;
+                return;
+            }
             ArtistVideoPath = path;
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -105,6 +139,7 @@ public partial class ArtistDetailViewModel
         catch (Exception ex)
         {
             DebugLog.Write(ITunesArtworkService.LogSource, $"artist video: artist page: {ex.Message}");
+            if (!ct.IsCancellationRequested) ArtistVideoPending = false;
         }
     }
 

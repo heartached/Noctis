@@ -728,8 +728,15 @@
                                       Width="400" Height="400"
                                       HorizontalAlignment="Right"
                                       VerticalAlignment="Top"
-                                      RenderOptions.BitmapInterpolationMode="HighQuality"
-                                      IsVisible="{Binding HasImage}">
+                                      RenderOptions.BitmapInterpolationMode="HighQuality">
+                        <!-- Held back while a cached video is about to play (ArtistVideoPending):
+                             the portrait showed for a moment before the video's first frame. -->
+                        <ctrl:CachedImage.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                <Binding Path="HasImage" />
+                                <Binding Path="!ArtistVideoPending" />
+                            </MultiBinding>
+                        </ctrl:CachedImage.IsVisible>
                         <ctrl:CachedImage.OpacityMask>
                             <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
                                 <GradientStop Color="#00000000" Offset="0" />

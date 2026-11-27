@@ -267,6 +267,75 @@ public class ArtistVideoFetchTests : IDisposable
         Assert.Equal(1, _lookups);
     }
 
+    // Owner 11-27: with the video already cached, the page showed the still portrait on the
+    // right for a split second before the video's first frame.
+    [AvaloniaFact]
+    public async Task ACachedVideo_HoldsThePortraitBack_FromTheMomentThePageOpens_UntilTheFirstFrame()
+    {
+        var (page, fetcher) = await OpenAsync(true, true);
+
+        // Not cached yet: the lookup and download can take long, the portrait shows meanwhile.
+        page.StartArtistVideo();
+        Assert.False(page.ArtistVideoPending);
+        await page.ArtistVideoTask;
+        Assert.True(page.HasArtistVideo);
+        Assert.False(page.ArtistVideoPending);
+        Assert.True(fetcher.HasCachedVideo(page.Artist.Id));
+
+        // Back on the page with the file in the cache: held back at once, before the path is in.
+        page.IsActive = false;
+        Assert.False(page.ArtistVideoPending);
+        page.IsActive = true;
+        Assert.True(page.ArtistVideoPending);
+        Assert.Null(page.ArtistVideoPath);
+        await page.ArtistVideoTask;
+        Assert.True(page.HasArtistVideo);
+        Assert.True(page.ArtistVideoPending);
+
+        // The first frame is up (the stills are faded out now).
+        page.OnArtistVideoShown();
+        Assert.False(page.ArtistVideoPending);
+
+        // Leaving while it waits lets the portrait back too.
+        page.IsActive = false;
+        page.IsActive = true;
+        Assert.True(page.ArtistVideoPending);
+        page.IsActive = false;
+        Assert.False(page.ArtistVideoPending);
+
+        // Removed: nothing is waited for.
+        page.IsActive = true;
+        await page.ArtistVideoTask;
+        await page.RemoveArtistVideoCommand.ExecuteAsync(null);
+        page.StartArtistVideo();
+        Assert.False(page.ArtistVideoPending);
+    }
+
+    [AvaloniaFact]
+    public async Task ACachedVideo_ThatNeverShowsAFrame_GivesThePortraitBack()
+    {
+        var was = ArtistDetailViewModel.ArtistVideoPendingLimit;
+        ArtistDetailViewModel.ArtistVideoPendingLimit = TimeSpan.FromMilliseconds(50);
+        try
+        {
+            var (page, _) = await OpenAsync(true, true);
+            page.StartArtistVideo();
+            await page.ArtistVideoTask;
+            page.IsActive = false;
+            page.IsActive = true;
+            Assert.True(page.ArtistVideoPending);
+            await page.ArtistVideoTask;
+            for (var i = 0; i < 100 && page.ArtistVideoPending; i++)
+            {
+                await Task.Delay(20);
+                Dispatcher.UIThread.RunJobs();
+            }
+            Assert.False(page.ArtistVideoPending);
+            Assert.True(page.HasArtistVideo);
+        }
+        finally { ArtistDetailViewModel.ArtistVideoPendingLimit = was; }
+    }
+
     [AvaloniaFact]
     public async Task TurningTheSwitchOff_WhileThePageIsOpen_StopsTheVideo()
     {
@@ -341,8 +410,18 @@ public class ArtistVideoFetchTests : IDisposable
         // The stills stay up until the first frame.
         Assert.Equal(1, Target(stills));
         Assert.Equal(0, Target(video));
+        // A cached video about to play: the sharp portrait is held back, the glow stays.
+        var portrait = stills.Children.OfType<CachedImage>().Last();
+        vm.ImagePath = Path.Combine(Path.GetTempPath(), "NoctisTests", "no-such-portrait.jpg");
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(portrait.IsVisible);
+        vm.ArtistVideoPending = true;
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(portrait.IsVisible);
+        Assert.True(stills.Children.OfType<CachedImage>().First().IsVisible);
 
         view.ApplyHeroVideoFrame(true);
+        Assert.False(vm.ArtistVideoPending);
         Assert.Equal(0, Target(stills));
         Assert.Equal(1, Target(video));
 

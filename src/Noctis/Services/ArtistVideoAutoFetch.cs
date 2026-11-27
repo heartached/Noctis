@@ -94,6 +94,18 @@ public sealed class ArtistVideoAutoFetcher
         return path;
     }
 
+    /// <summary>The artist has a video in the cache right now: the same answer as
+    /// <see cref="CachedPath"/> without marking it used or swapping files (the artist page asks
+    /// this as it opens, to hold the still portrait back for the video about to play).</summary>
+    public bool HasCachedVideo(Guid artistId)
+    {
+        if (Cache.IsBlocked(artistId)) return false;
+        var appleId = KnownAppleId(artistId);
+        if (appleId <= 0) return false;
+        var path = Cache.ArtistVideoPathFor(appleId);
+        return File.Exists(path) || File.Exists(NextPathFor(path));
+    }
+
     /// <summary>Puts a waiting smaller replacement in place of <paramref name="path"/>, unless the
     /// old file is held open (playing): then it waits for the next start.</summary>
     private bool TrySwapIn(string path)
