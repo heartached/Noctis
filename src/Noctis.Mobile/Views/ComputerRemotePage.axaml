@@ -138,7 +138,7 @@
     </UserControl.Styles>
 
     <Panel Classes="grouped-root">
-        <Border Classes="grouped-backdrop" />
+        <views:PageBackdrop Classes="grouped-backdrop" />
         <Grid RowDefinitions="Auto,*">
             <Grid Grid.Row="0" Classes="sheet-header remote-header" ColumnDefinitions="*,Auto">
                 <TextBlock Classes="sheet-title" Text="{Binding Title}" />

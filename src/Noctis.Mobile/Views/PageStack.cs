@@ -233,16 +233,65 @@ public sealed class PageStack : Panel
             _views[page] = spare;
             return spare;
         }
-        view = new ContentControl
+        view = new PageView
         {
             Content = page,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
             VerticalContentAlignment = VerticalAlignment.Stretch,
             ZIndex = z ?? (_z += 2),
         };
-        if (!page.DrawsOwnBackdrop) view.Bind(BackgroundProperty, this.GetObservable(PageBackgroundProperty));
+        if (!page.DrawsOwnBackdrop) view.Bind(PageView.BackdropProperty, this.GetObservable(PageBackgroundProperty));
         _views[page] = view;
         Children.Add(view);
         return view;
+    }
+}
+
+/// <summary>A page's view in a <see cref="PageStack"/>: the page with the stack's page brush behind
+/// it, drawn by the view itself so a Background's mesh is drawn directly (<see cref="BackdropPaint"/>)
+/// rather than as a brush through the template. Styled as ContentControl.</summary>
+public sealed class PageView : ContentControl
+{
+    public static readonly StyledProperty<IBrush?> BackdropProperty =
+        AvaloniaProperty.Register<PageView, IBrush?>(nameof(Backdrop));
+
+    static PageView() => AffectsRender<PageView>(BackdropProperty);
+
+    private readonly BackdropPaint.Watch _watch;
+
+    public PageView() => _watch = new BackdropPaint.Watch(InvalidateVisual);
+
+    protected override Type StyleKeyOverride => typeof(ContentControl);
+
+    /// <summary>The page brush behind the page (none for a page that draws its own backdrop).</summary>
+    public IBrush? Backdrop
+    {
+        get => GetValue(BackdropProperty);
+        set => SetValue(BackdropProperty, value);
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == BackdropProperty) _watch.Brush(Backdrop);
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        _watch.Attached(true);
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        _watch.Attached(false);
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    public override void Render(DrawingContext context)
+    {
+        var rect = new Rect(Bounds.Size);
+        if (Backdrop is { } brush && !BackdropPaint.TryPaint(context, brush, rect)) context.FillRectangle(brush, rect);
+        base.Render(context);
     }
 }

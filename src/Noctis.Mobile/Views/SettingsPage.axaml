@@ -426,7 +426,7 @@
     </UserControl.Resources>
 
     <Panel Classes="grouped-root">
-        <Border Name="PageBackdrop" Classes="grouped-backdrop" />
+        <views:PageBackdrop Name="PageBackdrop" Classes="grouped-backdrop" />
         <Grid RowDefinitions="Auto,*">
             <Panel Grid.Row="0">
                 <Grid Classes="sheet-header settings-header" ColumnDefinitions="46,*,46">

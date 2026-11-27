@@ -158,9 +158,9 @@ public class MobileBackgroundTests
         rig.Shell.Background.Choice = "ash";
         MobileFixtures.Land(window);
 
-        var backdrop = MobileFixtures.Named<Border>(MobileFixtures.Find<SettingsPage>(view), "PageBackdrop");
-        AssertOpaque(backdrop.Background, "the sheet");
-        AssertOpaque(view.FindControl<Panel>("RootLayer")!.Background, "the tab roots");
+        var backdrop = MobileFixtures.Named<PageBackdrop>(MobileFixtures.Find<SettingsPage>(view), "PageBackdrop");
+        AssertOpaque(backdrop.Brush, "the sheet");
+        AssertOpaque(view.FindControl<PageBackdrop>("RootBackdrop")!.Brush, "the tab roots");
         foreach (var variant in new[] { ThemeVariant.Dark, ThemeVariant.Light })
         {
             AssertOpaque(backdrop.FindResource(variant, "PhoneSheetBackgroundBrush") as IBrush, $"{variant} sheet");
