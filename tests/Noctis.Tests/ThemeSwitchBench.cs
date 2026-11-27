@@ -96,7 +96,10 @@ public class ThemeSwitchBench
 
     private sealed record Sample(string From, string To, double SyncMs, double FirstFrameMs, double TailMs,
         int AppRc, int WinRc, int Variant, int Accent, int Glass, int MeasureInvalid, int ArrangeInvalid,
-        int LayoutPasses, long Kb, int ScrimCaptures);
+        int LayoutPasses, long Kb, int ScrimCaptures, double SetThemeMs);
+
+    /// <summary>Rounds through <see cref="Cycle"/> per scenario, the first one a warm-up (NOCTIS_PERF_ROUNDS, 5).</summary>
+    private static int Rounds => int.TryParse(Environment.GetEnvironmentVariable("NOCTIS_PERF_ROUNDS"), out var n) && n > 1 ? n : 5;
 
     private static readonly string[] Cycle = { "Ink", "Smoke", "Midnight", "Dark", "Light", "Gray" };
 
@@ -120,7 +123,13 @@ public class ThemeSwitchBench
         // here): subscribed first, so the theme is applied before the window's own handler runs,
         // with the window's transitions suppressed as App.SetTheme does for the app's main window.
         MainWindow? shown = null;
-        settings.ThemeChanged += (_, key) => App.RunWithTransitionsSuppressed(shown, () => noctis.SetTheme(key));
+        var setThemeMs = 0.0;
+        settings.ThemeChanged += (_, key) =>
+        {
+            var t = Stopwatch.StartNew();
+            App.RunWithTransitionsSuppressed(shown, () => noctis.SetTheme(key));
+            setThemeMs = t.Elapsed.TotalMilliseconds;
+        };
         settings.AccentChanged += (_, hex) => noctis.SetAccent(hex);
 
         var window = new MainWindow(vm) { Width = 1600, Height = 1000 };
@@ -135,7 +144,7 @@ public class ThemeSwitchBench
         foreach (var page in new[] { "home", "songs", "albums", "artists", "genres", "playlists", "favorites", "statistics" })
         {
             navigate.Invoke(vm, [page]);
-            for (var i = 0; i < 20; i++) { Pump(); Thread.Sleep(5); }
+            for (var i = 0; i < 60; i++) { Pump(); Thread.Sleep(10); }
         }
         var bigArtist = library.Artists.OrderByDescending(a => a.AlbumCount).First();
         vm.OpenArtistByName(bigArtist.Name);
@@ -172,8 +181,32 @@ public class ThemeSwitchBench
 
         List<Sample> Run(string scenario)
         {
+            // What one resources-changed walk costs with nothing changed, and what putting the
+            // theme-switching class on the window (and taking it off) costs on its own.
+            var walks = new List<double>();
+            var classAdds = new List<double>();
+            var classRemoves = new List<double>();
+            for (var i = 0; i < 9; i++)
+            {
+                var t = Stopwatch.StartNew();
+                ((IResourceHost)host).NotifyHostedResourcesChanged(ResourcesChangedEventArgs.Create());
+                walks.Add(t.Elapsed.TotalMilliseconds);
+                Quiet(3);
+                t.Restart();
+                window.Classes.Add(App.ThemeSwitchingClass);
+                classAdds.Add(t.Elapsed.TotalMilliseconds);
+                Quiet(3);
+                t.Restart();
+                window.Classes.Remove(App.ThemeSwitchingClass);
+                classRemoves.Add(t.Elapsed.TotalMilliseconds);
+                Quiet(3);
+            }
+            static double Mid(List<double> xs) => xs.OrderBy(x => x).ElementAt(xs.Count / 2);
+            Log($"{scenario} costs: one resources walk with nothing changed {Mid(walks):0.0} ms, " +
+                $"theme-switching class on {Mid(classAdds):0.0} ms / off {Mid(classRemoves):0.0} ms");
+
             var samples = new List<Sample>();
-            for (var round = 0; round < 3; round++)
+            for (var round = 0; round < Rounds; round++)
             {
                 foreach (var to in Cycle)
                 {
@@ -193,16 +226,17 @@ public class ThemeSwitchBench
                     var kb = (GC.GetAllocatedBytesForCurrentThread() - b0) / 1024;
                     if (round > 0) // round 0 warms the JIT and the overlay loads
                         samples.Add(new Sample(current, to, sync, first, tail, appRc, winRc, variant, accent, glass,
-                            measureInvalid, arrangeInvalid, layouts, kb, (scrim?.CaptureCount ?? 0) - captures0));
+                            measureInvalid, arrangeInvalid, layouts, kb, (scrim?.CaptureCount ?? 0) - captures0, setThemeMs));
                     current = to;
                 }
             }
             foreach (var s in samples.Take(Cycle.Length))
-                Log($"{scenario} {s.From}->{s.To}: sync {s.SyncMs:0.0} ms, first frame {s.FirstFrameMs:0.0} ms, tail {s.TailMs:0.0} ms | " +
+                Log($"{scenario} {s.From}->{s.To}: sync {s.SyncMs:0.0} ms (SetTheme {s.SetThemeMs:0.0}), first frame {s.FirstFrameMs:0.0} ms, tail {s.TailMs:0.0} ms | " +
                     $"app RC {s.AppRc}, window RC {s.WinRc}, variant {s.Variant}, AccentApplied {s.Accent}, AppGlass {s.Glass} | " +
                     $"measure-invalid {s.MeasureInvalid}, arrange-invalid {s.ArrangeInvalid}, layout passes {s.LayoutPasses}, scrim captures {s.ScrimCaptures} | {s.Kb} KB");
             static double Median(IEnumerable<double> xs) { var l = xs.OrderBy(x => x).ToList(); return l[l.Count / 2]; }
-            Log($"{scenario} median of {samples.Count}: sync {Median(samples.Select(s => s.SyncMs)):0.0} ms (max {samples.Max(s => s.SyncMs):0.0}), " +
+            Log($"{scenario} median of {samples.Count}: sync {Median(samples.Select(s => s.SyncMs)):0.0} ms (max {samples.Max(s => s.SyncMs):0.0}; " +
+                $"App.SetTheme {Median(samples.Select(s => s.SetThemeMs)):0.0}, max {samples.Max(s => s.SetThemeMs):0.0}), " +
                 $"first frame {Median(samples.Select(s => s.FirstFrameMs)):0.0} ms (max {samples.Max(s => s.FirstFrameMs):0.0}), " +
                 $"sync+first {Median(samples.Select(s => s.SyncMs + s.FirstFrameMs)):0.0} ms (max {samples.Max(s => s.SyncMs + s.FirstFrameMs):0.0}), " +
                 $"tail {Median(samples.Select(s => s.TailMs)):0.0} ms | window RC total {samples.Sum(s => s.WinRc)} " +
