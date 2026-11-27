@@ -45,6 +45,14 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
     /// account service's syncs wait for it.</summary>
     private readonly TaskCompletionSource _libraryLoaded = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+    /// <summary>Completes when the shell has restored the queue at start (or the start failed).</summary>
+    private readonly TaskCompletionSource _shellReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>How long a Play from outside the app (a headset or car key that started the process,
+    /// see NoctisMediaButtonReceiver) waits for the restored queue. Under the playback service's own
+    /// deadline (NoctisPlaybackService.MediaButtonForegroundDeadlineMs, 4 s), past which it stops.</summary>
+    private static readonly TimeSpan SessionPlayWait = TimeSpan.FromSeconds(3);
+
     /// <summary>
     /// The running app, for the activity's lifecycle hooks. Declared <c>new</c> on purpose:
     /// the inherited <see cref="Avalonia.Application.Current"/> is typed <c>Application?</c>,
@@ -211,7 +219,17 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         _player.SessionNextRequested += (_, _) => Dispatcher.UIThread.Post(() => shell.Player.NextCommand.Execute(null));
         _player.SessionPreviousRequested += (_, _) => Dispatcher.UIThread.Post(() => shell.Player.PreviousCommand.Execute(null));
         // Play with nothing loaded (the queue ran out, or a restored queue): what the in-app Play does.
-        _player.SessionPlayRequested += (_, _) => Dispatcher.UIThread.Post(() => shell.Player.Play());
+        // A key that started the process comes before the queue is restored: it waits for that.
+        _player.SessionPlayRequested += (_, _) => Dispatcher.UIThread.Post(async () =>
+        {
+            if (!_shellReady.Task.IsCompleted
+                && await Task.WhenAny(_shellReady.Task, Task.Delay(SessionPlayWait)) != _shellReady.Task)
+            {
+                DebugLog.Write("Audio", "Play from outside the app dropped: the queue was not restored in time");
+                return;
+            }
+            shell.Player.Play();
+        });
         // Whether those buttons are drawn enabled. Read synchronously from the same Java
         // thread, so they stay plain field reads on the ViewModel (see NowPlayingViewModel.
         // HasNext/HasPrevious) — ExoPlayer's own item list is the wrong source because it
@@ -417,11 +435,14 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             _libraryLoaded.TrySetResult();
             // The settings read above, handed along: the start reads settings.json once.
             await _shell!.InitializeAsync(settings);
-            // Scan on Startup (desktop parity): new songs in the folders show up on their own.
+            _shellReady.TrySetResult();
+            // Settings › Library › Scan Library: new songs in the folders show up on their own, at
+            // every start (the default), the first start of a day or week, or only on Rescan.
             _ = _shell.Library.ScanAtStartupAsync();
         }
         catch (Exception ex)
         {
+            _shellReady.TrySetResult();
             // Failed before the library loaded: syncs fail rather than save a library.json without the local songs.
             if (_libraryLoaded.TrySetException(ex)) _ = _libraryLoaded.Task.Exception; // logged below, not "unobserved"
             DebugLog.Write("Startup", $"Android startup failed: {ex}");
