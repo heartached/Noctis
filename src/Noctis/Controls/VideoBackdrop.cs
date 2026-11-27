@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -151,6 +152,75 @@ public sealed class VideoBackdrop : Control
         set => SetValue(StreamFailedCommandProperty, value);
     }
 
+    /// <summary>Name in the Developer Mode log lines ("ArtistVideo.Start", "Backdrop.Stop").</summary>
+    public string LogName { get; set; } = "Backdrop";
+
+    /// <summary>
+    /// Free-running backdrop only (artist page hero): when the decoder keeps falling under
+    /// <see cref="SlowFps"/> for <see cref="SlowWindows"/> seconds in a row while it plays (a
+    /// machine too slow to decode the clip in software), the clip stops, the still art stays,
+    /// and the same file is not started again this session.
+    /// </summary>
+    public bool StopWhenSlow { get; set; }
+
+    /// <summary>Most frames a second handed to the UI (0 = every frame the decoder shows).</summary>
+    public int MaxFps { get; set; }
+
+    internal const double SlowFps = 10;
+    internal const int SlowWindows = 3;
+
+    /// <summary>Clips stopped as too slow to decode here; not started again this session.</summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> SlowSources = new(StringComparer.OrdinalIgnoreCase);
+    internal static bool IsKnownSlow(string? source) => source != null && SlowSources.ContainsKey(source);
+    internal static void MarkSlow(string source) => SlowSources[source] = 0;
+    internal static void ClearKnownSlowForTests() => SlowSources.Clear();
+
+    private static int s_liveSessions, s_active;
+
+    /// <summary>LibVLC players alive right now (created, not yet disposed), app-wide.</summary>
+    internal static int LiveSessionCount => Volatile.Read(ref s_liveSessions);
+
+    /// <summary>Backdrops that want a player now (starting or playing), app-wide: what
+    /// <see cref="LiveSessionCount"/> settles at once the thread pool has caught up.</summary>
+    internal static int ActiveCount => Volatile.Read(ref s_active);
+
+    /// <summary>Tests: count a start (<see cref="ActiveCount"/>) but never touch LibVLC.</summary>
+    internal static bool SkipDecoderForTests;
+
+    /// <summary>Frames this instance put on screen (tests).</summary>
+    internal int FramesPresented { get; private set; }
+
+    private bool _countedActive;
+
+    /// <summary>The decoder's rate in one-second windows (<see cref="SlowStep"/>).</summary>
+    internal struct SlowMeter
+    {
+        public long Start, Frames;
+        public int SlowRun;
+        public bool Fired;
+    }
+
+    /// <summary>
+    /// One decoded frame at <paramref name="now"/> (ticks of <paramref name="frequency"/>): the
+    /// rate is taken over one-second windows, and <see cref="SlowWindows"/> windows in a row
+    /// under <see cref="SlowFps"/> return that rate, once. Null otherwise.
+    /// </summary>
+    internal static double? SlowStep(ref SlowMeter m, long now, long frequency)
+    {
+        if (m.Fired) return null;
+        if (m.Start == 0) { m.Start = now; m.Frames = 0; return null; }
+        m.Frames++;
+        var seconds = (now - m.Start) / (double)frequency;
+        if (seconds < 1) return null;
+        var fps = m.Frames / seconds;
+        m.Start = now;
+        m.Frames = 0;
+        m.SlowRun = fps < SlowFps ? m.SlowRun + 1 : 0;
+        if (m.SlowRun < SlowWindows) return null;
+        m.Fired = true;
+        return fps;
+    }
+
     public const int SyncToleranceMs = 350;
 
     /// <summary>What a sync request does to the clip.</summary>
@@ -261,11 +331,18 @@ public sealed class VideoBackdrop : Control
         var source = Source;
         var remote = IsRemoteSource(source);
         var active = IsActive && !string.IsNullOrEmpty(source) && (remote || File.Exists(source))
-                     && this.IsAttachedToVisualTree();
+                     && this.IsAttachedToVisualTree() && !IsKnownSlow(source);
         Teardown();
         if (!active || string.IsNullOrEmpty(source)) return;
 
+        _countedActive = true;
+        Interlocked.Increment(ref s_active);
+        if (SkipDecoderForTests) return;
+
         var generation = _generation;
+        var logName = LogName;
+        var stopWhenSlow = StopWhenSlow && SyncPosition == null;
+        var maxFps = MaxFps;
         var startPaused = _hostWindow.IsMinimized || IsPaused;
         var synced = SyncPosition != null;
         var rate = Rate;
@@ -292,7 +369,11 @@ public sealed class VideoBackdrop : Control
                     break;
                 }
                 var (bw, bh) = FitBuffer(vw, vh, maxSide);
-                session = new Session(this, bw, bh, probe.Duration, remote, source, generation);
+                session = new Session(this, bw, bh, probe.Duration, remote, source, generation)
+                {
+                    LogName = logName, ClipSize = $"{vw}x{vh}", StopWhenSlow = stopWhenSlow,
+                    MinFrameTicks = maxFps > 0 ? Stopwatch.Frequency / maxFps : 0,
+                };
             }
             catch
             {
@@ -315,7 +396,9 @@ public sealed class VideoBackdrop : Control
                 if (synced) session.SetRate(rate);
                 if (startPaused) session.SetPaused(true);
                 // A stream URL carries the user's IP: never into the log.
-                DebugLogger.Info(DebugLogger.Category.Playback, "Backdrop.Play", remote ? "src=<stream>" : $"src={Path.GetFileName(source)}");
+                DebugLogger.Info(DebugLogger.Category.Playback, logName + ".Start",
+                    (remote ? "src=<stream>" : $"src={Path.GetFileName(source)}")
+                    + $" clip={session.ClipSize} decode={session.Width}x{session.Height}{(startPaused ? " (paused)" : "")}");
             }
             catch
             {
@@ -346,6 +429,11 @@ public sealed class VideoBackdrop : Control
 
     private void Teardown()
     {
+        if (_countedActive)
+        {
+            _countedActive = false;
+            Interlocked.Decrement(ref s_active);
+        }
         _generation++;
         var session = _session;
         _session = null;
@@ -353,6 +441,32 @@ public sealed class VideoBackdrop : Control
         HasFrame = false;
         session?.ShutDown();
         InvalidateVisual();
+    }
+
+    /// <summary>The decoded <paramref name="frame"/> goes on screen: the one UI-thread step of
+    /// every frame. Only this control is invalidated (its own bounds repaint, nothing else).</summary>
+    private void Present(WriteableBitmap frame)
+    {
+        _current = frame;
+        _currentDrawn = false;
+        HasVideoStream = true;
+        HasFrame = true;
+        FramesPresented++;
+        InvalidateVisual();
+    }
+
+    /// <summary>Tests: a frame source without LibVLC through the same presentation step.</summary>
+    internal void PresentForTests(WriteableBitmap frame) => Present(frame);
+
+    /// <summary>The decoder could not keep up (<see cref="StopWhenSlow"/>): stop, keep the art.</summary>
+    private void OnTooSlow(Session session, double fps)
+    {
+        if (!ReferenceEquals(_session, session) || Source is not { } source) return;
+        MarkSlow(source);
+        DebugLogger.Warn(DebugLogger.Category.Playback, LogName + ".TooSlow",
+            $"decoder {fps:0.#} fps at {session.Width}x{session.Height} (clip {session.ClipSize}): stopped, still image kept for this clip");
+        Teardown();
+        HasVideoStream = false;
     }
 
     private sealed class Session
@@ -374,6 +488,24 @@ public sealed class VideoBackdrop : Control
         private volatile bool _paused;
         private long _lengthMs;
 
+        public readonly int Width, Height;
+        public string LogName { get; init; } = "Backdrop";
+        public string ClipSize { get; init; } = "?";
+        public bool StopWhenSlow { get; init; }
+        /// <summary>Shortest gap between two frames handed to the UI (Stopwatch ticks, 0 = none).</summary>
+        public long MinFrameTicks { get; init; }
+
+        // Stats for the Stop log line and the slow check. Decoder side on VLC's thread, the
+        // presented side on the UI thread; play time counts only while not paused.
+        private long _decoded, _presented, _uiTicks, _lastHanded;
+        private long _playTicks, _playSince;
+        private SlowMeter _slow;
+        private int _slowReset;
+        private volatile bool _handedAny;
+        /// <summary>Pictures still shown while paused: a seek's new picture (and one spare).</summary>
+        private int _pausedShows;
+        private void AllowPausedShow() => Interlocked.Exchange(ref _pausedShows, 2);
+
         // Delegates must stay alive for the player's lifetime (VLC keeps raw pointers).
         private readonly MediaPlayer.LibVLCVideoLockCb _lockCb;
         private readonly MediaPlayer.LibVLCVideoDisplayCb _displayCb;
@@ -384,6 +516,9 @@ public sealed class VideoBackdrop : Control
             _lengthMs = lengthMs;
             _source = source;
             _ownerGeneration = generation;
+            Width = width;
+            Height = height;
+            _playSince = Stopwatch.GetTimestamp();
             _stride = width * 4;
             _bufferBytes = _stride * height;
             _buffer = Marshal.AllocHGlobal(_bufferBytes);
@@ -406,6 +541,7 @@ public sealed class VideoBackdrop : Control
                 // Cache progress while it starts or re-buffers: slow, not stalled (StreamSyncGate).
                 Player.Buffering += OnPlayerBuffering;
             }
+            Interlocked.Increment(ref s_liveSessions); // ShutDown takes it off once disposed
         }
 
         public void SetPaused(bool paused)
@@ -414,6 +550,13 @@ public sealed class VideoBackdrop : Control
             var wasPaused = _paused;
             _paused = paused;
             if (wasPaused && !paused) _gate?.Resumed();
+            if (wasPaused != paused)
+            {
+                var now = Stopwatch.GetTimestamp();
+                if (paused) Interlocked.Add(ref _playTicks, now - Interlocked.Exchange(ref _playSince, 0));
+                else Interlocked.Exchange(ref _playSince, now);
+                Interlocked.Exchange(ref _slowReset, 1); // the slow check starts over
+            }
             ThreadPool.QueueUserWorkItem(_ => { try { Player.SetPause(paused); } catch { } });
         }
 
@@ -464,9 +607,11 @@ public sealed class VideoBackdrop : Control
                     switch (PlanSync(Player.State == VLCState.Ended, Player.Time, targetMs, _lengthMs, SyncToleranceMs, force))
                     {
                         case SyncAction.Seek:
+                            AllowPausedShow();
                             Player.Time = targetMs;
                             break;
                         case SyncAction.Restart:
+                            AllowPausedShow();
                             Player.Stop();
                             Player.Play();
                             Player.Time = targetMs;
@@ -498,6 +643,7 @@ public sealed class VideoBackdrop : Control
                             _lengthMs, !_paused, _rate);
                         if (action == SyncAction.None) continue;
                         gate.SeekIssued(to);
+                        AllowPausedShow();
                         _capTimer?.Change(StreamSyncGate.SeekCapMs + 50, Timeout.Infinite);
                         if (action == SyncAction.Restart)
                         {
@@ -567,7 +713,22 @@ public sealed class VideoBackdrop : Control
                 _gate.NoteFrame();
                 if (_gate.IsSeeking) CheckLanding();
             }
-            if (_framePending || _dead) return;
+            if (_dead) return;
+            // Paused, VLC keeps re-displaying the same picture (~12.5 a second, measured): each
+            // one was copied twice and repainted the page (and, under the Settings sheet, made
+            // its blur retake the whole app). Only the first picture and a seek's land on screen.
+            if (_paused && _handedAny && Interlocked.Decrement(ref _pausedShows) < 0)
+            {
+                Interlocked.Exchange(ref _pausedShows, 0);
+                return;
+            }
+            var now = Stopwatch.GetTimestamp();
+            _decoded++;
+            if (StopWhenSlow && !_paused) CheckSlow(now);
+            if (_framePending) return;
+            if (MinFrameTicks > 0 && now - _lastHanded < MinFrameTicks) return; // over MaxFps
+            _lastHanded = now;
+            _handedAny = true;
             _framePending = true;
             // Taken here, on VLC's thread, while the picture is complete: VLC starts writing
             // the next one into the same buffer as soon as this callback returns.
@@ -580,24 +741,46 @@ public sealed class VideoBackdrop : Control
                     // The frame before this one has not been painted yet: keep it and drop
                     // this one, so the bitmaps already on screen stay untouched.
                     if (_owner._current != null && !_owner._currentDrawn) return;
+                    var started = Stopwatch.GetTimestamp();
                     var bitmap = _bitmaps[_nextBitmap];
                     _nextBitmap = (_nextBitmap + 1) % _bitmaps.Length;
                     using (var fb = bitmap.Lock())
                         Marshal.Copy(_scratch, 0, fb.Address, _bufferBytes);
-                    _owner._current = bitmap; // first real frame reveals the clip
-                    _owner._currentDrawn = false;
-                    _owner.HasVideoStream = true;
-                    _owner.HasFrame = true;
-                    _owner.InvalidateVisual();
+                    _owner.Present(bitmap); // first real frame reveals the clip
+                    _presented++;
+                    _uiTicks += Stopwatch.GetTimestamp() - started;
                 }
                 finally { _framePending = false; }
             }, DispatcherPriority.Render);
+        }
+
+        /// <summary>VLC's thread, per decoded frame while playing (see <see cref="SlowStep"/>).</summary>
+        private void CheckSlow(long now)
+        {
+            if (Interlocked.Exchange(ref _slowReset, 0) == 1) _slow = default;
+            if (SlowStep(ref _slow, now, Stopwatch.Frequency) is not { } fps) return;
+            Dispatcher.UIThread.Post(() => { if (!_dead) _owner.OnTooSlow(this, fps); });
+        }
+
+        /// <summary>The Stop log line: how long it played and at what rates.</summary>
+        private string Stats()
+        {
+            var play = Interlocked.Read(ref _playTicks);
+            var since = Interlocked.Read(ref _playSince);
+            if (since != 0) play += Stopwatch.GetTimestamp() - since;
+            var seconds = play / (double)Stopwatch.Frequency;
+            var shown = Interlocked.Read(ref _presented);
+            var ui = shown > 0 ? Interlocked.Read(ref _uiTicks) * 1000.0 / Stopwatch.Frequency / shown : 0;
+            return seconds > 0.05
+                ? $"decode={Width}x{Height} played {seconds:0.#} s: decoder {Interlocked.Read(ref _decoded) / seconds:0.#} fps, shown {shown / seconds:0.#} fps, UI {ui:0.00} ms/frame"
+                : $"decode={Width}x{Height} never played";
         }
 
         public void ShutDown()
         {
             if (_dead) return;
             _dead = true;
+            DebugLogger.Info(DebugLogger.Category.Playback, LogName + ".Stop", Stats());
             try { _capTimer?.Dispose(); } catch { }
             ThreadPool.QueueUserWorkItem(_ =>
             {
@@ -613,6 +796,7 @@ public sealed class VideoBackdrop : Control
 #pragma warning restore CS8625
                 try { Player.Dispose(); } catch { }
                 Marshal.FreeHGlobal(_buffer);
+                Interlocked.Decrement(ref s_liveSessions);
                 Dispatcher.UIThread.Post(() => { foreach (var b in _bitmaps) b.Dispose(); });
             });
         }

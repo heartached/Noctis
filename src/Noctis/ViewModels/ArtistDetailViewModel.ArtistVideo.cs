@@ -29,6 +29,14 @@ public partial class ArtistDetailViewModel
 
     public bool HasArtistVideo => !string.IsNullOrEmpty(ArtistVideoPath);
 
+    /// <summary>
+    /// The Settings sheet is over the page (MainWindowViewModel). The hero video holds its
+    /// frame meanwhile: under the sheet's live blur every video frame made the blur re-render
+    /// the whole app (probe: ~10 stand-in retakes a second for a 24 fps hero).
+    /// </summary>
+    [ObservableProperty]
+    private bool _isCovered;
+
     /// <summary>The menu's Remove Artist Video: shown while a video plays here.</summary>
     public bool CanRemoveArtistVideo => HasArtistVideo;
 

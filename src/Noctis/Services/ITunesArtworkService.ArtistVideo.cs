@@ -97,6 +97,10 @@ public sealed partial class ITunesArtworkService
     internal const int ArtistVideoMaxWidth = 1920;
     internal const int ArtistVideoMaxHeight = 1080;
 
+    /// <summary>The hero's decode width (<c>VideoBackdrop.MaxLongSide</c>): the smallest frame
+    /// at least this wide is saved, since every pixel above it is decoded and thrown away.</summary>
+    internal const int ArtistVideoWantedWidth = Noctis.Controls.VideoBackdrop.MaxLongSide;
+
     private static readonly Regex ArtistSlugRegex = new(
         @"/artist/(?<slug>[^/?#]+)/(?<id>\d+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
@@ -293,10 +297,12 @@ public sealed partial class ITunesArtworkService
 
     /// <summary>
     /// The variant an artist video is saved at: SDR only, never above 1920x1080; H.264 when
-    /// there is one (H.265 only when the master has no H.264 at all); the largest frame; and
-    /// of that frame the lightest stream: the hero shows it darkened and decoded at 960 px, so
-    /// the heavier encodes of the same frame only cost cache space (Chase Atlantic: four 1080p
-    /// H.264 streams from 4.2 to 12.4 Mb/s).
+    /// there is one (H.265 only when the master has no H.264 at all); the smallest frame at
+    /// least <see cref="ArtistVideoWantedWidth"/> wide (else the largest there is); and of that
+    /// frame the lightest stream: the hero shows it darkened and decoded at 960 px, so a bigger
+    /// frame or a heavier encode only costs CPU and cache space. Owner 11-26 "slow and choppy":
+    /// LibVLC software decode of a 24 fps H.264 clip into the 960x540 buffer measured ~30% of a
+    /// core at 1920x1080 against ~8-11% at 960x540 (ArtistVideoPerfProbeTests).
     /// </summary>
     internal static AnimatedArtworkVariant? PickArtistVideoVariant(IReadOnlyList<AnimatedArtworkVariant> variants)
     {
@@ -307,6 +313,12 @@ public sealed partial class ITunesArtworkService
             .ToList();
         var h264 = pool.Where(v => GetCodecFamily(v.Codec) == "h.264").ToList();
         if (h264.Count > 0) pool = h264;
+        var wideEnough = pool.Where(v => v.Width >= ArtistVideoWantedWidth).ToList();
+        if (wideEnough.Count > 0)
+            return wideEnough
+                .OrderBy(v => (long)v.Width * v.Height)
+                .ThenBy(v => v.Bandwidth)
+                .FirstOrDefault();
         return pool
             .OrderByDescending(v => (long)v.Width * v.Height)
             .ThenBy(v => v.Bandwidth)
