@@ -146,13 +146,26 @@ public class SidebarEdgePeekTests
     public void KeyboardFocusInsideTheRail_KeepsItOpen()
     {
         var r = Build(hoverExpand: false);
+        // A focusable stand-in for the rail's rows (unbound here, so the real rows are empty),
+        // filling the rail like its real content so the pointer lands on it. Put in before the
+        // rail slides in: swapped in under the resting pointer (as this test did), the old
+        // content took the rail's IsPointerOver with it until Avalonia's next hit test, which
+        // waits for a render tick on the wall clock, and with no CloseDelay here the rail
+        // sometimes tucked away first. The shell's 300 ms CloseDelay rides that out.
+        var target = new Button
+        {
+            Content = "Row",
+            Focusable = true,
+            Background = Avalonia.Media.Brushes.Transparent,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Stretch,
+        };
+        r.Rail.Child = target;
         r.Move(0);
         r.Move(30);
-        // A focusable stand-in for the rail's rows (unbound here, so the real rows are empty).
-        var target = new Button { Content = "Row", Focusable = true };
-        r.Rail.Child = target;
-        Dispatcher.UIThread.RunJobs();
-        Assert.True(target.Focus());
+        Assert.True(r.Peek.IsPeeking);
+        Assert.True(target.Focus(),
+            $"focus refused: peeking {r.Peek.IsPeeking}, rail visible {r.Rail.IsVisible}, rail bounds {r.Rail.Bounds}, row visible {target.IsEffectivelyVisible}");
         Dispatcher.UIThread.RunJobs();
 
         r.Move(700); // pointer back on the page, focus still in the rail
