@@ -3434,7 +3434,8 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowPostponeButton))]
     private bool _isAutoInstallPostponed;
-    /// <summary>Shows the "What's new" pill after an automatic update installed.</summary>
+    /// <summary>The small "new" dot on About's What's new button: this version's notes haven't
+    /// been opened since an update (SettingsViewModel.WhatsNew.cs keeps it).</summary>
     [ObservableProperty] private bool _showWhatsNew;
 
     /// <summary>False for Scoop / portable / read-only copies and Debug builds: the toggle is hidden.</summary>
@@ -3738,6 +3739,7 @@ public partial class SettingsViewModel : ViewModelBase
         try
         {
             _settings = await _persistence.LoadSettingsAsync();
+            InitWhatsNewSeen();
             ShortcutService.Load(_settings);
             // Content packs (pure JSON) are read now, ahead of the full plugin load, so a pack
             // theme or language chosen last session applies from the first frame.
@@ -9078,6 +9080,8 @@ public partial class SettingsViewModel : ViewModelBase
             var json = System.Text.Json.JsonSerializer.Serialize(prop.GetValue(_settings), prop.PropertyType);
             prop.SetValue(defaults, System.Text.Json.JsonSerializer.Deserialize(json, prop.PropertyType));
         }
+        // As a fresh install's first load sets it (SettingsViewModel.WhatsNew.cs): no "new" dot.
+        defaults.WhatsNewSeenVersion = RunningVersion;
         return defaults;
     }
 
@@ -9121,6 +9125,7 @@ public partial class SettingsViewModel : ViewModelBase
             // host's own switch is a no-op and the community plugins kept running until a restart.
             Plugins?.SetCommunityPluginsEnabled(false);
             _settings = defaultSettings;
+            ShowWhatsNew = IsNewer(RunningVersion, _settings.WhatsNewSeenVersion);
             // Each plugin's own settings back to its plugin.json defaults, telling the plugin.
             Plugins?.ResetSettingValues();
             SyncCommunityPluginsSwitch();
@@ -10041,7 +10046,6 @@ public partial class SettingsViewModel : ViewModelBase
         if (UpdateService.CompletedAutoUpdate is { } done && AutoUpdatePolicy.IsSafeTag(done.Tag))
         {
             LatestVersionTag = done.Tag;
-            ShowWhatsNew = true;
             UpdateStatusText = Loc.T("Settings.UpdatedTo", UpdateService.CurrentVersion.ToString(3));
         }
         if (UpdateService.LaunchInstallNote is { } note)
@@ -10542,13 +10546,6 @@ public partial class SettingsViewModel : ViewModelBase
             : $"https://github.com/heartached/Noctis/releases/tag/{LatestVersionTag}";
         Helpers.PlatformHelper.OpenUrl(url);
     }
-
-    /// <summary>The release notes of the version that is running (About's "What's new").</summary>
-    internal static string WhatsNewUrl =>
-        $"https://github.com/heartached/Noctis/releases/tag/v{UpdateService.CurrentVersion.ToString(3)}";
-
-    [RelayCommand]
-    private void OpenWhatsNew() => Helpers.PlatformHelper.OpenUrl(WhatsNewUrl);
 
     [RelayCommand]
     private void OpenDiscord()

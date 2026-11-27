@@ -1834,6 +1834,11 @@ public class AppSettings : IJsonOnDeserializing
     /// so it shows once per newer version rather than on every start.</summary>
     public string NewerVersionNoticeShownFor { get; set; } = "";
 
+    /// <summary>The last version whose What's new (Settings › About) was opened. Empty until the
+    /// first load sets it: to this version on a new profile (no dot), to the version that last
+    /// saved the settings after an update (the dot shows until What's new is opened).</summary>
+    public string WhatsNewSeenVersion { get; set; } = "";
+
     /// <summary>Set on load when <see cref="WrittenByVersion"/> is newer than this build:
     /// that version. Not saved.</summary>
     [JsonIgnore]

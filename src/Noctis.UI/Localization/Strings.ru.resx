@@ -214,6 +214,15 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.AutoDownloadUpdatesCaption" xml:space="preserve"><value>Новые версии загружаются в фоне. Нажмите «Установить и перезапустить», когда будете готовы.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Postpone" xml:space="preserve"><value>Отложить</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WhatsNew" xml:space="preserve"><value>Что нового</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="WhatsNew.Title" xml:space="preserve"><value>Что нового в {0}</value></data>
+  <data name="WhatsNew.Released" xml:space="preserve"><value>Выпущено {0:D}</value></data>
+  <data name="WhatsNew.Added" xml:space="preserve"><value>Добавлено</value></data>
+  <data name="WhatsNew.Improved" xml:space="preserve"><value>Улучшено</value></data>
+  <data name="WhatsNew.Fixed" xml:space="preserve"><value>Исправлено</value></data>
+  <data name="WhatsNew.Other" xml:space="preserve"><value>Другое</value></data>
+  <data name="WhatsNew.Unavailable" xml:space="preserve"><value>Заметки к этой версии пока недоступны.</value></data>
+  <data name="WhatsNew.OpenOnGitHub" xml:space="preserve"><value>Открыть на GitHub</value></data>
+  <data name="WhatsNew.IssueTip" xml:space="preserve"><value>Открыть {0} на GitHub</value></data>
   <data name="Settings.ShowRecentReleasesOnly" xml:space="preserve"><value>Показать последние выпуски</value><comment>Advanced: collapses the release history</comment></data>
   <data name="Settings.LyricsBackgroundPerSongHint" xml:space="preserve"><value>Щёлкните правой кнопкой по песне или альбому, чтобы задать для него отдельное видео.</value><comment>Appearance: under Lyrics Background Video</comment></data>
   <data name="Settings.PauseVideoWithPlayback" xml:space="preserve"><value>Ставить видео на паузу вместе с музыкой</value><comment>Appearance toggle title</comment></data>

@@ -34,7 +34,8 @@ namespace Noctis.ViewModels;
 ///   animated_artwork_bulk_ledger.json, lyrics_bulk_ledger.json, animated_artwork_no_autofetch.json,
 ///     animated_artwork_autofetch_ledger.json (album pages' fetch), artist_video_no_autofetch.json,
 ///     artist_video_autofetch_ledger.json, artist_video_index.json (artist pages' video), *-backfill.progress,
-///     mp3_decoder_fallback.txt, musixmatch_token (anonymous token, fetched again)
+///     mp3_decoder_fallback.txt, musixmatch_token (anonymous token, fetched again),
+///     whats_new_cache.json (About's What's new notes, fetched again when it opens)
 ///   tidal-auth.json (signed out, as the other services' sign-ins live in settings.json)
 ///   computers.json (each computer's own sign-ins and window/device/size settings, GitHub #230;
 ///     the default settings save writes this computer's part again)
@@ -68,7 +69,7 @@ public partial class SettingsViewModel
         "wrap_archive.json", "favorite_artists.json", "phone_handoff.json", "playlist_folders.json",
         "playlist_folder_order.json", "queue-position.json", "queue-position.json.tmp",
         "animated_artwork_bulk_ledger.json", "lyrics_bulk_ledger.json",
-        "mp3_decoder_fallback.txt", "musixmatch_token", "computers.json",
+        "mp3_decoder_fallback.txt", "musixmatch_token", "computers.json", "whats_new_cache.json",
         // Album pages' animated artwork fetch: the albums the user said not to fetch for and the
         // "no match" memory. StopLibraryRunsAsync drops the fetcher so the next page reloads
         // them, which read these old files straight back.

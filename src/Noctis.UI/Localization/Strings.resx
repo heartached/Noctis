@@ -214,6 +214,15 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.AutoDownloadUpdatesCaption" xml:space="preserve"><value>Downloads updates in the background. Click Install &amp; Restart when ready.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Postpone" xml:space="preserve"><value>Postpone</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WhatsNew" xml:space="preserve"><value>What's new</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="WhatsNew.Title" xml:space="preserve"><value>What's New in {0}</value><comment>Dialog title, {0} = Noctis and its version (WhatsNewDialog)</comment></data>
+  <data name="WhatsNew.Released" xml:space="preserve"><value>Released {0:D}</value><comment>Dialog subtitle, {0} = release date (WhatsNewDialog)</comment></data>
+  <data name="WhatsNew.Added" xml:space="preserve"><value>Added</value><comment>Group label (WhatsNewDialog)</comment></data>
+  <data name="WhatsNew.Improved" xml:space="preserve"><value>Improved</value><comment>Group label (WhatsNewDialog)</comment></data>
+  <data name="WhatsNew.Fixed" xml:space="preserve"><value>Fixed</value><comment>Group label (WhatsNewDialog)</comment></data>
+  <data name="WhatsNew.Other" xml:space="preserve"><value>Other</value><comment>Group label for other notes (WhatsNewDialog)</comment></data>
+  <data name="WhatsNew.Unavailable" xml:space="preserve"><value>Release notes for this version aren't available yet.</value><comment>Shown when the notes can't be loaded (WhatsNewDialog)</comment></data>
+  <data name="WhatsNew.OpenOnGitHub" xml:space="preserve"><value>Open on GitHub</value><comment>Footer button (WhatsNewDialog)</comment></data>
+  <data name="WhatsNew.IssueTip" xml:space="preserve"><value>Open {0} on GitHub</value><comment>Issue link tooltip, {0} = #123 (WhatsNewDialog)</comment></data>
   <data name="Settings.ShowRecentReleasesOnly" xml:space="preserve"><value>See recent releases</value><comment>Advanced: collapses the release history</comment></data>
   <data name="Settings.LyricsBackgroundPerSongHint" xml:space="preserve"><value>Right-click a song or album to give it its own video.</value><comment>Appearance: under Lyrics Background Video</comment></data>
   <data name="Settings.PauseVideoWithPlayback" xml:space="preserve"><value>Pause Video With Playback</value><comment>Appearance toggle title</comment></data>
