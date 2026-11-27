@@ -185,9 +185,10 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             ArtistLogos = ArtistLogoKeys.FromAssembly(typeof(AndroidApp).Assembly) is { IsEmpty: false } logoKeys
                 ? ArtistLogoSource.Create(persistence.DataDirectory, new HttpClient(), library, logoKeys)
                 : null,
-            // Now Playing's animated covers (Settings › Appearance › Animated Covers): cover.mp4
-            // beside the phone's own songs, else the computer's loop, saved under the app's cache
-            // folder (300 MB, least recently shown first; Android's Clear cache empties it).
+            // Now Playing's animated covers (Settings › Appearance › Animated Covers): the video
+            // chosen for the album on the phone, else cover.mp4 beside the phone's own songs, else
+            // the computer's loop, saved under the app's cache folder (300 MB, least recently shown
+            // first; Android's Clear cache empties it).
             AnimatedCoverSource = CreateAnimatedCoverSource(context, account),
         };
         _shell = shell;
@@ -268,8 +269,11 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             Noctis.Mobile.Views.AnimatedCoverView.SurfaceFactory = () => new AndroidAnimatedCoverSurface(context);
             var folders = new SafTrackFileAccess(context);
             var cache = new AnimatedCoverCache(Path.Combine(context.CacheDir!.AbsolutePath, "animated_covers"));
+            // Album ⋯ › Choose Animated Cover: copies kept out of backups (a loop is tens of MB and
+            // Android's backup gives up on an app past 25 MB), not in the cache Clear cache empties.
+            var chosen = new ChosenAnimatedCovers(Path.Combine(context.NoBackupFilesDir!.AbsolutePath, "animated_covers"));
             return AnimatedCoverSource.ForAccount(cache, () => AndroidNetwork.IsUnmetered(context), account,
-                t => folders.FindSibling(t.FilePath, AnimatedCoverLocator.SidecarNames));
+                t => folders.FindSibling(t.FilePath, AnimatedCoverLocator.SidecarNames), chosen);
         }
         catch (Exception ex)
         {

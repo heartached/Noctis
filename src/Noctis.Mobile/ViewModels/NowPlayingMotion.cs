@@ -83,6 +83,16 @@ public sealed partial class NowPlayingMotion : ObservableObject
         Path = path;
     }
 
+    /// <summary>An album's chosen loop changed (Choose / Remove Animated Cover): the playing song
+    /// is looked up afresh, now if Now Playing shows it, else when it opens.</summary>
+    public void Reload()
+    {
+        Cancel();
+        _lookedUp = null;
+        Path = null;
+        Refresh();
+    }
+
     private void Cancel()
     {
         _lookup?.Cancel();

@@ -8622,6 +8622,14 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.AnimatedCovers.Off" xml:space="preserve"><value>إيقاف</value></data>
   <data name="Mobile.AnimatedCovers.WifiOnly" xml:space="preserve"><value>Wi-Fi فقط</value></data>
   <data name="Mobile.AnimatedCovers.Always" xml:space="preserve"><value>دائمًا</value></data>
+  <data name="Mobile.Settings.AnimatedCoversHint" xml:space="preserve"><value>يظهر في قيد التشغيل بنمط الغلاف. من cover.mp4 أو cover.webm في مجلد الألبوم، أو فيديو تختاره من قائمة ⋯ للألبوم، أو من الكمبيوتر.</value></data>
+  <data name="Mobile.ChooseAnimatedCover" xml:space="preserve"><value>اختيار غلاف متحرك…</value></data>
+  <data name="Mobile.RemoveAnimatedCover" xml:space="preserve"><value>إزالة الغلاف المتحرك</value></data>
+  <data name="Mobile.AnimatedCoverSet" xml:space="preserve"><value>تم تعيين الغلاف المتحرك. يظهر في قيد التشغيل.</value></data>
+  <data name="Mobile.AnimatedCoverSetButOff" xml:space="preserve"><value>تم تعيين الغلاف المتحرك. فعّل الأغلفة المتحركة في الإعدادات لرؤيته.</value></data>
+  <data name="Mobile.AnimatedCoverNotVideo" xml:space="preserve"><value>هذا الملف ليس فيديو MP4 أو WebM.</value></data>
+  <data name="Mobile.AnimatedCoverTooBig" xml:space="preserve"><value>حجم هذا الفيديو أكبر من 200 ميغابايت.</value></data>
+  <data name="Mobile.AnimatedCoverFailed" xml:space="preserve"><value>تعذّر حفظ الفيديو.</value></data>
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>خلفية قيد التشغيل</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>سطوع خلفية قيد التشغيل</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>ألوان أغمق أو أفتح خلف شاشة «قيد التشغيل»</value></data>

@@ -3674,6 +3674,14 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.AnimatedCovers.Off" xml:space="preserve"><value>Kapalı</value></data>
   <data name="Mobile.AnimatedCovers.WifiOnly" xml:space="preserve"><value>Yalnızca Wi-Fi</value></data>
   <data name="Mobile.AnimatedCovers.Always" xml:space="preserve"><value>Her Zaman</value></data>
+  <data name="Mobile.Settings.AnimatedCoversHint" xml:space="preserve"><value>Şimdi Çalıyor ekranında Kapak stilinde oynar. Albüm klasöründeki cover.mp4 veya cover.webm, albümün ⋯ menüsünden seçilen bir video ya da bilgisayarından gelir.</value></data>
+  <data name="Mobile.ChooseAnimatedCover" xml:space="preserve"><value>Hareketli Kapak Seç…</value></data>
+  <data name="Mobile.RemoveAnimatedCover" xml:space="preserve"><value>Hareketli Kapağı Kaldır</value></data>
+  <data name="Mobile.AnimatedCoverSet" xml:space="preserve"><value>Hareketli kapak ayarlandı. Şimdi Çalıyor ekranında oynar.</value></data>
+  <data name="Mobile.AnimatedCoverSetButOff" xml:space="preserve"><value>Hareketli kapak ayarlandı. Görmek için Ayarlar'da Hareketli Kapaklar'ı açın.</value></data>
+  <data name="Mobile.AnimatedCoverNotVideo" xml:space="preserve"><value>Bu dosya bir MP4 veya WebM videosu değil.</value></data>
+  <data name="Mobile.AnimatedCoverTooBig" xml:space="preserve"><value>Bu video 200 MB'tan büyük.</value></data>
+  <data name="Mobile.AnimatedCoverFailed" xml:space="preserve"><value>Video kaydedilemedi.</value></data>
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>Şimdi Çalıyor Arka Planı</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>Şimdi Çalıyor arka plan parlaklığı</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>Şimdi Çalıyor ekranının arkasında daha koyu ya da açık renkler</value></data>

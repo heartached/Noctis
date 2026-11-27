@@ -272,6 +272,24 @@
                                                     <Border Grid.Column="1" Classes="np-line" />
                                                 </Grid>
                                             </Button>
+                                            <!-- An album's animated cover for Now Playing: a video from the phone (the
+                                                 desktop's Choose Animated Artwork); Remove while one is chosen. -->
+                                            <Button Name="MenuChooseAnimatedCover" Classes="row np-row" Command="{Binding ChooseAnimatedCoverCommand}"
+                                                    IsVisible="{Binding CanChooseAnimatedCover}">
+                                                <Grid ColumnDefinitions="56,*">
+                                                    <PathIcon Data="{DynamicResource PhAlbum}" />
+                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="{loc:T Mobile.ChooseAnimatedCover}" VerticalAlignment="Center" />
+                                                    <Border Grid.Column="1" Classes="np-line" />
+                                                </Grid>
+                                            </Button>
+                                            <Button Name="MenuRemoveAnimatedCover" Classes="row np-row" Command="{Binding RemoveAnimatedCoverCommand}"
+                                                    IsVisible="{Binding CanRemoveAnimatedCover}">
+                                                <Grid ColumnDefinitions="56,*">
+                                                    <PathIcon Data="{DynamicResource PhClose}" />
+                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="{loc:T Mobile.RemoveAnimatedCover}" VerticalAlignment="Center" />
+                                                    <Border Grid.Column="1" Classes="np-line" />
+                                                </Grid>
+                                            </Button>
                                             <!-- A playlist's own edits, the desktop's glyphs (MenuLineEdit, MenuLineTrash,
                                                  MenuLinePlaylistRemove); the destructive rows last, in red, as the
                                                  desktop's v2 menus and Apple's. -->

@@ -8622,6 +8622,14 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.AnimatedCovers.Off" xml:space="preserve"><value>끔</value></data>
   <data name="Mobile.AnimatedCovers.WifiOnly" xml:space="preserve"><value>Wi-Fi에서만</value></data>
   <data name="Mobile.AnimatedCovers.Always" xml:space="preserve"><value>항상</value></data>
+  <data name="Mobile.Settings.AnimatedCoversHint" xml:space="preserve"><value>지금 재생 중 화면의 커버 스타일에서 재생됩니다. 앨범 폴더의 cover.mp4 또는 cover.webm, 앨범 ⋯ 메뉴에서 고른 동영상, 또는 컴퓨터에서 가져옵니다.</value></data>
+  <data name="Mobile.ChooseAnimatedCover" xml:space="preserve"><value>움직이는 커버 선택…</value></data>
+  <data name="Mobile.RemoveAnimatedCover" xml:space="preserve"><value>움직이는 커버 제거</value></data>
+  <data name="Mobile.AnimatedCoverSet" xml:space="preserve"><value>움직이는 커버를 설정했습니다. 지금 재생 중에서 재생됩니다.</value></data>
+  <data name="Mobile.AnimatedCoverSetButOff" xml:space="preserve"><value>움직이는 커버를 설정했습니다. 보려면 설정에서 움직이는 커버를 켜세요.</value></data>
+  <data name="Mobile.AnimatedCoverNotVideo" xml:space="preserve"><value>이 파일은 MP4 또는 WebM 동영상이 아닙니다.</value></data>
+  <data name="Mobile.AnimatedCoverTooBig" xml:space="preserve"><value>이 동영상은 200MB를 넘습니다.</value></data>
+  <data name="Mobile.AnimatedCoverFailed" xml:space="preserve"><value>동영상을 저장할 수 없습니다.</value></data>
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>재생 중 배경</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>재생 중 배경 밝기</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>지금 재생 중 뒤의 색을 더 어둡거나 밝게</value></data>

@@ -585,7 +585,12 @@
                                             AutomationProperties.Name="{Binding AnimatedCoversRowName}">
                                         <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
                                             <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconAnimatedCover}" /></Border>
-                                            <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Settings.AnimatedCovers}" />
+                                            <!-- Where loops come from and where they show: without it, the setting on
+                                                 and nothing moving told a tester nothing (Discord #mobile-beta 11-27). -->
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,8">
+                                                <TextBlock Classes="row-label" Text="{loc:T Mobile.Settings.AnimatedCovers}" />
+                                                <TextBlock Name="AnimatedCoversHintLabel" Classes="row-sub" Text="{loc:T Mobile.Settings.AnimatedCoversHint}" />
+                                            </StackPanel>
                                             <TextBlock Grid.Column="2" Name="AnimatedCoversValueLabel" Classes="row-value" Text="{Binding AnimatedCoversValue}" />
                                             <views:GridIcon Grid.Column="3" Classes="row-trailing" StrokeThickness="2" Data="{DynamicResource SetIconUpDown}" />
                                         </views:SettingRow>
