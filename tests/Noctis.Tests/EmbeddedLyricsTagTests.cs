@@ -216,6 +216,26 @@ public class EmbeddedLyricsTagTests : IDisposable
         Assert.Equal(2, b.Lines.Count);
     }
 
+    /// <summary>Beta 6 (lyrics slow after a song change): with the lookup cache, the file's tags
+    /// are read on the first play only; later plays reuse their text, with no file open.</summary>
+    [Fact]
+    public void PhoneLoader_WithTheLookupCache_ReadsTheTagsOnce()
+    {
+        var path = Copy(_dir, "flac", f => Xiph(f).SetField("SYNCEDLYRICS", Lrc), name: "phone-cached");
+        var files = new FakeTrackFiles { Audio = File.ReadAllBytes(path) };
+        var track = new Track { FilePath = path };
+        var lookups = new LyricsLookupCache();
+
+        var first = LyricsLoader.Load(track, files, false, lookups);
+        var second = LyricsLoader.Load(track, files, false, lookups);
+
+        Assert.Equal(LyricsSource.EmbeddedSynced, first.Source);
+        Assert.Equal(LyricsSource.EmbeddedSynced, second.Source);
+        Assert.Equal(first.Lines.Select(l => l.Text), second.Lines.Select(l => l.Text));
+        Assert.Equal(1, files.AudioOpens);
+        Assert.Equal(1, files.SidecarReads);
+    }
+
     // ── Writing ──
 
     [Theory]

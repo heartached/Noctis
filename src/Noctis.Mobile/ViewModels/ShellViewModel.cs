@@ -27,6 +27,11 @@ public sealed partial class ShellViewModel : ObservableObject
         Player.PropertyChanged += OnPlayerChanged;
         Player.PlayRecorded += OnPlayRecorded;
         Player.PlayCountThresholdPercent = () => PlayCountThresholdPercent;
+        // A finished scan may have brought or taken sidecars: lyrics are looked up afresh.
+        Library.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(LibraryViewModel.IsScanning) && !Library.IsScanning) Lyrics.ForgetLookups();
+        };
         Search = new SearchPageViewModel(this);
     }
 

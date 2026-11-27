@@ -344,7 +344,16 @@ internal sealed class FakeTrackFiles : ITrackFileAccess
         return null;
     }
 
-    public Stream? OpenAudio(string trackPath) => Audio == null ? null : new MemoryStream(Audio);
+    public int AudioOpens { get; private set; }
+    public int FolderForgets { get; private set; }
+
+    public Stream? OpenAudio(string trackPath)
+    {
+        AudioOpens++;
+        return Audio == null ? null : new MemoryStream(Audio);
+    }
+
+    public void ForgetFolders() => FolderForgets++;
 }
 
 internal sealed class FakeAnimatedCoverService : IAnimatedCoverService

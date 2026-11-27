@@ -22,6 +22,10 @@ public interface ITrackFileAccess
     /// or null for the last segment of <paramref name="trackPath"/>. A source whose paths carry
     /// no file name (a desktop song's noctis-remote id) names the local copy it opens here.</summary>
     string? AudioFileName(string trackPath) => null;
+
+    /// <summary>Drops what the source remembers of folders and their files (a finished rescan: a
+    /// sidecar may have been added or removed since), so the next look asks the files again.</summary>
+    void ForgetFolders() { }
 }
 
 /// <summary>The desktop's sidecar naming rule, path-free so every file source shares it.</summary>

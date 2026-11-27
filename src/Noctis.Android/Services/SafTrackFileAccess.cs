@@ -45,8 +45,15 @@ public sealed class SafTrackFileAccess : ITrackFileAccess
             var docId = DocumentsContract.GetDocumentId(uri);
             if (docId == null || ParentDocumentId(uri, docId) is not { } parentId) return null;
 
-            var children = ListChildren(uri, parentId);
+            // The folder's listing as last read (an album's songs share one): a song not in it
+            // came after that read, and the folder is listed again.
+            var children = Children(uri, parentId, fresh: false);
             var self = children.FirstOrDefault(c => c.Id == docId);
+            if (self.Name == null)
+            {
+                children = Children(uri, parentId, fresh: true);
+                self = children.FirstOrDefault(c => c.Id == docId);
+            }
             if (self.Name == null) return null;
 
             if (SidecarNames.Match(self.Name, children.Select(c => c.Name!), extensions) is not { } hit) return null;
@@ -100,7 +107,7 @@ public sealed class SafTrackFileAccess : ITrackFileAccess
                 if (_siblings.TryGetValue(parentId, out var known)) return known;
 
             string? found = null;
-            var children = ListChildren(uri, parentId);
+            var children = Children(uri, parentId, fresh: false);
             foreach (var name in names)
             {
                 var hit = children.FirstOrDefault(c => string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase));
@@ -137,12 +144,43 @@ public sealed class SafTrackFileAccess : ITrackFileAccess
         }
     }
 
-    /// <summary>The folder holding the document: FindDocumentPath's path runs tree top →
-    /// document, so the folder is the second-to-last id. Providers that do not implement it
-    /// throw; the external-storage provider's ids are "&lt;root&gt;:&lt;relative path&gt;", so
-    /// there the folder is the id up to its last '/'.</summary>
+    // Folders already listed (authority + folder document id → its children): the sidecar search
+    // ran a provider query listing the whole folder on every track change, the same folder for
+    // every song of an album (beta 6: lyrics slow to show after a song change). Bounded; dropped
+    // by ForgetFolders (a finished rescan). Worker threads.
+    private readonly Dictionary<string, List<(string? Id, string? Name)>> _folders = new(StringComparer.Ordinal);
+    private const int MaxFolders = 64;
+
+    private List<(string? Id, string? Name)> Children(AUri treeScopedUri, string parentId, bool fresh)
+    {
+        var key = treeScopedUri.Authority + "|" + parentId;
+        if (!fresh)
+            lock (_folders)
+                if (_folders.TryGetValue(key, out var known)) return known;
+        var children = ListChildren(treeScopedUri, parentId);
+        lock (_folders)
+        {
+            if (_folders.Count >= MaxFolders && !_folders.ContainsKey(key)) _folders.Clear();
+            _folders[key] = children;
+        }
+        return children;
+    }
+
+    public void ForgetFolders()
+    {
+        lock (_folders) _folders.Clear();
+        lock (_siblings) _siblings.Clear();
+    }
+
+    /// <summary>The folder holding the document. The external-storage provider's ids are
+    /// "&lt;root&gt;:&lt;relative path&gt;", so there the folder is the id up to its last '/', with
+    /// no provider call (FindDocumentPath is one, on every track change). Elsewhere, and for a
+    /// document at its root: FindDocumentPath's path runs tree top → document, so the folder is
+    /// the second-to-last id (providers that do not implement it throw).</summary>
     private string? ParentDocumentId(AUri uri, string docId)
     {
+        if (uri.Authority == ExternalStorageAuthority && docId.LastIndexOf('/') is > 0 and var cut)
+            return docId[..cut];
         try
         {
             var path = DocumentsContract.FindDocumentPath(_resolver, uri)?.GetPath();

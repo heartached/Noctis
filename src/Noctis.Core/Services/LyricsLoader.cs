@@ -29,14 +29,40 @@ public static class LyricsLoader
 {
     private static readonly string[] SidecarOrder = [".ttml", ".elrc", ".lrc"];
 
-    public static LoadedLyrics Load(Track track, ITrackFileAccess files, bool joinSplitWords)
+    /// <param name="lookups">Optional: what earlier loads learned about the file (no sidecar beside
+    /// it, its tags' lyrics), so this one skips that I/O, and where this one adds to it.</param>
+    public static LoadedLyrics Load(Track track, ITrackFileAccess files, bool joinSplitWords, LyricsLookupCache? lookups = null)
     {
-        var remaining = SidecarOrder;
+        var known = lookups?.Get(track);
+        var findings = new Findings { NoSidecar = known is { NoSidecar: true }, Embedded = known?.Embedded };
+        var result = Load(track, files, joinSplitWords, findings);
+        lookups?.Set(track, findings.NoSidecar, findings.Embedded);
+        return result;
+    }
+
+    /// <summary>What one load learned about the file (see <see cref="LyricsLookupCache"/>).</summary>
+    private sealed class Findings
+    {
+        /// <summary>Every sidecar format was asked for and none was there (one that would not
+        /// parse is not "none": the search runs again next time).</summary>
+        public bool NoSidecar;
+
+        /// <summary>The tags' lyrics, once read (null: not read).</summary>
+        public EmbeddedLyricsText? Embedded;
+    }
+
+    private static LoadedLyrics Load(Track track, ITrackFileAccess files, bool joinSplitWords, Findings findings)
+    {
+        var remaining = findings.NoSidecar ? Array.Empty<string>() : SidecarOrder;
         string? unparsedTtml = null;
         while (remaining.Length > 0)
         {
             var hit = files.ReadSidecar(track.FilePath, remaining);
-            if (hit == null) break;
+            if (hit == null)
+            {
+                if (ReferenceEquals(remaining, SidecarOrder)) findings.NoSidecar = true;
+                break;
+            }
             var text = LyricsTextDecoder.Decode(hit.Bytes);
             if (hit.Extension != ".ttml" && LyricsSearchSelector.IsInstrumentalPlaceholder(text)) return LoadedLyrics.Instrumental;
             var parsed = hit.Extension == ".ttml"
@@ -66,7 +92,13 @@ public static class LyricsLoader
 
         // The file's own tags, read now: SYLT and SYNCEDLYRICS, and the UNSYNCEDLYRICS-style
         // aliases a row scanned before GitHub #135 never stored.
-        var embedded = ReadEmbedded(track, files);
+        EmbeddedLyricsText embedded;
+        if (findings.Embedded is { } read) embedded = read;
+        else
+        {
+            embedded = ReadEmbedded(track, files, out var opened);
+            if (opened) findings.Embedded = embedded;
+        }
         if (IsInstrumental(embedded.Synced, string.IsNullOrWhiteSpace(plain) ? embedded.Text : null)) return LoadedLyrics.Instrumental;
         if (!string.IsNullOrWhiteSpace(embedded.Synced)
             && FromLrc(embedded.Synced, embedded.SyncedFromSylt ? LyricsSource.EmbeddedSylt : LyricsSource.EmbeddedSynced) is { IsSynced: true } fileSynced)
@@ -157,9 +189,12 @@ public static class LyricsLoader
     /// segment is the percent-encoded document id, whose tail is the display name on the
     /// external-storage provider. An opaque id has no extension, TagLib refuses it, and the
     /// read is simply empty.</summary>
-    private static EmbeddedLyricsText ReadEmbedded(Track track, ITrackFileAccess files)
+    /// <param name="opened">The audio opened, so the result is what its tags hold (not a file
+    /// that could not be read).</param>
+    private static EmbeddedLyricsText ReadEmbedded(Track track, ITrackFileAccess files, out bool opened)
     {
         var stream = files.OpenAudio(track.FilePath);
+        opened = stream != null;
         if (stream == null) return EmbeddedLyricsText.Empty;
         var name = files.AudioFileName(track.FilePath) ?? Path.GetFileName(Uri.UnescapeDataString(track.FilePath));
         return EmbeddedLyrics.ReadStream(stream, name);
