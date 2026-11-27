@@ -32,7 +32,7 @@ public class RenderChainAllocationTests
         ISampleProvider chain = new MuteGateProvider(provider);
         chain = new BeatTapProvider(chain, 100);
         chain = new OutputLevelProvider(chain);
-        var bytes = new SampleToWaveProvider(chain);
+        var bytes = GaplessSink.ToWaveProvider(chain); // what GaplessSink hands its WasapiOut
         var buffer = new byte[sinkRate * periodMs / 1000 * channels * 4];
 
         for (int i = 0; i < 100; i++) bytes.Read(buffer, 0, buffer.Length); // warm-up (JIT, first-read state)
@@ -42,8 +42,8 @@ public class RenderChainAllocationTests
         var perRead = (GC.GetAllocatedBytesForCurrentThread() - before) / (double)reads;
         _out.WriteLine($"render chain: {perRead:F1} bytes allocated per 10 ms read");
 
-        // NAudio's SampleToWaveProvider wraps the buffer in a WaveBuffer per call (~40 B);
-        // anything beyond a few hundred bytes would be the chain itself allocating.
-        Assert.True(perRead < 256, $"render chain allocated {perRead:F1} B per read");
+        // NAudio's SampleToWaveProvider wrapped the buffer in a WaveBuffer per call (~40 B);
+        // the sink's own adapter makes that view once (11-27), so the read is garbage-free.
+        Assert.True(perRead == 0, $"render chain allocated {perRead:F1} B per read");
     }
 }
