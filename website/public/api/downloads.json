@@ -1,6 +1,7 @@
 {
   "total": 25978,
   "byRelease": {
+    "v1.7.3": 0,
     "v1.7.2": 476,
     "v1.7.1": 644,
     "v1.7.0": 928,
@@ -74,73 +75,73 @@
     "v1.0.1": 24,
     "v1.0.0": 14
   },
-  "latestVersion": "1.7.2",
-  "latestTag": "v1.7.2",
-  "latestUrl": "https://github.com/heartached/Noctis/releases/tag/v1.7.2",
-  "publishedAt": "2026-11-25T05:00:50Z",
-  "releaseCount": 72,
+  "latestVersion": "1.7.3",
+  "latestTag": "v1.7.3",
+  "latestUrl": "https://github.com/heartached/Noctis/releases/tag/v1.7.3",
+  "publishedAt": "2026-11-27T10:56:42Z",
+  "releaseCount": 73,
   "stars": 353,
   "openIssues": 11,
   "assets": {
     "windowsInstaller": {
-      "name": "Noctis-v1.7.2-Setup.exe",
-      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.2/Noctis-v1.7.2-Setup.exe",
-      "size": 160691207,
-      "downloads": 214
+      "name": "Noctis-v1.7.3-Setup.exe",
+      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.3/Noctis-v1.7.3-Setup.exe",
+      "size": 161270857,
+      "downloads": 0
     },
     "windowsPortable": {
       "name": "Noctis-windows-x64.zip",
-      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.2/Noctis-windows-x64.zip",
-      "size": 322390289,
-      "downloads": 33
+      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.3/Noctis-windows-x64.zip",
+      "size": 323262627,
+      "downloads": 0
     },
     "macosArm": {
       "name": "Noctis-osx-arm64.dmg",
-      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.2/Noctis-osx-arm64.dmg",
-      "size": 216727080,
-      "downloads": 11
+      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.3/Noctis-osx-arm64.dmg",
+      "size": 218055919,
+      "downloads": 0
     },
     "macosIntel": {
       "name": "Noctis-osx-x64.dmg",
-      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.2/Noctis-osx-x64.dmg",
-      "size": 230614150,
-      "downloads": 10
+      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.3/Noctis-osx-x64.dmg",
+      "size": 231253014,
+      "downloads": 0
     },
     "linuxAppImage": {
       "name": "Noctis-x86_64.AppImage",
-      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.2/Noctis-x86_64.AppImage",
-      "size": 220043768,
-      "downloads": 38
+      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.3/Noctis-x86_64.AppImage",
+      "size": 220826104,
+      "downloads": 0
     },
     "linuxArm": {
       "name": "Noctis-linux-arm64.tar.gz",
-      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.2/Noctis-linux-arm64.tar.gz",
-      "size": 148547323,
-      "downloads": 8
+      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.3/Noctis-linux-arm64.tar.gz",
+      "size": 148926360,
+      "downloads": 0
     },
     "linuxTar": {
       "name": "Noctis-linux-x64.tar.gz",
-      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.2/Noctis-linux-x64.tar.gz",
-      "size": 169319649,
-      "downloads": 7
+      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.3/Noctis-linux-x64.tar.gz",
+      "size": 170173660,
+      "downloads": 0
     },
     "checksums": {
       "name": "SHA256SUMS",
-      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.2/SHA256SUMS",
+      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.3/SHA256SUMS",
       "size": 1079,
-      "downloads": 142
+      "downloads": 0
     }
   },
   "sizes": {
-    "windowsInstaller": "153 MB",
-    "windowsPortable": "307 MB",
-    "macosArm": "207 MB",
-    "macosIntel": "220 MB",
-    "linuxAppImage": "210 MB",
+    "windowsInstaller": "154 MB",
+    "windowsPortable": "308 MB",
+    "macosArm": "208 MB",
+    "macosIntel": "221 MB",
+    "linuxAppImage": "211 MB",
     "linuxArm": "142 MB",
-    "linuxTar": "161 MB",
+    "linuxTar": "162 MB",
     "checksums": "0 MB"
   },
-  "updatedAt": "2026-11-27T10:53:30.827Z",
+  "updatedAt": "2026-11-27T10:57:04.805Z",
   "degraded": false
 }
