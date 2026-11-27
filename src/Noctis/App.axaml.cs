@@ -373,6 +373,16 @@ public partial class App : Application
     public static bool IsLightVariantTheme(string? themeName) =>
         themeName != null && LightVariantThemes.Contains(themeName);
 
+    /// <summary>The application whose resources SetTheme / SetAccent change: this one, except
+    /// in the headless theme-switch bench, which applies them to the test application its
+    /// windows resolve against.</summary>
+    internal Application ThemeHost
+    {
+        get => _themeHost ?? this;
+        set => _themeHost = value;
+    }
+    private Application? _themeHost;
+
     private ResourceInclude? _activeThemeOverlay;
     private Avalonia.Controls.ResourceDictionary? _activeCustomOverlay;
     private string? _activeAccentHex;
@@ -434,12 +444,12 @@ public partial class App : Application
     {
         if (_activeThemeOverlay != null)
         {
-            Resources.MergedDictionaries.Remove(_activeThemeOverlay);
+            ThemeHost.Resources.MergedDictionaries.Remove(_activeThemeOverlay);
             _activeThemeOverlay = null;
         }
         if (_activeCustomOverlay != null)
         {
-            Resources.MergedDictionaries.Remove(_activeCustomOverlay);
+            ThemeHost.Resources.MergedDictionaries.Remove(_activeCustomOverlay);
             _activeCustomOverlay = null;
         }
 
@@ -452,7 +462,7 @@ public partial class App : Application
             {
                 var derived = Noctis.Services.ThemeDerivation.Derive(def);
 
-                RequestedThemeVariant =
+                ThemeHost.RequestedThemeVariant =
                     derived.TryGetValue("__BaseVariant", out var v) && (string)v == "Light"
                         ? Avalonia.Styling.ThemeVariant.Light
                         : Avalonia.Styling.ThemeVariant.Dark;
@@ -463,7 +473,7 @@ public partial class App : Application
                     if (key.StartsWith("__")) continue;
                     rd[key] = value;
                 }
-                Resources.MergedDictionaries.Add(rd);
+                ThemeHost.Resources.MergedDictionaries.Add(rd);
                 _activeCustomOverlay = rd;
 
                 // Custom themes drive their own accent — push it through the SetAccent
@@ -484,14 +494,14 @@ public partial class App : Application
             if (theme != null)
             {
                 var resources = Noctis.Services.Plugins.PackThemeBuilder.Build(theme);
-                RequestedThemeVariant = theme.IsLight ? Avalonia.Styling.ThemeVariant.Light : Avalonia.Styling.ThemeVariant.Dark;
+                ThemeHost.RequestedThemeVariant = theme.IsLight ? Avalonia.Styling.ThemeVariant.Light : Avalonia.Styling.ThemeVariant.Dark;
                 var rd = new Avalonia.Controls.ResourceDictionary();
                 foreach (var (key, value) in resources)
                 {
                     if (key.StartsWith("__")) continue;
                     rd[key] = value;
                 }
-                Resources.MergedDictionaries.Add(rd);
+                ThemeHost.Resources.MergedDictionaries.Add(rd);
                 _activeCustomOverlay = rd;
                 // The user's accent (seeded from the theme's accent when it was picked) wins.
                 SetAccent(_activeAccentHex ?? theme.AccentHex);
@@ -500,7 +510,7 @@ public partial class App : Application
             themeName = ThemeGray;
         }
 
-        RequestedThemeVariant = IsLightVariantTheme(themeName)
+        ThemeHost.RequestedThemeVariant = IsLightVariantTheme(themeName)
             ? Avalonia.Styling.ThemeVariant.Light
             : Avalonia.Styling.ThemeVariant.Dark;
 
@@ -516,7 +526,7 @@ public partial class App : Application
         if (overlayUri != null)
         {
             var include = new ResourceInclude((Uri?)null) { Source = new Uri(overlayUri) };
-            Resources.MergedDictionaries.Add(include);
+            ThemeHost.Resources.MergedDictionaries.Add(include);
             _activeThemeOverlay = include;
         }
 
@@ -622,17 +632,17 @@ public partial class App : Application
     {
         if (_activeAccentOverlay != null)
         {
-            Resources.MergedDictionaries.Remove(_activeAccentOverlay);
+            ThemeHost.Resources.MergedDictionaries.Remove(_activeAccentOverlay);
             _activeAccentOverlay = null;
         }
 
-        var isLight = RequestedThemeVariant == Avalonia.Styling.ThemeVariant.Light;
+        var isLight = ThemeHost.RequestedThemeVariant == Avalonia.Styling.ThemeVariant.Light;
         var rd = Helpers.AccentPalette.Build(color, isLight);
         // Read with the previous accent overlay already removed: the theme's own surfaces.
         if (TintWindowWithAccent)
-            Noctis.Services.AccentWindowTint.AddTo(rd, this, ActualThemeVariant, color, isLight);
+            Noctis.Services.AccentWindowTint.AddTo(rd, ThemeHost, ThemeHost.ActualThemeVariant, color, isLight);
 
-        Resources.MergedDictionaries.Add(rd);
+        ThemeHost.Resources.MergedDictionaries.Add(rd);
         _activeAccentOverlay = rd;
     }
 
