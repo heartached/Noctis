@@ -50,6 +50,15 @@ public partial class LyricsStudioPanel : UserControl
             children.Title.MaxWidth = max;
     }
 
+    /// <summary>The body's narrow layout (queue 250 px, preview above the review) at 900 px or less, as the
+    /// container query it replaces did (see the studio-narrow styles).</summary>
+    internal const double NarrowBodyWidth = 900;
+
+    private void OnStudioBodySizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        if (sender is Grid body) body.Classes.Set("studio-narrow", e.NewSize.Width <= NarrowBodyWidth);
+    }
+
     /// <summary>Title, subtitle and the round X. The sidebar page hides it and draws its own header.</summary>
     public static readonly StyledProperty<bool> ShowHeaderProperty =
         AvaloniaProperty.Register<LyricsStudioPanel, bool>(nameof(ShowHeader), true);
