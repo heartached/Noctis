@@ -4062,6 +4062,11 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>Valoraciones</value><comment>Show in Song Rows choice: star ratings</comment></data>
   <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>Favoritos</value><comment>Show in Song Rows choice: a heart on favorites</comment></data>
   <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>Estrellas o un corazón al final de cada fila de canción</value><comment>Library group footnote</comment></data>
+  <data name="Mobile.Settings.ScanSchedule" xml:space="preserve"><value>Escanear biblioteca</value><comment>Settings › Library row: when a start of the app rescans the folders</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.EveryStart" xml:space="preserve"><value>Cada vez que se abre</value><comment>Scan Library choice: a scan at each start</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Daily" xml:space="preserve"><value>A diario</value><comment>Scan Library choice: at the first start of a day</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Weekly" xml:space="preserve"><value>Cada semana</value><comment>Scan Library choice: at a start 7+ days after the last scan</comment></data>
+  <data name="Mobile.Settings.ScanSchedule.Manual" xml:space="preserve"><value>Solo manual</value><comment>Scan Library choice: only with Rescan Library</comment></data>
   <data name="Mobile.Rate" xml:space="preserve"><value>Valorar</value><comment>Song menu row: set the star rating</comment></data>
   <data name="Mobile.RateStars" xml:space="preserve"><value>Valorar con {0} de 5</value><comment>Screen reader for a star in the song menu. {0} = 1-5</comment></data>
   <data name="Mobile.ClearRating" xml:space="preserve"><value>Borrar valoración</value><comment>Song menu: remove the rating</comment></data>

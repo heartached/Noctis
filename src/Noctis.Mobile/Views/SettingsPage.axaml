@@ -762,6 +762,17 @@
                                             <views:GridIcon Grid.Column="3" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
                                         </views:SettingRow>
                                     </Button>
+                                    <!-- Scan Library: whether a start rescans every time, daily, weekly or never
+                                         (Discord #mobile-beta, beta 6); Rescan Library below always scans. -->
+                                    <Border Classes="row-separator chipped" />
+                                    <Button Name="ScanScheduleRow" Classes="row" Command="{Binding ShowScanScheduleMenuCommand}" AutomationProperties.Name="{Binding ScanScheduleRowName}">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconSchedule}" /></Border>
+                                            <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Settings.ScanSchedule}" />
+                                            <TextBlock Grid.Column="2" Name="ScanScheduleValueLabel" Classes="row-value" Text="{Binding ScanScheduleValue}" />
+                                            <views:GridIcon Grid.Column="3" Classes="row-trailing" StrokeThickness="2" Data="{DynamicResource SetIconUpDown}" />
+                                        </views:SettingRow>
+                                    </Button>
                                     <Border Classes="row-separator chipped" />
                                     <Button Name="RescanButton" Classes="row" Command="{Binding Shell.Library.RescanCommand}"
                                             IsEnabled="{Binding CanRescan}" AutomationProperties.Name="{Binding RescanRowName}">
@@ -1031,15 +1042,8 @@
                                 </Border>
                                 <TextBlock Name="FoldersFootnoteLabel" Classes="group-footnote" Text="{Binding FoldersFootnote}" />
                             </StackPanel>
-                            <StackPanel>
-                                <Border Classes="group-card">
-                                    <ToggleButton Name="ScanOnStartupSwitch" Classes="switch-row" AutomationProperties.Name="{loc:T Mobile.Folders.ScanOnStartup}"
-                                                  IsChecked="{Binding Shell.Library.ScanOnStartup}">
-                                        <TextBlock Classes="row-label" Text="{loc:T Mobile.Folders.ScanOnStartup}" />
-                                    </ToggleButton>
-                                </Border>
-                                <TextBlock Classes="group-footnote" Text="{loc:T Mobile.Folders.ScanOnStartupHint}" />
-                            </StackPanel>
+                            <!-- Scan on Startup moved to Settings › Library › Scan Library (Every Start,
+                                 Daily, Weekly, Manual Only). -->
                         </StackPanel>
 
                         <!-- Hidden: each hidden song (title, artist) or folder with Unhide, the note under them. -->

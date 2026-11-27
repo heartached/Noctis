@@ -535,7 +535,7 @@ public class MobileSettingsTests
             foreach (var (name, label) in new[]
                      {
                          ("BackgroundRow", "Background"), ("ThemeRow", "Theme"), ("AccentRow", "Accent"), ("PlayerBarRow", "Player Bar"),
-                         ("FoldersRow", "Music Folders"), ("RescanButton", "Rescan Library"),
+                         ("FoldersRow", "Music Folders"), ("ScanScheduleRow", "Scan Library"), ("RescanButton", "Rescan Library"),
                          ("LyricsRow", "Lyrics"), ("ScrobblingRow", "Scrobbling"), ("HistoryRow", "Listening History"),
                          ("ReportRow", "Report a Problem"), ("ExportLogsButton", "Export Logs"), ("WebsiteRow", "Noctis Website"), ("PrivacyRow", "Privacy Policy"),
                      })
@@ -593,6 +593,8 @@ public class MobileSettingsTests
             Assert.Equal("Lyrics, Both on", NameOf("LyricsRow"));
             Assert.Equal("Export Logs, Keys and passwords removed", NameOf("ExportLogsButton"));
             Assert.StartsWith("Rescan Library, ", NameOf("RescanButton"));
+            Assert.Equal("Every Start", MobileFixtures.Named<TextBlock>(page, "ScanScheduleValueLabel").Text);
+            Assert.Equal("Scan Library, Every Start", NameOf("ScanScheduleRow"));
 
             vm.Appearance = "Dark";
             vm.SelectedAccent = SettingsPageViewModel.Accents.Single(a => a.Name == "Emerald");
@@ -607,6 +609,17 @@ public class MobileSettingsTests
             Assert.Equal("Accent, Emerald", NameOf("AccentRow"));
             Assert.Equal("Player Bar, Progress Line", NameOf("PlayerBarRow"));
             Assert.Equal("Lyrics, Translations on", NameOf("LyricsRow"));
+
+            // Scan Library: the glass menu lists the four choices, the pick shows at once.
+            vm.ShowScanScheduleMenuCommand.Execute(null);
+            var menu = Assert.IsType<OptionsMenuViewModel>(rig.Shell.OptionsMenu);
+            Assert.Equal(new[] { "Every Start", "Daily", "Weekly", "Manual Only" }, menu.Items.Select(i => i.Label));
+            Assert.True(menu.Items[0].IsChecked);
+            menu.Items[2].PickCommand.Execute(null);
+            Assert.Equal(ScanSchedule.Weekly, rig.Shell.Library.ScanSchedule);
+            window.UpdateLayout();
+            Assert.Equal("Weekly", MobileFixtures.Named<TextBlock>(page, "ScanScheduleValueLabel").Text);
+            Assert.Equal("Scan Library, Weekly", NameOf("ScanScheduleRow"));
         });
         await ((SettingsPageViewModel)rig.Shell.CurrentPage!).PendingSave;
         await rig.Shell.PendingPlayerBarSave;
@@ -726,12 +739,12 @@ public class MobileSettingsTests
                 Settle(window);
                 lines.AddRange(page.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("row-separator") && b.IsEffectivelyVisible));
             }
-            // 24 on the top level (10 Appearance with Now Playing Artwork, Animated Covers, Language, Tab Bar, Reduce Glass, Liquid Glass Tab Pill and Smooth Motion,
-            // 1 in Now Playing Background between its style and Brightness, 4 Library with
-            // Downloads away, Hidden, Artist Separators and Genre Separators, 5 Listening with ReplayGain, Played Songs in Queue and Keep Shuffle On, 3 Help, 2 About), 1 between two folders, none on Accent,
+            // 25 on the top level (10 Appearance with Now Playing Artwork, Animated Covers, Language, Tab Bar, Reduce Glass, Liquid Glass Tab Pill and Smooth Motion,
+            // 1 in Now Playing Background between its style and Brightness, 5 Library with
+            // Downloads away, Hidden, Artist Separators, Genre Separators and Scan Library, 5 Listening with ReplayGain, Played Songs in Queue and Keep Shuffle On, 3 Help, 2 About), 1 between two folders, none on Accent,
             // 1 between the Player Bar's two switches, 3 in Lyrics (two between its three switches,
             // one between its two sliders): none above a list's first row.
-            Assert.Equal(30, lines.Count);
+            Assert.Equal(31, lines.Count);
             Assert.All(lines, line =>
             {
                 var card = line.GetVisualAncestors().OfType<Border>().First(b => b.Classes.Contains("group-card"));
