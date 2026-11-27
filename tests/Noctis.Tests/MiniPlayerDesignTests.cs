@@ -208,7 +208,7 @@ public class MiniPlayerDesignTests
     public MiniPlayerDesignTests(ITestOutputHelper output) => _out = output;
 
     [AvaloniaTheory]
-    [InlineData("Classic", "SeekSlider")]
+    [InlineData("Classic", "CardSeekSlider")]
     [InlineData("Pill", "PillSeekSlider")]
     [InlineData("Sleeve", "SleeveSeekSlider")]
     public async Task SeekBar_PressDragRelease_SeeksThePlayer(string style, string sliderName)
@@ -271,9 +271,13 @@ public class MiniPlayerDesignTests
             vm.ToggleQueueDrawerCommand.Execute(null);
             await PumpFor(400);
             Assert.Equal(MiniDrawer.Queue, vm.Drawer);
-            vm.ToggleVolumeDrawerCommand.Execute(null);
-            await PumpFor(400);
-            Assert.Equal(MiniDrawer.Volume, vm.Drawer);
+            // Volume is no drawer: it swaps into the design card's own seek row.
+            vm.ToggleVolumeCommand.Execute(null);
+            await PumpFor(200);
+            Assert.True(vm.IsVolumeShown);
+            Assert.True(win.FindControl<Slider>("PillVolumeSlider")!.IsEffectivelyVisible);
+            Assert.False(win.FindControl<Slider>("PillSeekSlider")!.IsEffectivelyVisible);
+            vm.ToggleVolumeCommand.Execute(null);
             vm.CloseDrawerCommand.Execute(null);
             await PumpFor(400);
 
@@ -349,7 +353,7 @@ public class MiniPlayerDesignTests
         await PumpFor(200);
         try
         {
-            vm.ToggleVolumeDrawerCommand.Execute(null);
+            vm.ToggleQueueDrawerCommand.Execute(null);
             await PumpFor(150); // mid-slide
             vm.SetDesignCommand.Execute("Pill");
             await PumpFor(700);

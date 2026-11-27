@@ -383,7 +383,11 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     private void OnMiniPlayerClosed(object? sender, System.EventArgs e)
     {
         if (sender is MiniPlayerWindow mini)
+        {
             mini.Closed -= OnMiniPlayerClosed;
+            // One VM per open: release its handlers on the shared player/settings/lyrics.
+            (mini.DataContext as MiniPlayerViewModel)?.Dispose();
+        }
         _miniPlayer = null;
 
         Show();

@@ -207,7 +207,7 @@ public class WaveformSeekBarTests
         try
         {
             PumpUntil(() => false, 150);
-            var names = new[] { "SeekSlider", "BarSeekSlider", "LargeSeekSlider", "LyricsSeekSlider", "PillSeekSlider", "SleeveSeekSlider" };
+            var names = new[] { "CardSeekSlider", "BarSeekSlider", "LargeSeekSlider", "LyricsSeekSlider", "PillSeekSlider", "SleeveSeekSlider" };
             foreach (var name in names)
             {
                 var slider = win.FindControl<Slider>(name)!;
@@ -215,7 +215,7 @@ public class WaveformSeekBarTests
                 var waveform = parent.Children.OfType<WaveformSeekBar>().Single();
                 Assert.True(parent.Children.IndexOf(waveform) < parent.Children.IndexOf(slider), $"{name}: waveform must sit under the slider");
                 Assert.False(waveform.IsVisible, $"{name}: shown with the setting off");
-                Assert.False(slider.Classes.Contains("waveform"));
+                Assert.False(win.Classes.Contains("waveform-seek"));
             }
 
             player.WaveformSeekBarEnabled = true;
@@ -224,7 +224,7 @@ public class WaveformSeekBarTests
 
             var large = win.FindControl<Slider>("LargeSeekSlider")!;
             var largeWave = ((Panel)large.GetVisualParent()!).Children.OfType<WaveformSeekBar>().Single();
-            Assert.True(large.Classes.Contains("waveform"));
+            Assert.True(win.Classes.Contains("waveform-seek"));
             Assert.True(largeWave.IsEffectivelyVisible);
             Assert.Same(player.CurrentWaveform, largeWave.Waveform);
             Assert.Equal(large.Bounds, largeWave.Bounds);
@@ -370,7 +370,7 @@ public class WaveformSeekBarTests
             foreach (var (form, style, w, h, sliderName) in new[]
             {
                 ("large", "Classic", 340.0, 520.0, "LargeSeekSlider"),
-                ("card", "Classic", 360.0, 432.0, "SeekSlider"),
+                ("card", "Classic", 360.0, 432.0, "CardSeekSlider"),
                 ("pill", "Pill", 360.0, 150.0, "PillSeekSlider"),
                 ("sleeve", "Sleeve", 320.0, 420.0, "SleeveSeekSlider"),
             })

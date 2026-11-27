@@ -414,8 +414,14 @@ public class MiniPlayerFrostSettingTests : IDisposable
             var lines = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(win)
                 .OfType<Noctis.Controls.MarqueeTextBlock>().Where(m => m.Classes.Contains("mini-artist")).ToList();
             Assert.NotEmpty(lines);
-            Assert.True(win.TryFindResource("MiniDrawerTextSoft", out var soft));
-            Assert.All(lines, m => Assert.Same(soft, m.Foreground));
+            // Every form's artist line (designs included, since 11-27) takes the soft ink of
+            // the ground it sits on: white on the classic glass, the theme's on a design card.
+            Assert.Equal(6, lines.Count);
+            Assert.All(lines, m =>
+            {
+                Assert.True(m.TryFindResource("MiniDrawerTextSoft", m.ActualThemeVariant, out var soft));
+                Assert.Same(soft, m.Foreground);
+            });
 
             settings.AccentTrackLinks = true;
             Dispatcher.UIThread.RunJobs();

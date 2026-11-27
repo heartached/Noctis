@@ -414,8 +414,9 @@ public class MiniPlayerMenuClickTests
             ClickMenuItem("Queue");
             Assert.Equal(MiniDrawer.Queue, vm.Drawer);
 
+            // Volume swaps the card's seek row for its volume row (no drawer).
             ClickMenuItem("Volume");
-            Assert.Equal(MiniDrawer.Volume, vm.Drawer);
+            Assert.True(vm.IsVolumeShown);
 
             // Last: it resizes the window into the lyrics form, which hides the item.
             ClickMenuItem("Lyrics");

@@ -154,14 +154,14 @@ public class MiniPlayerProbeTests
             Assert.Equal(MiniPlayerForm.LargeIcon, vm.Form);
             ReportVolumeRow(win.FindControl<Slider>("LargeVolumeSlider")!, win, "large");
 
-            // The drawer copy: open the volume layer in the Card form.
+            // The swap-in copy: the Card form's volume row.
             // 360 wide: 432/340 is still inside the LargeIcon hysteresis band.
             win.Width = 360; win.Height = 432;
             await PumpFor(150);
             Assert.Equal(MiniPlayerForm.Card, vm.Form);
-            vm.Drawer = MiniDrawer.Volume;
+            vm.ToggleVolumeCommand.Execute(null);
             await PumpFor(400);
-            ReportVolumeRow(win.FindControl<Slider>("DrawerVolumeSlider")!, win, "drawer");
+            ReportVolumeRow(win.FindControl<Slider>("CardVolumeSlider")!, win, "card swap-in");
         }
         finally { win.Close(); }
     }

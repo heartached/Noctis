@@ -26,15 +26,16 @@ public enum MiniPlayerForm
     Sleeve,
 }
 
-/// <summary>Which bottom-sheet layer is open over the card ("…" menu actions).</summary>
-public enum MiniDrawer { None, Search, Queue, Volume }
+/// <summary>Which bottom-sheet layer is open under the card ("…" menu actions). Volume is
+/// not a layer: it swaps into the card's own seek row (<see cref="MiniPlayerViewModel.IsVolumeShown"/>).</summary>
+public enum MiniDrawer { None, Search, Queue }
 
 /// <summary>
 /// State for the resizable Liqoria-style mini player: exposes the shared player /
 /// lyrics / settings ViewModels, derives the window's form factor from its size,
 /// and owns the bottom-sheet layers (library search, queue, volume).
 /// </summary>
-public partial class MiniPlayerViewModel : ViewModelBase
+public partial class MiniPlayerViewModel : ViewModelBase, IDisposable
 {
     private readonly ILibraryService _library;
 
@@ -50,38 +51,86 @@ public partial class MiniPlayerViewModel : ViewModelBase
         Settings = settings;
         _library = library;
 
+        // Every handler below is a named method, released in Dispose: a mini player VM is
+        // made per open (MainWindowViewModel.CreateMiniPlayerViewModel), and the player,
+        // lyrics, settings and Loc all outlive it. As lambdas they kept every closed mini
+        // player's VM alive, and one closed with the Queue open kept rebuilding its rows on
+        // every queue edit.
         // Lyrics empty-state for the lyrics form (either tab may hold the lines).
-        Lyrics.LyricLines.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasNoLyrics));
-        Lyrics.UnsyncedLines.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasNoLyrics));
+        Lyrics.LyricLines.CollectionChanged += OnLyricLinesChanged;
+        Lyrics.UnsyncedLines.CollectionChanged += OnLyricLinesChanged;
 
         // Queue preview follows live queue edits, but only while its layer is open: Up Next,
         // the played songs (GitHub #124) and the Keep Played Songs setting.
-        Player.UpNext.CollectionChanged += (_, _) => ScheduleQueueRefresh();
-        Player.PlayedTracks.CollectionChanged += (_, _) => ScheduleQueueRefresh();
-        Player.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(PlayerViewModel.ShowPlayedInQueue))
-                ScheduleQueueRefresh();
-        };
+        Player.UpNext.CollectionChanged += OnQueueChanged;
+        Player.PlayedTracks.CollectionChanged += OnQueueChanged;
+        Player.PropertyChanged += OnPlayerPropertyChanged;
 
         // The design picker (Settings ▸ Appearance) drives the form while a fixed design
         // is selected; the window follows Form the same way it follows a size change.
-        Settings.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(SettingsViewModel.MiniPlayerStyle))
-                ApplyStyle(resizeWindow: true);
-        };
+        Settings.PropertyChanged += OnSettingsPropertyChanged;
         if (StyleForm is { } styled)
             Form = styled;
 
         _isPinned = CanPin && Settings.MiniPlayerPinned;
 
         // Code-built labels re-read on a language switch, as the {loc:T} ones do.
-        Noctis.Localization.Loc.Instance.CultureChanged += (_, _) =>
+        Noctis.Localization.Loc.Instance.CultureChanged += OnCultureChanged;
+    }
+
+    private void OnLyricLinesChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        => OnPropertyChanged(nameof(HasNoLyrics));
+
+    private void OnQueueChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        => ScheduleQueueRefresh();
+
+    private void OnPlayerPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        switch (e.PropertyName)
         {
-            OnPropertyChanged(nameof(LyricsMenuLabel));
-            OnPropertyChanged(nameof(PinMenuLabel));
-        };
+            case nameof(PlayerViewModel.ShowPlayedInQueue):
+                ScheduleQueueRefresh();
+                break;
+            // A level change (slider, wheel, keys, the main window) keeps the volume row up.
+            case nameof(PlayerViewModel.Volume):
+            case nameof(PlayerViewModel.IsMuted):
+                KeepVolumeShown();
+                break;
+        }
+    }
+
+    private void OnSettingsPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SettingsViewModel.MiniPlayerStyle))
+            ApplyStyle(resizeWindow: true);
+    }
+
+    private void OnCultureChanged(object? sender, EventArgs e)
+    {
+        OnPropertyChanged(nameof(LyricsMenuLabel));
+        OnPropertyChanged(nameof(PinMenuLabel));
+    }
+
+    private bool _disposed;
+
+    /// <summary>Releases the long-lived sources' handlers and stops the timers (the window
+    /// is closed; MainWindow calls this from its Closed handler).</summary>
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        Lyrics.LyricLines.CollectionChanged -= OnLyricLinesChanged;
+        Lyrics.UnsyncedLines.CollectionChanged -= OnLyricLinesChanged;
+        Player.UpNext.CollectionChanged -= OnQueueChanged;
+        Player.PlayedTracks.CollectionChanged -= OnQueueChanged;
+        Player.PropertyChanged -= OnPlayerPropertyChanged;
+        Settings.PropertyChanged -= OnSettingsPropertyChanged;
+        Noctis.Localization.Loc.Instance.CultureChanged -= OnCultureChanged;
+        _searchDebounce?.Stop();
+        _searchDebounce = null;
+        _volumeHide?.Stop();
+        _volumeHide = null;
+        FormResizeRequested = null;
     }
 
     // ── Pin (Windows): survive Show desktop / Minimize all, stay above games ──
@@ -193,6 +242,12 @@ public partial class MiniPlayerViewModel : ViewModelBase
     /// forms show as a button.</summary>
     public bool IsDesignForm => Form is MiniPlayerForm.Pill or MiniPlayerForm.Sleeve;
 
+    // Full Artwork has its own bar and the icon has no row: the swap ends there.
+    partial void OnFormChanged(MiniPlayerForm value)
+    {
+        if (!ShowVolumeMenuItem) IsVolumeShown = false;
+    }
+
     /// <summary>Bottom-sheet layers exist on every form with a "…" menu (not the tiny icon).
     /// Under a fixed design the sheet paints its own dark ground (see SyncChrome).</summary>
     public bool SupportsDrawer => Form is not MiniPlayerForm.Icon;
@@ -267,7 +322,7 @@ public partial class MiniPlayerViewModel : ViewModelBase
         MiniPlayerForm.Bar => (420, 188),
         MiniPlayerForm.LargeIcon => (340, 520),
         MiniPlayerForm.Lyrics => (640, 412),
-        MiniPlayerForm.Pill => (352, 140),
+        MiniPlayerForm.Pill => (360, 140),
         MiniPlayerForm.Sleeve => (340, 372),
         _ => (340, 432),
     };
@@ -322,13 +377,12 @@ public partial class MiniPlayerViewModel : ViewModelBase
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsDrawerOpen), nameof(IsSearchDrawer),
-        nameof(IsQueueDrawer), nameof(IsVolumeDrawer))]
+        nameof(IsQueueDrawer))]
     private MiniDrawer _drawer = MiniDrawer.None;
 
     public bool IsDrawerOpen => Drawer != MiniDrawer.None;
     public bool IsSearchDrawer => Drawer == MiniDrawer.Search;
     public bool IsQueueDrawer => Drawer == MiniDrawer.Queue;
-    public bool IsVolumeDrawer => Drawer == MiniDrawer.Volume;
 
     [RelayCommand]
     private void ToggleSearchDrawer() => Drawer = Drawer == MiniDrawer.Search ? MiniDrawer.None : MiniDrawer.Search;
@@ -336,8 +390,52 @@ public partial class MiniPlayerViewModel : ViewModelBase
     [RelayCommand]
     private void ToggleQueueDrawer() => Drawer = Drawer == MiniDrawer.Queue ? MiniDrawer.None : MiniDrawer.Queue;
 
+    // ── Volume row ──
+    // "…" ▸ Volume swaps the card's seek row for a volume row of the same look, in every form
+    // and design (the Full Artwork card keeps its own permanent bar). It hands back to the
+    // seek bar VolumeAutoHide after the last change or hover (the window reports hovers).
+
+    /// <summary>How long the volume row stays without a change or a hover.</summary>
+    internal static TimeSpan VolumeAutoHide { get; set; } = TimeSpan.FromSeconds(4);
+
+    [ObservableProperty] private bool _isVolumeShown;
+
+    private DispatcherTimer? _volumeHide;
+
+    /// <summary>True while the auto-hide countdown runs (tests).</summary>
+    internal bool IsVolumeHideTimerRunning => _volumeHide?.IsEnabled == true;
+
     [RelayCommand]
-    private void ToggleVolumeDrawer() => Drawer = Drawer == MiniDrawer.Volume ? MiniDrawer.None : MiniDrawer.Volume;
+    private void ToggleVolume() => IsVolumeShown = !IsVolumeShown && ShowVolumeMenuItem;
+
+    partial void OnIsVolumeShownChanged(bool value)
+    {
+        if (value) RestartVolumeHide();
+        else _volumeHide?.Stop();
+    }
+
+    /// <summary>Restarts the countdown while the row is up (a change, a hover over it).</summary>
+    public void KeepVolumeShown()
+    {
+        if (IsVolumeShown) RestartVolumeHide();
+    }
+
+    private void RestartVolumeHide()
+    {
+        if (_disposed) return;
+        if (_volumeHide == null)
+        {
+            _volumeHide = new DispatcherTimer { Interval = VolumeAutoHide };
+            _volumeHide.Tick += (_, _) =>
+            {
+                _volumeHide?.Stop();
+                IsVolumeShown = false;
+            };
+        }
+        _volumeHide.Stop();
+        _volumeHide.Interval = VolumeAutoHide;
+        _volumeHide.Start();
+    }
 
     [RelayCommand]
     private void CloseDrawer() => Drawer = MiniDrawer.None;

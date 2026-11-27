@@ -163,7 +163,7 @@ public class MiniPlayerDesignTogglesTests
     /// buttons sit inside the card, in order, apart. Below the canonical width the designs'
     /// existing rows (title, seek bar) already run out of room; that is reported, not asserted.</summary>
     [AvaloniaTheory]
-    [InlineData("Pill", 352, 140)]
+    [InlineData("Pill", 360, 140)]
     [InlineData("Pill", 420, 140)]
     [InlineData("Pill", 640, 220)]
     [InlineData("Pill", 960, 840)]
@@ -218,7 +218,7 @@ public class MiniPlayerDesignTogglesTests
             for (var i = 1; i < rects.Count; i++) Assert.True(rects[i].X >= rects[i - 1].Right);
 
             // Wide enough again: back.
-            rig.Win.Width = 352;
+            rig.Win.Width = 360;
             await PumpFor(300);
             Assert.True(rig.Win.FindControl<Button>("PillShuffleButton")!.IsEffectivelyVisible);
             Assert.True(rig.Win.FindControl<Button>("PillRepeatButton")!.IsEffectivelyVisible);
@@ -242,7 +242,7 @@ public class MiniPlayerDesignTogglesTests
         var names = new[] { "Midnight City", "Dreams", "Blue Monday", "Heroes", "Teardrop", "Nightcall", "Strobe", "Intro" };
         List<Track> Named() => names.Select(n => new Track { Title = n, Artist = "Various", FilePath = $@"C:\{n}.flac" }).ToList();
 
-        foreach (var (design, w, h) in new[] { ("Pill", 352.0, 140.0), ("Sleeve", 340.0, 372.0), ("Pill", 520.0, 140.0), ("Sleeve", 460.0, 420.0) })
+        foreach (var (design, w, h) in new[] { ("Pill", 360.0, 140.0), ("Sleeve", 340.0, 372.0), ("Pill", 520.0, 140.0), ("Sleeve", 460.0, 420.0) })
         {
             var rig = Open(Named(), ended: 0, keepPlayed: false, design: design, width: w, height: h);
             try

@@ -81,13 +81,6 @@ public class MiniPlayerQueueScrollTests
         }
     }
 
-    private static readonly FieldInfo RunningField =
-        typeof(MarqueeTextBlock).GetField("_isRunning", BindingFlags.Instance | BindingFlags.NonPublic)!;
-    private static readonly MethodInfo StartMethod =
-        typeof(MarqueeTextBlock).GetMethod("StartScrolling", BindingFlags.Instance | BindingFlags.NonPublic)!;
-
-    private static bool IsRunning(MarqueeTextBlock m) => (bool)RunningField.GetValue(m)!;
-
     private static (MiniPlayerWindow win, MiniPlayerViewModel vm, List<Track> tracks) Open()
     {
         EnsureAppResources();
@@ -138,7 +131,7 @@ public class MiniPlayerQueueScrollTests
             Assert.IsType<VirtualizingStackPanel>(panel);
 
             // Only the handful of rows inside the viewport are real controls.
-            var rows = items.GetVisualDescendants().OfType<MarqueeTextBlock>().Count();
+            var rows = items.GetVisualDescendants().OfType<Border>().Count(b => b.Classes.Contains("mini-queue-row"));
             var scroller = items.FindAncestorOfType<ScrollViewer>()!;
             var rowsInView = (int)Math.Ceiling(scroller.Viewport.Height / 48.0) + 2;
             _out.WriteLine($"liveRows={rows} of {items.ItemCount}, viewport={scroller.Viewport}, extent={scroller.Extent}");
@@ -153,8 +146,12 @@ public class MiniPlayerQueueScrollTests
         }
     }
 
+    /// <summary>Owner 11-27: "I Knew It, I Knew You (Acoustic V..." ran under the play button
+    /// with no ellipsis. Rows now use the main queue rows' title line (LeadTailPanel): the
+    /// title trims with an ellipsis before the button, no marquee per row, and the overlay
+    /// scroll bar has its own gutter instead of covering the buttons.</summary>
     [AvaloniaFact]
-    public async Task QueueDrawer_OnlyRowsInsideTheViewportLapTheirMarquee()
+    public async Task QueueDrawer_LongTitlesTrimBeforeThePlayButton_AndTheScrollBarClearsIt()
     {
         var (win, vm, _) = Open();
         await PumpFor(300);
@@ -165,25 +162,25 @@ public class MiniPlayerQueueScrollTests
             var sheet = win.FindControl<Border>("DrawerSheet")!;
             sheet.Height = 200;
             win.UpdateLayout();
-            await PumpFor(800);
+            await PumpFor(400);
 
-            var marquees = sheet.GetVisualDescendants().OfType<MarqueeTextBlock>().ToList();
-            Assert.NotEmpty(marquees);
-            var scroller = marquees[0].FindAncestorOfType<ScrollViewer>()!;
-            Assert.True(scroller.Extent.Height > scroller.Viewport.Height);
-
-            // What the 7 s rest-pause timer does in the app: every overflowing title tries
-            // to start its lap. A row scrolled out of the viewport must refuse.
-            foreach (var m in marquees) StartMethod.Invoke(m, null);
-            await PumpFor(200);
-            Assert.Contains(marquees, IsRunning);
-
-            var top = marquees.OrderBy(m => m.TranslatePoint(new Point(0, 0), scroller)!.Value.Y).First();
-            Assert.True(IsRunning(top), "a row in view laps");
-            scroller.Offset = new Vector(0, 48 * 30);
-            win.UpdateLayout();
-            await PumpFor(200);
-            Assert.False(IsRunning(top), "the same row, scrolled out of view, must stop");
+            Assert.Empty(sheet.GetVisualDescendants().OfType<MarqueeTextBlock>());
+            var scroller = win.FindControl<ScrollViewer>("QueueScroller")!;
+            var rows = sheet.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("mini-queue-row")).ToList();
+            Assert.NotEmpty(rows);
+            foreach (var row in rows.Take(3))
+            {
+                var title = row.GetVisualDescendants().OfType<LeadTailPanel>().First()
+                    .Children.OfType<TextBlock>().First();
+                var play = row.GetVisualDescendants().OfType<Button>().Single(b => b.Classes.Contains("glass-circle"));
+                Assert.Equal(Avalonia.Media.TextTrimming.CharacterEllipsis, title.TextTrimming);
+                var titleRight = title.TranslatePoint(new Point(title.Bounds.Width, 0), row)!.Value.X;
+                var playLeft = play.TranslatePoint(default, row)!.Value.X;
+                var playRight = play.TranslatePoint(new Point(play.Bounds.Width, 0), scroller)!.Value.X;
+                _out.WriteLine($"title right {titleRight:0.0}, play {playLeft:0.0}..{playRight:0.0}, viewport {scroller.Viewport.Width:0.0}");
+                Assert.True(titleRight <= playLeft, "the title runs under the play button");
+                Assert.True(playRight <= scroller.Viewport.Width - 8, "the scroll bar covers the play button");
+            }
         }
         finally
         {
