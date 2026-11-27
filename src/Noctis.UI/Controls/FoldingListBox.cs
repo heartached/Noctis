@@ -133,6 +133,7 @@ public class FoldingListBoxItem : ListBoxItem
     private void Tick(TimeSpan now, int generation, TopLevel top)
     {
         if (generation != _generation) return;
+        now = AnimationFrameClock.Now(now);
         _start ??= now;
         var t = _duration <= TimeSpan.Zero ? 1 : Math.Clamp((now - _start.Value) / _duration, 0, 1);
         SetReveal(_from + (_to - _from) * _ease.Ease(t));
