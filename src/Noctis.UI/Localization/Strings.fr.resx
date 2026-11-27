@@ -1369,10 +1369,6 @@ Deezer et TIDAL : collez le lien.</value>
     <value>Spectre complet</value>
     <comment>Text in SettingsView.axaml (GitHub #205)</comment>
   </data>
-  <data name="Settings.FullSpectrumHint" xml:space="preserve">
-    <value>Pondère les barres comme un analyseur de studio, pour que les aigus discrets jusqu'à 20 kHz restent visibles.</value>
-    <comment>Text in SettingsView.axaml (GitHub #205)</comment>
-  </data>
   <data name="Settings.FrequencyBarsRisingFromTip" xml:space="preserve">
     <value>Des barres de fréquences qui montent depuis le bas</value>
     <comment>ToolTip.Tip in SettingsView.axaml</comment>
@@ -1613,24 +1609,12 @@ Deezer et TIDAL : collez le lien.</value>
     <value>Masquer l'îlot de lecture en plein écran</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsFullScreenHideIslandHint" xml:space="preserve">
-    <value>En plein écran, la page des paroles ne garde que la barre de progression sous le morceau. Les raccourcis clavier contrôlent toujours la lecture.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.LyricsMinLineOpacity" xml:space="preserve">
     <value>Opacité minimale de la ligne</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsMinLineOpacityHint" xml:space="preserve">
-    <value>Garde chaque ligne légèrement visible pour que vous puissiez cliquer sur n'importe laquelle. 0 % masque les lignes éloignées.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.JoinSplitWords" xml:space="preserve">
     <value>Joindre les mots découpés</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.KeepWordsWholeWhen" xml:space="preserve">
-    <value>Garde les mots entiers lorsque les paroles TTML les découpent en syllabes.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsGlowAndLift" xml:space="preserve">
@@ -1645,20 +1629,12 @@ Deezer et TIDAL : collez le lien.</value>
     <value>Rendu des paroles</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsRendererHint" xml:space="preserve">
-    <value>Dessine les lignes des paroles avec une extension. Noctis garde le défilement, la synchronisation et le clic pour se positionner.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.LyricsRendererOff" xml:space="preserve">
     <value>{0} (extension désactivée)</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsCenterWhenNoLyrics" xml:space="preserve">
     <value>Centrer le lecteur quand un morceau n'a pas de paroles</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve">
-    <value>Place la pochette et les commandes au centre quand un titre n'a pas de paroles.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsBackgroundBehindSidebar" xml:space="preserve">
@@ -1673,32 +1649,16 @@ Deezer et TIDAL : collez le lien.</value>
     <value>Barre de progression en forme d'onde</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsWaveformSeekBarHint" xml:space="preserve">
-    <value>Affiche la forme d'onde du titre dans la barre de progression de la page des paroles.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.ShowTranslations" xml:space="preserve">
     <value>Afficher les traductions</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.ShowTranslationsHint" xml:space="preserve">
-    <value>Affiche sous chaque ligne la traduction contenue dans un fichier de paroles TTML.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ShowRomanization" xml:space="preserve">
     <value>Afficher la romanisation</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.ShowRomanizationHint" xml:space="preserve">
-    <value>Affiche les paroles romanisées (romaji, pinyin) sous chaque ligne quand le fichier les contient.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.ShowBackgroundVocals" xml:space="preserve">
     <value>Afficher les chœurs</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.ShowBackgroundVocalsHint" xml:space="preserve">
-    <value>Affiche les chœurs et les ad-libs sur une ligne plus petite sous la ligne principale.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.PlayerBarOpacity" xml:space="preserve">
@@ -2389,10 +2349,6 @@ Deezer et TIDAL : collez le lien.</value>
     <value>Vaste catalogue de paroles synchronisées</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.MusixmatchHint" xml:space="preserve">
-    <value>Paroles synchronisées au mot · peut se mettre en pause quand un captcha est demandé</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.KugouHint" xml:space="preserve">
     <value>Catalogue de paroles synchronisées au mot</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -2404,10 +2360,6 @@ Deezer et TIDAL : collez le lien.</value>
   <data name="Settings.UnisonHint" xml:space="preserve">
     <value>Paroles de la communauté Better Lyrics · Lyrics from Unison (unison.boidu.dev)</value>
     <comment>Text in SettingsView.axaml; keep "Lyrics from Unison (unison.boidu.dev)": the attribution Unison's ODbL licence asks for</comment>
-  </data>
-  <data name="Settings.LrcMuxHint" xml:space="preserve">
-    <value>Paroles de Deezer, KuGou, YouTube Music et Musixmatch via lrcmux.dev, interrogé en dernier</value>
-    <comment>Text in SettingsView.axaml (GitHub #219)</comment>
   </data>
   <data name="Settings.YouTubeMusicLyricsHint" xml:space="preserve">
     <value>Paroles synchronisées · recherches plus lentes</value>
@@ -2691,14 +2643,6 @@ Deezer et TIDAL : collez le lien.</value>
   </data>
   <data name="Settings.ClearArtworkCache" xml:space="preserve">
     <value>Vider le cache des pochettes</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.DeleteCachedArtworkWill" xml:space="preserve">
-    <value>Supprime les pochettes en cache. Elles seront reconstruites à la prochaine analyse.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.NoteRemovesAllArtwork" xml:space="preserve">
-    <value>Remarque : cela supprime toutes les pochettes de votre bibliothèque.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ClearCache" xml:space="preserve">
@@ -6379,20 +6323,12 @@ L'enregistrement les remplace par les paroles affichées. Un fichier de paroles 
     <value>Fichier</value>
     <comment>Header in MetadataWindow.axaml</comment>
   </data>
-  <data name="Metadata.Format" xml:space="preserve">
-    <value>Format</value>
-    <comment>Text in MetadataWindow.axaml</comment>
-  </data>
   <data name="Metadata.Duration" xml:space="preserve">
     <value>durée</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.Size" xml:space="preserve">
     <value>taille</value>
-    <comment>Text in MetadataWindow.axaml</comment>
-  </data>
-  <data name="Metadata.Bitrate" xml:space="preserve">
-    <value>Débit</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.BitDepth" xml:space="preserve">
@@ -6405,10 +6341,6 @@ L'enregistrement les remplace par les paroles affichées. Un fichier de paroles 
   </data>
   <data name="Metadata.Channels" xml:space="preserve">
     <value>canaux</value>
-    <comment>Text in MetadataWindow.axaml</comment>
-  </data>
-  <data name="Metadata.Codec" xml:space="preserve">
-    <value>Codec</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.Quality" xml:space="preserve">
@@ -9110,9 +9042,6 @@ Années : year:1990-1999, year:&gt;2000</value>
   <data name="Plugins.Card.Off" xml:space="preserve">
     <value>Désactivée</value>
   </data>
-  <data name="Plugins.Card.Verified" xml:space="preserve">
-    <value>Extension officielle de Noctis</value>
-  </data>
   <data name="Plugins.Card.A11yOfficial" xml:space="preserve">
     <value>{0}, extension officielle de Noctis</value>
   </data>
@@ -10239,10 +10168,6 @@ Années : year:1990-1999, year:&gt;2000</value>
     <value>{0} titres</value>
     <comment>Choose songs: tag on an album row ({0} = local songs on it)</comment>
   </data>
-  <data name="LyricsStudio.Queue" xml:space="preserve">
-    <value>TITRES</value>
-    <comment>Queue column header</comment>
-  </data>
   <data name="LyricsStudio.ReviewEmptyTitle" xml:space="preserve">
     <value>Rien à revoir pour le moment</value>
     <comment>Review pane empty state</comment>
@@ -10394,10 +10319,6 @@ Les lignes et leur minutage sont supprimés et une zone de paroles vide s'ouvre 
   <data name="LyricsStudio.Align" xml:space="preserve">
     <value>Aligner les paroles</value>
     <comment>Lyrics box primary button</comment>
-  </data>
-  <data name="LyricsStudio.Beta" xml:space="preserve">
-    <value>Bêta</value>
-    <comment>Pill next to the Lyrics Studio title (top bar and dialog header)</comment>
   </data>
   <data name="LyricsStudio.Preview" xml:space="preserve">
     <value>Aperçu</value>
@@ -10955,40 +10876,20 @@ Les lignes et leur minutage sont supprimés et une zone de paroles vide s'ouvre 
     <value>Télécharger automatiquement les paroles</value>
     <comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsAutoDownloadHint" xml:space="preserve">
-    <value>Trouve et enregistre les paroles des titres qui n'en ont pas. Les paroles existantes ne sont jamais remplacées.</value>
-    <comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment>
-  </data>
   <data name="Settings.LyricsPreferredType" xml:space="preserve">
     <value>Type de paroles préféré</value>
-    <comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.LyricsPreferredTypeHint" xml:space="preserve">
-    <value>Ce que Noctis garde quand il choisit lui-même des paroles en ligne.</value>
     <comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsUpgradePlain" xml:space="preserve">
     <value>Améliorer les paroles non synchronisées</value>
     <comment>Settings ▸ Lyrics (GitHub #194), SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsUpgradePlainHint" xml:space="preserve">
-    <value>Quand un titre n'a que des paroles non synchronisées, cherche votre type synchronisé préféré. Si rien n'est trouvé, les paroles non synchronisées restent.</value>
-    <comment>Settings ▸ Lyrics (GitHub #194), SettingsView.axaml</comment>
-  </data>
   <data name="Settings.LyricsAutoFindNew" xml:space="preserve">
     <value>Trouver les paroles des nouveaux titres</value>
     <comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsAutoFindNewHint" xml:space="preserve">
-    <value>Cherche en arrière-plan les paroles des titres ajoutés à votre bibliothèque. Les titres avec des paroles synchronisées ne sont pas touchés.</value>
-    <comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment>
-  </data>
   <data name="Settings.LyricsAutoFindLibrary" xml:space="preserve">
     <value>Trouver les paroles de toute la bibliothèque</value>
-    <comment>Settings ▸ Lyrics (GitHub #219), SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.LyricsAutoFindLibraryHint" xml:space="preserve">
-    <value>Cherche en arrière-plan les paroles des titres qui n'ont pas encore de paroles synchronisées.</value>
     <comment>Settings ▸ Lyrics (GitHub #219), SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsPreferredType.WordSynced" xml:space="preserve">
@@ -12057,10 +11958,6 @@ Les lignes et leur minutage sont supprimés et une zone de paroles vide s'ouvre 
   </data>
   <data name="Settings.AnimArtCacheSize" xml:space="preserve">
     <value>Taille du cache</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve">
-    <value>Une fois plein, les pochettes les plus anciennes sont supprimées.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AnimArtCacheUsedOf" xml:space="preserve">
@@ -14737,10 +14634,6 @@ Créer une playlist nommée « {0} » avec ces titres ?</value>
     <value>Masquer la barre latérale jusqu’au survol</value>
     <comment>Settings &gt; General &gt; Sidebar toggle (GitHub #233)</comment>
   </data>
-  <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve">
-    <value>Masque complètement la barre latérale pour que les pages occupent toute la largeur. Amenez le pointeur au bord gauche de la fenêtre pour la faire apparaître.</value>
-    <comment>Description under Hide sidebar until hover</comment>
-  </data>
   <data name="Count.Tracks" xml:space="preserve">
     <value>{0:N0} piste|{0:N0} pistes</value>
     <comment>Count with plural forms (one|other; see Loc.Plural)</comment>
@@ -15622,10 +15515,6 @@ Créer une playlist nommée « {0} » avec ces titres ?</value>
   </data>
   <data name="Settings.LyricsPageHideLyrics" xml:space="preserve">
     <value>Masquer les paroles sur la page des paroles</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.LyricsPageHideLyricsHint" xml:space="preserve">
-    <value>Affiche plutôt le lecteur centré, même quand un titre a des paroles.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="LyricShare.Watermark" xml:space="preserve">
