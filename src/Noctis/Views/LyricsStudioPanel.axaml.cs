@@ -92,6 +92,14 @@ public partial class LyricsStudioPanel : UserControl
     private void OnChooseSongsClick(object? sender, RoutedEventArgs e) =>
         RaiseEvent(new RoutedEventArgs(ChooseSongsRequestedEvent, this));
 
+    /// <summary>A row's text box, made when its text is first clicked or tabbed into: the row handlers it always had.</summary>
+    private void OnLineEditorCreated(object? sender, TextBox editor)
+    {
+        editor.KeyDown += OnLineEditKeyDown;
+        editor.LostFocus += OnLineEditLostFocus;
+        editor.GotFocus += OnLineEditGotFocus;
+    }
+
     /// <summary>Review row in ELRC: Enter reads the typed words and times back, Esc puts the line back.</summary>
     private void OnLineEditKeyDown(object? sender, KeyEventArgs e)
     {

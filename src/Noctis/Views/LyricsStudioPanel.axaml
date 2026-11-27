@@ -345,6 +345,19 @@
             <Setter Property="MinHeight" Value="0" />
             <Setter Property="FontSize" Value="13" />
         </Style>
+        <!-- The row's text before it is clicked: the text box's own inset, size, colour and hover wash, so
+             nothing moves or changes when the text box takes its place. -->
+        <Style Selector="controls|EditOnDemandText.line-text">
+            <Setter Property="TextPadding" Value="6,2" />
+            <Setter Property="TextElement.FontSize" Value="13" />
+            <Setter Property="TextElement.Foreground" Value="{DynamicResource TextControlForeground}" />
+        </Style>
+        <Style Selector="controls|EditOnDemandText.line-text > Border">
+            <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}" />
+        </Style>
+        <Style Selector="controls|EditOnDemandText.line-text:pointerover > Border">
+            <Setter Property="Background" Value="{DynamicResource TextControlBackgroundPointerOver}" />
+        </Style>
         <Style Selector="TextBox.line-edit:focus /template/ Border#PART_BorderElement">
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Background" Value="#18FFFFFF" />
@@ -1197,9 +1210,10 @@
                                                         <PathIcon Classes="words-chevron" Data="{StaticResource ChevronDownThinIcon}" Width="10" Height="10" VerticalAlignment="Center" />
                                                     </StackPanel>
                                                 </Button>
-                                                <!-- ELRC: the line as saved, word tags included; Enter / focus loss reads it back, Esc undoes. -->
-                                                <TextBox Grid.Column="2" Classes="line-edit" Theme="{StaticResource StudioLineEditTheme}" Text="{Binding RowText}" VerticalAlignment="Center" TextWrapping="Wrap"
-                                                         KeyDown="OnLineEditKeyDown" LostFocus="OnLineEditLostFocus" GotFocus="OnLineEditGotFocus" />
+                                                <!-- ELRC: the line as saved, word tags included; Enter / focus loss reads it back, Esc undoes.
+                                                     Shown as text until clicked or tabbed into, then a text box in place (11-26: rows build cheaper). -->
+                                                <controls:EditOnDemandText Grid.Column="2" Classes="line-text" Text="{Binding RowText}" VerticalAlignment="Center" TextWrapping="Wrap"
+                                                                           EditorTheme="{StaticResource StudioLineEditTheme}" EditorClass="line-edit" EditorCreated="OnLineEditorCreated" />
                                                 <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding EditError}" IsVisible="{Binding HasEditError}" FontSize="11" Foreground="#FF6B6B"
                                                            TextWrapping="Wrap" Margin="6,4,0,0" />
                                                 <!-- Word strip: one chip per word, click = select + hear it. Folds open and shut like
