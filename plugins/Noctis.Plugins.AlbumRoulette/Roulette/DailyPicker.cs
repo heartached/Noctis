@@ -68,7 +68,7 @@ public sealed class DailyPicker : IDisposable
         _busy = true;
         try
         {
-            var albums = await Task.Run(() => AlbumCatalog.WithServerAlbums(AlbumCatalog.Group(_host.LoadTracks()), _host.LoadServerAlbums()));
+            var albums = await Task.Run(() => AlbumCatalog.WithServerAlbums(AlbumCatalog.Group(_host.LoadTracks(), now), _host.LoadServerAlbums()));
             if (_disposed) return null;
             var pick = AlbumOfTheDay.Pick(albums, now, _host.SkipCompilations);
             if (pick is null) return null;

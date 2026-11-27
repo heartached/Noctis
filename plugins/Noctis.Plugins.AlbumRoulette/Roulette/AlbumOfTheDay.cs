@@ -27,7 +27,7 @@ public static class AlbumOfTheDay
     /// <summary>The day's album among <paramref name="albums"/> (compilations left out when asked), or null for none.</summary>
     public static RouletteAlbum? Pick(IReadOnlyList<RouletteAlbum> albums, DateTimeOffset localNow, bool skipCompilations)
     {
-        var candidates = albums.Where(a => !(skipCompilations && a.IsCompilation))
+        var candidates = albums.Where(a => a.HasPlayableSong && !(skipCompilations && a.IsCompilation))
             .OrderBy(a => a.Key, StringComparer.Ordinal).ToList();
         if (candidates.Count == 0) return null;
         var h = Hash(DayKey(localNow));

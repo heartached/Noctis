@@ -315,7 +315,7 @@ public sealed class RouletteView : UserControl
             {
                 var tracks = _host.LoadTracks();
                 // The media servers' albums ride the reel too (GitHub #268).
-                var withServers = AlbumCatalog.WithServerAlbums(AlbumCatalog.Group(tracks), _host.LoadServerAlbums());
+                var withServers = AlbumCatalog.WithServerAlbums(AlbumCatalog.Group(tracks, now), _host.LoadServerAlbums());
                 return (withServers, SongCatalog.Build(tracks, now));
             });
         }

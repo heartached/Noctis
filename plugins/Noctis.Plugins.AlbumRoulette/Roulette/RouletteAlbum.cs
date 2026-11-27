@@ -33,6 +33,11 @@ public sealed record RouletteAlbum(
 
     public bool IsServer => ServerAlbumId is not null;
 
+    /// <summary>At least one of its songs is one Noctis's shuffle plays (not "Not liked", not
+    /// "Skip when shuffling", not snoozed), the rule Song Roulette uses per song. An album with
+    /// none stays off the reel. Server albums: true (their songs carry no such marks).</summary>
+    public bool HasPlayableSong { get; init; } = true;
+
     /// <summary>False for a server album whose server does not say whether it was played: unknown
     /// is not never, so the play filters leave it out. Library albums always know.</summary>
     public bool PlaysKnown { get; init; } = true;
@@ -97,7 +102,7 @@ public static class SongCatalog
         var result = new List<RouletteAlbum>();
         foreach (var t in tracks)
         {
-            if (t.IsDisliked || t.SkipWhenShuffling || t.SnoozedUntil is { } until && until > now) continue;
+            if (!IsPlayable(t, now)) continue;
             var artist = ((string.IsNullOrWhiteSpace(t.Artist) ? t.AlbumArtist : t.Artist) ?? "").Trim();
             var artists = new[] { t.Artist, t.AlbumArtist }
                 .Where(a => !string.IsNullOrWhiteSpace(a)).Select(a => a.Trim())
@@ -113,6 +118,11 @@ public static class SongCatalog
         }
         return result;
     }
+
+    /// <summary>Not "Not liked", not "Skip when shuffling", not snoozed past <paramref name="now"/>:
+    /// what Noctis's own shuffle plays.</summary>
+    public static bool IsPlayable(TrackInfo t, DateTimeOffset now)
+        => !t.IsDisliked && !t.SkipWhenShuffling && !(t.SnoozedUntil is { } until && until > now);
 }
 
 /// <summary>An album of one of the user's media servers, as Album Roulette keeps it
@@ -162,8 +172,10 @@ public static class AlbumCatalog
     private static string NameKey(string? artist, string? title)
         => (artist ?? "").Trim().ToLowerInvariant() + "|" + (title ?? "").Trim().ToLowerInvariant();
 
-    public static IReadOnlyList<RouletteAlbum> Group(IEnumerable<TrackInfo> tracks)
+    /// <param name="now">For snoozes (<see cref="RouletteAlbum.HasPlayableSong"/>); null = the clock now.</param>
+    public static IReadOnlyList<RouletteAlbum> Group(IEnumerable<TrackInfo> tracks, DateTimeOffset? now = null)
     {
+        var at = now ?? DateTimeOffset.Now;
         var groups = new Dictionary<string, List<TrackInfo>>(StringComparer.Ordinal);
         foreach (var t in tracks)
         {
@@ -197,6 +209,7 @@ public static class AlbumCatalog
             {
                 // The language most of its songs are in (one Korean song does not make a Korean album).
                 Language = Most(ordered.Select(t => ScriptLanguage.Detect(t.Title, t.Album, t.Artist))),
+                HasPlayableSong = ordered.Any(t => SongCatalog.IsPlayable(t, at)),
             });
         }
         // A stable order (the Album of the Day hashes into it).
