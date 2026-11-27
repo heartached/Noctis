@@ -30,7 +30,15 @@ internal sealed class DescriptionFold
         Lines = lines;
         _tail.TextTrimming = UnmarkedTrimming.Instance;
         _text.SizeChanged += (_, _) => Measure();
+        _more.SizeChanged += (_, _) => UpdateTextFade();
     }
+
+    /// <summary>
+    /// The text itself fades out under MORE, with nothing painted behind MORE. For a page whose
+    /// colour is not flat where the text sits: the artist page's biography lies on the photo's
+    /// fade, where a block of the page colour showed as a darker box (S23, 11-27).
+    /// </summary>
+    public bool FadeTextUnderMore { get; set; }
 
     /// <summary>The folded height in lines.</summary>
     public int Lines { get; }
@@ -52,11 +60,42 @@ internal sealed class DescriptionFold
         _folded.IsVisible = _overflows;
         _text.Opacity = _overflows ? 0 : 1;
         _more.IsVisible = _overflows;
+        UpdateTextFade();
+    }
+
+    private void UpdateTextFade()
+    {
+        if (!FadeTextUnderMore) return;
+        double width = _clip.Bounds.Width, more = _more.Bounds.Width;
+        if (!_overflows || width <= 0 || more <= 0 || more >= width)
+        {
+            _tail.OpacityMask = null;
+            return;
+        }
+        var solid = (width - more) / width;
+        var clear = Math.Min(1, (width - more + _more.Padding.Left * 0.8) / width);
+        _tail.OpacityMask = new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
+            GradientStops =
+            {
+                new GradientStop(Colors.Black, 0),
+                new GradientStop(Colors.Black, solid),
+                new GradientStop(Colors.Transparent, clear),
+                new GradientStop(Colors.Transparent, 1),
+            },
+        };
     }
 
     /// <summary>MORE sits on the page colour, fading in over the text it covers.</summary>
     public void SetMoreFade(Color? into)
     {
+        if (FadeTextUnderMore)
+        {
+            _more.Background = null;
+            return;
+        }
         _more.Background = into is { } m
             ? new LinearGradientBrush
             {

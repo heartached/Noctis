@@ -70,7 +70,7 @@ public partial class ArtistPage : UserControl
     {
         InitializeComponent();
         _biography = new DescriptionFold(BiographyText, BiographyClip, BiographyFolded, BiographyFoldedHead,
-            BiographyFoldedTail, BiographyMore, AlbumPage.DescriptionLines);
+            BiographyFoldedTail, BiographyMore, AlbumPage.DescriptionLines) { FadeTextUnderMore = true };
         _chrome = new HeroChrome(this, Hero, HeroFade, TopFade, TopScrim, TopBar, PageBody, "Artist", UpdateScrollChrome, into =>
         {
             _biography.SetMoreFade(into);

@@ -583,17 +583,20 @@
                                     <!-- Animated Covers: Off / Wi-Fi Only / Always on the glass menu (Discord beta 11-23). -->
                                     <Button Name="AnimatedCoversRow" Classes="row" Command="{Binding ShowAnimatedCoversMenuCommand}"
                                             AutomationProperties.Name="{Binding AnimatedCoversRowName}">
-                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
-                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconAnimatedCover}" /></Border>
+                                        <StackPanel>
+                                            <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
+                                                <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconAnimatedCover}" /></Border>
+                                                <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Settings.AnimatedCovers}" />
+                                                <TextBlock Grid.Column="2" Name="AnimatedCoversValueLabel" Classes="row-value" Text="{Binding AnimatedCoversValue}" />
+                                                <views:GridIcon Grid.Column="3" Classes="row-trailing" StrokeThickness="2" Data="{DynamicResource SetIconUpDown}" />
+                                            </views:SettingRow>
                                             <!-- Where loops come from and where they show: without it, the setting on
-                                                 and nothing moving told a tester nothing (Discord #mobile-beta 11-27). -->
-                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,8">
-                                                <TextBlock Classes="row-label" Text="{loc:T Mobile.Settings.AnimatedCovers}" />
-                                                <TextBlock Name="AnimatedCoversHintLabel" Classes="row-sub" Text="{loc:T Mobile.Settings.AnimatedCoversHint}" />
-                                            </StackPanel>
-                                            <TextBlock Grid.Column="2" Name="AnimatedCoversValueLabel" Classes="row-value" Text="{Binding AnimatedCoversValue}" />
-                                            <views:GridIcon Grid.Column="3" Classes="row-trailing" StrokeThickness="2" Data="{DynamicResource SetIconUpDown}" />
-                                        </views:SettingRow>
+                                                 and nothing moving told a tester nothing (Discord #mobile-beta 11-27).
+                                                 Under the row at its full width (60 = the row's margin, chip and gap):
+                                                 beside the value it wrapped to eight short lines. -->
+                                            <TextBlock Name="AnimatedCoversHintLabel" Classes="row-sub" Margin="60,-6,16,10"
+                                                       Text="{loc:T Mobile.Settings.AnimatedCoversHint}" />
+                                        </StackPanel>
                                     </Button>
                                     <Border Classes="row-separator chipped" />
                                     <!-- Language: System (the phone's) or one of the shipped translations, on a page of its own. -->
