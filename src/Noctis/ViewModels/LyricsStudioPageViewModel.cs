@@ -75,6 +75,50 @@ public partial class LyricsStudioPageViewModel : ViewModelBase
 
     partial void OnIsLoadingChanged(bool value) => OnPropertyChanged(nameof(ShowEmpty));
     partial void OnStudioChanged(LyricsStudioViewModel? value) => OnPropertyChanged(nameof(ShowEmpty));
+
+    partial void OnStudioChanged(LyricsStudioViewModel? oldValue, LyricsStudioViewModel? newValue)
+    {
+        if (oldValue is not null) oldValue.LyricsSaved -= OnStudioLyricsSaved;
+        if (newValue is not null) newValue.LyricsSaved += OnStudioLyricsSaved;
+    }
+
+    private void OnStudioLyricsSaved(object? sender, Track track) => _ = UpdateSavedFormatAsync(track);
+
+    /// <summary>
+    /// A save changes one song's format: that entry of the cached scan and the counts are updated
+    /// from the song's files alone. Every save used to mark the whole scan stale, so the next visit
+    /// re-checked every song's lyrics files (7,213 songs: 35-55 s cold on a hard drive).
+    /// A scan still running, or a library changed since, falls back to the full rescan.
+    /// </summary>
+    private async Task UpdateSavedFormatAsync(Track track)
+    {
+        var version = Volatile.Read(ref _libraryVersion);
+        LyricsFormat format;
+        try { format = await Task.Run(() => _detectFormats(new[] { track }, CancellationToken.None, null)[0]); }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Lyrics", $"Lyrics Studio: format check after a save failed: {ex.Message}");
+            MarkScanDirty();
+            return;
+        }
+        if (_scanDirty || _scan is { Full.IsCompleted: false } || version != Volatile.Read(ref _libraryVersion)
+            || _scannedLocal is not { } local || _scannedFormats is not { } formats)
+        {
+            MarkScanDirty();
+            return;
+        }
+        var index = local.FindIndex(t => ReferenceEquals(t, track) || t.Id == track.Id);
+        if (index < 0 || index >= formats.Count)
+        {
+            MarkScanDirty();
+            return;
+        }
+        if (formats[index] == format) return;
+        var updated = formats.ToArray();
+        updated[index] = format;
+        _scannedFormats = updated;
+        Counts = SettingsViewModel.BuildLyricsStudioCounts(updated);
+    }
     partial void OnCountsChanged(IReadOnlyList<LyricsStudioCount> value) => OnPropertyChanged(nameof(HasCounts));
 
     /// <summary>True when the open Studio must not be replaced by a rescan: a run, a review on screen,
@@ -138,7 +182,6 @@ public partial class LyricsStudioPageViewModel : ViewModelBase
         if (IsBusy || KeepsCustomQueue()) return;
         var generation = ++_generation;
         var wordTimings = _wordTimings();
-        if (Studio is { SavedCount: > 0 }) MarkScanDirty();
 
         // Cached scan: re-pick without touching disk, and keep the open Studio when it already
         // holds exactly that queue (selection and drafts survive the round trip).
