@@ -65,24 +65,39 @@
                 <Setter Property="Margin" Value="0,0,0,12" />
             </Style>
         </ContainerQuery>
-        <Style Selector="WrapPanel.review-actions, WrapPanel.review-tools">
+        <!-- The review toolbar (11-26 redesign): Save + "…" hold the right edge while the groups
+             (auto-timing, preview, adjust) fill the rest and wrap group by group; too narrow for
+             both, the pair drops under the groups, still on the right. -->
+        <Style Selector="StackPanel.review-primary">
             <Setter Property="DockPanel.Dock" Value="Right" />
-            <Setter Property="Margin" Value="12,0,0,0" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="Margin" Value="16,0,0,0" />
         </Style>
-        <ContainerQuery Name="ReviewHead" Query="max-width:600">
-            <Style Selector="WrapPanel.review-actions">
+        <ContainerQuery Name="ReviewHead" Query="max-width:560">
+            <Style Selector="StackPanel.review-primary">
                 <Setter Property="DockPanel.Dock" Value="Bottom" />
-                <Setter Property="HorizontalAlignment" Value="Left" />
-                <Setter Property="Margin" Value="0,8,0,0" />
+                <Setter Property="HorizontalAlignment" Value="Right" />
+                <Setter Property="Margin" Value="0,10,0,0" />
             </Style>
         </ContainerQuery>
-        <ContainerQuery Name="ReviewMeta" Query="max-width:640">
-            <Style Selector="WrapPanel.review-tools">
-                <Setter Property="DockPanel.Dock" Value="Bottom" />
-                <Setter Property="HorizontalAlignment" Value="Left" />
-                <Setter Property="Margin" Value="0,8,0,0" />
-            </Style>
-        </ContainerQuery>
+        <Style Selector="Border.review-divider">
+            <Setter Property="Height" Value="1" />
+            <Setter Property="Background" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+            <Setter Property="Opacity" Value="0.5" />
+        </Style>
+        <!-- Column titles (Queue, Live preview): one size and weight so the three columns read alike. -->
+        <Style Selector="TextBlock.studio-column-title">
+            <Setter Property="FontSize" Value="13.5" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <!-- Queue rows: the artist dim; the accent only on the song that is open. -->
+        <Style Selector="TextBlock.queue-artist">
+            <Setter Property="Opacity" Value="0.55" />
+        </Style>
+        <Style Selector="ListBox.queue ListBoxItem:selected TextBlock.queue-artist">
+            <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
         <!-- Shift all lines as one segmented pill: [− 0.1s +], a filled pill (the Settings
              boxes' fill since 10-08, no rim) around two round steps that wash on hover. -->
         <Style Selector="Border.nudge-pill, Border.edit-nudge-pill">
@@ -216,7 +231,7 @@
         </Style>
         <Style Selector="Border.review-line">
             <!-- A clear 1px rim at rest (padding one less) so the selected row's rim moves nothing. -->
-            <Setter Property="Padding" Value="5,3" />
+            <Setter Property="Padding" Value="6,4" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="BorderBrush" Value="Transparent" />
             <Setter Property="CornerRadius" Value="8" />
@@ -420,7 +435,7 @@
             <Setter Property="Opacity" Value="0.5" />
             <Setter Property="Margin" Value="4,0,0,0" />
         </Style>
-        <!-- Queue rows: artist in the accent like the island, title with the island's hover wash. -->
+        <!-- Queue rows: the title with the island's hover wash. -->
         <Style Selector="Border.title-hover">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="CornerRadius" Value="3" />
@@ -539,7 +554,7 @@
                                                 FillBrush="{DynamicResource AccentColorBrush}" TrackBrush="#1FFFFFFF" />
                 </Grid>
             </Border>
-            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto" ColumnSpacing="8">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,*" ColumnSpacing="8">
                 <TextBlock Grid.Column="0" Text="{loc:T LyricsStudio.Format}" FontSize="12" Opacity="0.6" VerticalAlignment="Center" />
                 <!-- One setting, two sides: the Choose songs picker's segmented pill. -->
                 <Border Grid.Column="1" Classes="pill-well" CornerRadius="999" Padding="3" VerticalAlignment="Center">
@@ -602,17 +617,6 @@
                         </Flyout>
                     </Button.Flyout>
                 </Button>
-                <Panel Grid.Column="5" VerticalAlignment="Center">
-                    <Button Command="{Binding StartCommand}" IsEnabled="{Binding CanStart}" IsVisible="{Binding !IsRunning}"
-                            Classes="studio-btn accent-btn" MinWidth="96" HorizontalContentAlignment="Center"
-                            Background="{DynamicResource AccentButtonBackground}" Foreground="{DynamicResource AccentForegroundBrush}">
-                        <TextBlock Text="{Binding StartLabel}" />
-                    </Button>
-                    <Button Command="{Binding StopCommand}" IsVisible="{Binding IsRunning}"
-                            Classes="studio-btn pill-outline" MinWidth="96" HorizontalContentAlignment="Center">
-                        <TextBlock Text="{loc:T LyricsStudio.Stop}" />
-                    </Button>
-                </Panel>
             </Grid>
         </StackPanel>
 
@@ -622,27 +626,38 @@
             <!-- Queue (width from the styles: narrower in a small window) -->
             <Border Grid.Column="0" Classes="studio-queue" CornerRadius="14" ClipToBounds="True" Background="#0CFFFFFF" Padding="8,8,0,8">
                 <DockPanel>
-                    <!-- Queue header: the list's title (plus "all LRC" when every row would say it),
-                         Choose songs where it acts (page only, 09-23), and the run status under it. -->
-                    <StackPanel DockPanel.Dock="Top" Margin="8,2,16,8" Spacing="4">
-                        <!-- The note trims before it can reach under Choose songs (narrow queue, long translations). -->
-                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                            <DockPanel Grid.Column="0" VerticalAlignment="Center">
-                                <TextBlock DockPanel.Dock="Left" Text="{loc:T LyricsStudio.Queue}" FontSize="11" Opacity="0.5" Margin="0,0,4,0" />
-                                <TextBlock Text="{Binding QueueFormatText}" FontSize="11" Opacity="0.5" TextTrimming="CharacterEllipsis"
-                                           ToolTip.Tip="{Binding QueueFormatText}" />
-                            </DockPanel>
-                            <Button Grid.Column="1" Classes="studio-btn pill-outline" Padding="12,4" FontSize="11.5"
-                                    Content="{loc:T LyricsStudio.ChooseSongs}" ToolTip.Tip="{loc:T LyricsStudio.ChooseSongsTip}"
-                                    IsVisible="{Binding $parent[views:LyricsStudioPanel].ShowChooseSongs}"
-                                    Click="OnChooseSongsClick" />
-                        </Grid>
-                        <TextBlock Text="{Binding RunStatusText}" FontSize="11" Opacity="0.5"
-                                   TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding RunStatusText}" />
-                        <!-- The whole run across songs (09-29): finished songs plus the current one's share. -->
-                        <controls:SmoothProgressBar Height="3" Margin="0,2,0,0" Value="{Binding BatchProgress}"
+                    <!-- Queue header (11-26 redesign): the column's title, how many songs and their shared
+                         format as one dim line under it (full width, two lines at most), and Choose songs
+                         (page only) as its secondary button. -->
+                    <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="2" Margin="8,2,16,10">
+                        <TextBlock Grid.Column="0" Classes="studio-column-title" Text="{loc:T Main.Queue}" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Classes="studio-btn pill-outline" Padding="12,5" FontSize="11.5"
+                                Content="{loc:T LyricsStudio.ChooseSongs}" ToolTip.Tip="{loc:T LyricsStudio.ChooseSongsTip}"
+                                IsVisible="{Binding $parent[views:LyricsStudioPanel].ShowChooseSongs}"
+                                Click="OnChooseSongsClick" />
+                        <TextBlock Grid.Row="1" Grid.ColumnSpan="2" FontSize="11.5" Opacity="0.5" TextWrapping="Wrap" MaxLines="2"
+                                   TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding RunStatusText}">
+                            <Run Text="{Binding RunStatusText}" />
+                            <Run Text="{Binding QueueFormatText}" />
+                        </TextBlock>
+                    </Grid>
+                    <!-- The queue's own action under its list: Start runs every song above it (Stop while
+                         it runs), with the whole run's bar (finished songs plus the current one's share). -->
+                    <StackPanel DockPanel.Dock="Bottom" Margin="0,10,8,0" Spacing="8">
+                        <controls:SmoothProgressBar Height="3" Margin="8,0" Value="{Binding BatchProgress}"
                                                     IsVisible="{Binding ShowBatchProgress}"
                                                     FillBrush="{DynamicResource AccentColorBrush}" TrackBrush="#1AFFFFFF" />
+                        <Panel>
+                            <Button Command="{Binding StartCommand}" IsEnabled="{Binding CanStart}" IsVisible="{Binding !IsRunning}"
+                                    Classes="studio-btn accent-btn studio-start" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                    Background="{DynamicResource AccentButtonBackground}" Foreground="{DynamicResource AccentForegroundBrush}">
+                                <TextBlock Text="{Binding StartLabel}" />
+                            </Button>
+                            <Button Command="{Binding StopCommand}" IsVisible="{Binding IsRunning}"
+                                    Classes="studio-btn pill-outline studio-start" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
+                                <TextBlock Text="{loc:T LyricsStudio.Stop}" />
+                            </Button>
+                        </Panel>
                     </StackPanel>
                     <!-- Padding on the list (its ItemsPresenter margin) keeps the rows inset while the
                          scrollbar sits on the box's right edge instead of inside the padding. -->
@@ -672,7 +687,7 @@
                                             <PathIcon Grid.Column="1" Data="{StaticResource CheckmarkIcon}" Width="12" Height="12" Margin="6,0,0,0"
                                                       Foreground="{DynamicResource AccentColorBrush}" IsVisible="{Binding IsSaved}" />
                                         </Grid>
-                                        <TextBlock Text="{Binding Subtitle}" FontSize="11" Foreground="{DynamicResource AccentColorBrush}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Classes="queue-artist" Text="{Binding Subtitle}" FontSize="11.5" TextTrimming="CharacterEllipsis" />
                                         <!-- Work state once the song moves; before that its format, unless every row shares it. -->
                                         <Border CornerRadius="999" Padding="7,1" Background="#22FFFFFF" HorizontalAlignment="Left" Margin="0,2,0,0"
                                                 IsVisible="{Binding ShowStatePill}">
@@ -694,7 +709,10 @@
             <!-- The lyrics side panel's own view over the app's lyrics, fed the review unsaved
                  (LyricsViewModel.UpdatePreview): it follows the song and changes with every edit.
                  Built by the code-behind the first time the pane opens; scaled down to fit. -->
-            <Border Classes="studio-preview" CornerRadius="14" ClipToBounds="True" IsVisible="{Binding IsLivePreviewOpen}">
+            <Border Classes="studio-preview" CornerRadius="14" ClipToBounds="True" Background="#0CFFFFFF" IsVisible="{Binding IsLivePreviewOpen}">
+                <DockPanel>
+                <!-- The column's title, like the queue's (11-26 redesign): the pane is labelled. -->
+                <TextBlock DockPanel.Dock="Top" Classes="studio-column-title" Text="{loc:T LyricsStudio.LivePreview}" Margin="16,12,16,8" />
                 <Panel>
                     <LayoutTransformControl>
                         <LayoutTransformControl.LayoutTransform>
@@ -703,8 +721,8 @@
                         <ContentControl x:Name="LivePreviewHost" />
                     </LayoutTransformControl>
                     <!-- Another song (or none) is playing: its lyrics are not this review's. -->
-                    <Border Background="#E6141414" CornerRadius="14" IsVisible="{Binding ShowLivePreviewIdle}">
-                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10" Margin="16">
+                    <Border Background="#E6141414" CornerRadius="0,0,14,14" IsVisible="{Binding ShowLivePreviewIdle}">
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12" Margin="16">
                             <TextBlock Text="{loc:T LyricsStudio.LivePreviewIdle}" FontSize="12.5" Opacity="0.7" TextWrapping="Wrap"
                                        TextAlignment="Center" MaxWidth="220" />
                             <Button Classes="studio-btn pill-outline" HorizontalAlignment="Center" Command="{Binding PlayLivePreviewCommand}"
@@ -717,12 +735,13 @@
                         </StackPanel>
                     </Border>
                 </Panel>
+                </DockPanel>
             </Border>
-            <Border CornerRadius="14" ClipToBounds="True" Background="#0CFFFFFF" Padding="16,16,0,16">
+            <Border CornerRadius="14" ClipToBounds="True" Background="#0CFFFFFF" Padding="20,18,0,16">
                 <Panel>
-                    <StackPanel VerticalAlignment="Center" Spacing="6" Margin="0,0,16,0" IsVisible="{Binding ShowReviewEmpty}">
-                        <TextBlock Text="{loc:T LyricsStudio.ReviewEmptyTitle}" FontSize="15" FontWeight="SemiBold" TextAlignment="Center" Opacity="0.7" />
-                        <TextBlock Text="{loc:T LyricsStudio.ReviewEmptyBody}" FontSize="12" Opacity="0.5" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="420" />
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="6" Margin="0,0,20,0" IsVisible="{Binding ShowReviewEmpty}">
+                        <TextBlock Text="{loc:T LyricsStudio.ReviewEmptyTitle}" FontSize="16" FontWeight="SemiBold" TextAlignment="Center" Opacity="0.8" />
+                        <TextBlock Text="{loc:T LyricsStudio.ReviewEmptyBody}" FontSize="12.5" Opacity="0.5" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="380" />
                     </StackPanel>
 
                     <!-- The song on screen is being run (09-29): its three steps (decode, listen, time),
@@ -835,139 +854,157 @@
                     </DockPanel>
 
                     <DockPanel IsVisible="{Binding HasReview}">
-                        <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,16,10">
-                            <!-- One accent action (Save); Time every word and Preview as plain pills; Skip and
-                                 Transcribe instead behind "…" (10-01: two accent pills competed, and the row
-                                 ran off the pane). The group docks right of the title, below it when narrow. -->
-                            <DockPanel Container.Name="ReviewHead" Container.Sizing="Width">
-                                <WrapPanel Classes="review-actions" ItemSpacing="6" LineSpacing="6" VerticalAlignment="Center">
-                                    <Button Command="{Binding UpgradeToWordTimingsCommand}" IsVisible="{Binding ReviewCanUpgrade}"
-                                            Classes="studio-btn pill-outline" ToolTip.Tip="{loc:T LyricsStudio.UpgradeTip}">
-                                        <TextBlock Text="{loc:T LyricsStudio.Upgrade}" />
-                                    </Button>
-                                    <!-- lrc.red's in-house model: word timings in seconds, with lrc.red's own lyrics (10-19). -->
-                                    <Button Command="{Binding SyncWithLrcRedCommand}" IsVisible="{Binding ShowLrcRedSync}"
-                                            Classes="studio-btn pill-outline studio-lrcred" ToolTip.Tip="{loc:T LyricsStudio.LrcRedSyncTip}"
-                                            AutomationProperties.Name="{Binding LrcRedSyncLabel}">
-                                        <TextBlock Text="{Binding LrcRedSyncLabel}" />
-                                    </Button>
-                                    <!-- Shows or hides the live preview pane beside the editor (10-14); the dot = open. -->
-                                    <Button Command="{Binding ToggleLivePreviewCommand}" IsVisible="{Binding CanLivePreview}"
-                                            Classes="studio-btn pill-outline studio-live-preview" ToolTip.Tip="{loc:T LyricsStudio.LivePreviewTip}"
-                                            AutomationProperties.Name="{loc:T LyricsStudio.LivePreview}">
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <Ellipse Width="6" Height="6" VerticalAlignment="Center" Fill="{DynamicResource AccentColorBrush}"
-                                                     IsVisible="{Binding ShowLivePreview}" />
-                                            <TextBlock Text="{loc:T LyricsStudio.LivePreview}" VerticalAlignment="Center" />
-                                        </StackPanel>
-                                    </Button>
-                                    <!-- Plays the song on the real lyrics page with these unsaved timings (09-23). -->
-                                    <Button Command="{Binding PreviewOnLyricsPageCommand}" IsVisible="{Binding CanPreview}"
-                                            Classes="studio-btn pill-outline" ToolTip.Tip="{loc:T LyricsStudio.PreviewTip}"
-                                            AutomationProperties.Name="{loc:T LyricsStudio.Preview}">
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <PathIcon Data="{StaticResource PlayIcon}" Width="10" Height="10" VerticalAlignment="Center" />
-                                            <TextBlock Text="{loc:T LyricsStudio.Preview}" VerticalAlignment="Center" />
-                                        </StackPanel>
-                                    </Button>
-                                    <!-- Speed (GitHub #238): the player's own speed, 0.05 steps from 0.5x to 1.5x; restored when
-                                         the Studio closes. In the header since 11-14, the height of its neighbours; the value
-                                         itself goes back to 1×. -->
-                                    <Border Classes="edit-nudge-pill studio-speed" IsVisible="{Binding CanChangeSpeed}" ToolTip.Tip="{loc:T LyricsStudio.SpeedTip}">
-                                        <StackPanel Orientation="Horizontal" Spacing="0">
-                                            <Button Classes="speed-step" Command="{Binding SlowerCommand}"
-                                                    ToolTip.Tip="{loc:T LyricsStudio.SpeedSlower}" AutomationProperties.Name="{loc:T LyricsStudio.SpeedSlower}">
-                                                <TextBlock Text="−" />
-                                            </Button>
-                                            <Button Classes="speed-step speed-value" Command="{Binding ResetSpeedCommand}"
-                                                    ToolTip.Tip="{loc:T LyricsStudio.SpeedReset}" AutomationProperties.Name="{loc:T LyricsStudio.SpeedReset}">
-                                                <TextBlock Text="{Binding Player.PlaybackRateText}" />
-                                            </Button>
-                                            <Button Classes="speed-step" Command="{Binding FasterCommand}"
-                                                    ToolTip.Tip="{loc:T LyricsStudio.SpeedFaster}" AutomationProperties.Name="{loc:T LyricsStudio.SpeedFaster}">
-                                                <TextBlock Text="+" />
-                                            </Button>
-                                        </StackPanel>
+                        <StackPanel DockPanel.Dock="Top" Spacing="12" Margin="0,0,20,10">
+                            <!-- 11-26 redesign: the song (title + E, artist), ONE meta line under it (where the
+                                 timings came from, line count and what Save writes), then one toolbar in groups:
+                                 auto-timing | preview | adjust, and the song's one accent action (Save) with the
+                                 "…" overflow (Skip, Clear lyrics, Transcribe instead) on its right edge. -->
+                            <StackPanel Spacing="3">
+                                <!-- Same title + E badge as the queue row. -->
+                                <Grid ColumnDefinitions="Auto,Auto" ClipToBounds="True" LayoutUpdated="OnTitleCellLayoutUpdated">
+                                    <Border Grid.Column="0" Name="TitleBox">
+                                        <TextBlock Text="{Binding ReviewTitle}" FontSize="18" FontWeight="Bold" TextTrimming="CharacterEllipsis" />
                                     </Border>
-                                    <!-- Save and "…" wrap as a pair, so the dots never sit alone on a line. -->
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <Button Command="{Binding SaveCommand}" IsEnabled="{Binding CanSave}"
-                                                Classes="studio-btn accent-btn"
-                                                Background="{DynamicResource AccentButtonBackground}" Foreground="{DynamicResource AccentForegroundBrush}">
-                                            <TextBlock Text="{loc:T LyricsStudio.Save}" />
-                                        </Button>
-                                        <!-- The rarely used actions behind one round pill: the album page's dots in the
-                                             Studio's outline (local Padding: the studio-btn style's would win). -->
-                                        <Button Classes="studio-btn pill-outline studio-more" Padding="8,7" ToolTip.Tip="{loc:T LyricsStudio.MoreTip}"
-                                                AutomationProperties.Name="{loc:T LyricsStudio.MoreTip}">
-                                            <PathIcon Data="{StaticResource MoreDotsIcon}" Width="15" Height="15" VerticalAlignment="Center" />
-                                            <Button.Flyout>
-                                                <MenuFlyout Placement="BottomEdgeAlignedRight" helpers:MenuOpenAnimation.EnableFlyoutClose="True">
-                                                    <MenuItem Header="{loc:T LyricsStudio.Skip}" Command="{Binding SkipCommand}">
-                                                        <MenuItem.Icon>
-                                                            <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineSkip}"/>
-                                                        </MenuItem.Icon>
-                                                    </MenuItem>
-                                                    <!-- Wrong lyrics (a same-titled song's): dump them and paste your own (Discord, Mistery 2026-10-10). -->
-                                                    <MenuItem Header="{loc:T LyricsStudio.ClearLyrics}" Command="{Binding ClearLyricsCommand}"
-                                                              IsEnabled="{Binding !IsRunning}" ToolTip.Tip="{loc:T LyricsStudio.ClearLyricsTip}">
-                                                        <MenuItem.Icon>
-                                                            <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineTrash}"/>
-                                                        </MenuItem.Icon>
-                                                    </MenuItem>
-                                                    <MenuItem Header="{loc:T LyricsStudio.Redo}" Command="{Binding RedoAsTranscriptionCommand}"
-                                                              IsVisible="{Binding !ReviewIsTranscription}" IsEnabled="{Binding CanTranscribeDraft}"
-                                                              ToolTip.Tip="{loc:T LyricsStudio.RedoTip}">
-                                                        <MenuItem.Icon>
-                                                            <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineMic}"/>
-                                                        </MenuItem.Icon>
-                                                    </MenuItem>
-                                                </MenuFlyout>
-                                            </Button.Flyout>
-                                        </Button>
-                                    </StackPanel>
-                                </WrapPanel>
-                                <StackPanel Spacing="2" VerticalAlignment="Center">
-                                    <!-- Same title + E badge as the queue row; artist in the accent like the row (user ask 09-19). -->
-                                    <Grid ColumnDefinitions="Auto,Auto" ClipToBounds="True" LayoutUpdated="OnTitleCellLayoutUpdated">
-                                        <Border Grid.Column="0" Name="TitleBox">
-                                            <TextBlock Text="{Binding ReviewTitle}" FontSize="16" FontWeight="Bold" TextTrimming="CharacterEllipsis" />
-                                        </Border>
-                                        <Border Grid.Column="1" Name="ExplicitBadge"
-                                                Background="{DynamicResource IslandExplicitBadge}" CornerRadius="2" Padding="4,0" Height="14"
-                                                Margin="8,0,0,0" VerticalAlignment="Center" IsVisible="{Binding ReviewIsExplicit}"
-                                                ToolTip.Tip="{loc:T PlaybackBar.ExplicitTip}">
-                                            <TextBlock Text="E" FontSize="9" FontWeight="Bold" VerticalAlignment="Center" TextAlignment="Center"
-                                                       Foreground="{DynamicResource IslandIconFill}" />
-                                        </Border>
-                                    </Grid>
-                                    <TextBlock Text="{Binding ReviewSubtitle}" FontSize="12" Foreground="{DynamicResource AccentColorBrush}" TextTrimming="CharacterEllipsis" />
-                                </StackPanel>
-                            </DockPanel>
-                            <!-- Source + confidence on the left (wrapping when narrow); the whole-song shift on the right -->
-                            <DockPanel Container.Name="ReviewMeta" Container.Sizing="Width">
-                                <!-- Whole-song shift, labelled, with [ and ] as keys (09-23): one [− 0.1s +] pill (10-01). -->
-                                <WrapPanel Classes="review-tools" ItemSpacing="8" LineSpacing="6" VerticalAlignment="Center">
-                                    <TextBlock Text="{loc:T LyricsStudio.ShiftAllLines}" FontSize="12" Opacity="0.6" VerticalAlignment="Center" />
-                                    <Border Classes="nudge-pill">
-                                        <StackPanel Orientation="Horizontal" Spacing="2">
-                                            <Button Classes="nudge-step" Command="{Binding NudgeEarlierCommand}" ToolTip.Tip="{loc:T LyricsStudio.NudgeEarlier}" AutomationProperties.Name="{loc:T LyricsStudio.NudgeEarlier}">
-                                                <TextBlock Text="−" />
-                                            </Button>
-                                            <TextBlock Text="0.1s" FontSize="12" Opacity="0.75" FontFeatures="+tnum" VerticalAlignment="Center" />
-                                            <Button Classes="nudge-step" Command="{Binding NudgeLaterCommand}" ToolTip.Tip="{loc:T LyricsStudio.NudgeLater}" AutomationProperties.Name="{loc:T LyricsStudio.NudgeLater}">
-                                                <TextBlock Text="+" />
-                                            </Button>
-                                        </StackPanel>
+                                    <Border Grid.Column="1" Name="ExplicitBadge"
+                                            Background="{DynamicResource IslandExplicitBadge}" CornerRadius="2" Padding="4,0" Height="14"
+                                            Margin="8,0,0,0" VerticalAlignment="Center" IsVisible="{Binding ReviewIsExplicit}"
+                                            ToolTip.Tip="{loc:T PlaybackBar.ExplicitTip}">
+                                        <TextBlock Text="E" FontSize="9" FontWeight="Bold" VerticalAlignment="Center" TextAlignment="Center"
+                                                   Foreground="{DynamicResource IslandIconFill}" />
                                     </Border>
-                                </WrapPanel>
-                                <WrapPanel ItemSpacing="10" LineSpacing="4" VerticalAlignment="Center">
-                                    <Border CornerRadius="999" Padding="8,3" Background="#22FFFFFF" VerticalAlignment="Center">
+                                </Grid>
+                                <TextBlock Text="{Binding ReviewSubtitle}" FontSize="12.5" Opacity="0.6" TextTrimming="CharacterEllipsis" />
+                                <WrapPanel Classes="review-meta" ItemSpacing="10" LineSpacing="4" Margin="0,6,0,0">
+                                    <Border CornerRadius="999" Padding="9,3" Background="{DynamicResource ChipBackground}" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding ReviewSourceText}" FontSize="11" Opacity="0.85" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                     </Border>
-                                    <TextBlock Text="{Binding ReviewConfidenceText}" FontSize="11" Opacity="0.55" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding ReviewConfidenceText}" FontSize="11.5" Opacity="0.55" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                </WrapPanel>
+                            </StackPanel>
+                            <!-- The toolbar. Save + "…" hold the right edge (below the groups when narrow); the groups
+                                 wrap one by one, and inside a group the pills wrap, so nothing is ever clipped. -->
+                            <DockPanel Classes="review-toolbar" Container.Name="ReviewHead" Container.Sizing="Width">
+                                <!-- Save and "…" as a pair, so the dots never sit alone on a line. -->
+                                <StackPanel Classes="review-primary" Orientation="Horizontal" Spacing="6">
+                                    <!-- No accent rim: the same height as the toolbar's pills beside it. -->
+                                    <Button Command="{Binding SaveCommand}" IsEnabled="{Binding CanSave}"
+                                            Classes="studio-btn accent-btn" BorderThickness="0"
+                                            Background="{DynamicResource AccentButtonBackground}" Foreground="{DynamicResource AccentForegroundBrush}">
+                                        <TextBlock Text="{loc:T LyricsStudio.Save}" />
+                                    </Button>
+                                    <!-- The rarely used actions behind one round pill: the album page's dots in the
+                                         Studio's outline (local Padding: the studio-btn style's would win). -->
+                                    <Button Classes="studio-btn pill-outline studio-more" Padding="8,7" ToolTip.Tip="{loc:T LyricsStudio.MoreTip}"
+                                            AutomationProperties.Name="{loc:T LyricsStudio.MoreTip}">
+                                        <PathIcon Data="{StaticResource MoreDotsIcon}" Width="15" Height="15" VerticalAlignment="Center" />
+                                        <Button.Flyout>
+                                            <MenuFlyout Placement="BottomEdgeAlignedRight" helpers:MenuOpenAnimation.EnableFlyoutClose="True">
+                                                <MenuItem Header="{loc:T LyricsStudio.Skip}" Command="{Binding SkipCommand}">
+                                                    <MenuItem.Icon>
+                                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineSkip}"/>
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <!-- Wrong lyrics (a same-titled song's): dump them and paste your own (Discord, Mistery 2026-10-10). -->
+                                                <MenuItem Header="{loc:T LyricsStudio.ClearLyrics}" Command="{Binding ClearLyricsCommand}"
+                                                          IsEnabled="{Binding !IsRunning}" ToolTip.Tip="{loc:T LyricsStudio.ClearLyricsTip}">
+                                                    <MenuItem.Icon>
+                                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineTrash}"/>
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <MenuItem Header="{loc:T LyricsStudio.Redo}" Command="{Binding RedoAsTranscriptionCommand}"
+                                                          IsVisible="{Binding !ReviewIsTranscription}" IsEnabled="{Binding CanTranscribeDraft}"
+                                                          ToolTip.Tip="{loc:T LyricsStudio.RedoTip}">
+                                                    <MenuItem.Icon>
+                                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineMic}"/>
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                            </MenuFlyout>
+                                        </Button.Flyout>
+                                    </Button>
+                                </StackPanel>
+                                <WrapPanel Classes="review-actions" ItemSpacing="20" LineSpacing="8" VerticalAlignment="Center">
+                                    <!-- Auto-timing: time every word from line timings, or lrc.red's in-house model (10-19). -->
+                                    <WrapPanel Classes="review-group" ItemSpacing="6" LineSpacing="6">
+                                        <WrapPanel.IsVisible>
+                                            <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                                                <Binding Path="ReviewCanUpgrade" />
+                                                <Binding Path="ShowLrcRedSync" />
+                                            </MultiBinding>
+                                        </WrapPanel.IsVisible>
+                                        <Button Command="{Binding UpgradeToWordTimingsCommand}" IsVisible="{Binding ReviewCanUpgrade}"
+                                                Classes="studio-btn pill-outline" ToolTip.Tip="{loc:T LyricsStudio.UpgradeTip}">
+                                            <TextBlock Text="{loc:T LyricsStudio.Upgrade}" />
+                                        </Button>
+                                        <Button Command="{Binding SyncWithLrcRedCommand}" IsVisible="{Binding ShowLrcRedSync}"
+                                                Classes="studio-btn pill-outline studio-lrcred" ToolTip.Tip="{loc:T LyricsStudio.LrcRedSyncTip}"
+                                                AutomationProperties.Name="{Binding LrcRedSyncLabel}">
+                                            <TextBlock Text="{Binding LrcRedSyncLabel}" />
+                                        </Button>
+                                    </WrapPanel>
+                                    <!-- Preview: play on the real lyrics page with these unsaved timings (09-23), the live
+                                         pane beside the editor (10-14; the dot = open), and the speed (GitHub #238): the
+                                         player's own speed, 0.05 steps from 0.5x to 1.5x, the value itself back to 1×. -->
+                                    <WrapPanel Classes="review-group" ItemSpacing="6" LineSpacing="6">
+                                        <WrapPanel.IsVisible>
+                                            <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                                                <Binding Path="CanPreview" />
+                                                <Binding Path="CanLivePreview" />
+                                                <Binding Path="CanChangeSpeed" />
+                                            </MultiBinding>
+                                        </WrapPanel.IsVisible>
+                                        <Button Command="{Binding PreviewOnLyricsPageCommand}" IsVisible="{Binding CanPreview}"
+                                                Classes="studio-btn pill-outline" ToolTip.Tip="{loc:T LyricsStudio.PreviewTip}"
+                                                AutomationProperties.Name="{loc:T LyricsStudio.Preview}">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <PathIcon Data="{StaticResource PlayIcon}" Width="10" Height="10" VerticalAlignment="Center" />
+                                                <TextBlock Text="{loc:T LyricsStudio.Preview}" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Command="{Binding ToggleLivePreviewCommand}" IsVisible="{Binding CanLivePreview}"
+                                                Classes="studio-btn pill-outline studio-live-preview" ToolTip.Tip="{loc:T LyricsStudio.LivePreviewTip}"
+                                                AutomationProperties.Name="{loc:T LyricsStudio.LivePreview}">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <Ellipse Width="6" Height="6" VerticalAlignment="Center" Fill="{DynamicResource AccentColorBrush}"
+                                                         IsVisible="{Binding ShowLivePreview}" />
+                                                <TextBlock Text="{loc:T LyricsStudio.LivePreview}" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Border Classes="edit-nudge-pill studio-speed" IsVisible="{Binding CanChangeSpeed}" ToolTip.Tip="{loc:T LyricsStudio.SpeedTip}">
+                                            <StackPanel Orientation="Horizontal" Spacing="0">
+                                                <Button Classes="speed-step" Command="{Binding SlowerCommand}"
+                                                        ToolTip.Tip="{loc:T LyricsStudio.SpeedSlower}" AutomationProperties.Name="{loc:T LyricsStudio.SpeedSlower}">
+                                                    <TextBlock Text="−" />
+                                                </Button>
+                                                <Button Classes="speed-step speed-value" Command="{Binding ResetSpeedCommand}"
+                                                        ToolTip.Tip="{loc:T LyricsStudio.SpeedReset}" AutomationProperties.Name="{loc:T LyricsStudio.SpeedReset}">
+                                                    <TextBlock Text="{Binding Player.PlaybackRateText}" />
+                                                </Button>
+                                                <Button Classes="speed-step" Command="{Binding FasterCommand}"
+                                                        ToolTip.Tip="{loc:T LyricsStudio.SpeedFaster}" AutomationProperties.Name="{loc:T LyricsStudio.SpeedFaster}">
+                                                    <TextBlock Text="+" />
+                                                </Button>
+                                            </StackPanel>
+                                        </Border>
+                                    </WrapPanel>
+                                    <!-- Adjust: the whole-song shift, labelled, with [ and ] as keys (09-23): one [− 0.1s +] pill. -->
+                                    <WrapPanel Classes="review-group review-tools" ItemSpacing="8" LineSpacing="6">
+                                        <TextBlock Text="{loc:T LyricsStudio.ShiftAllLines}" FontSize="12" Opacity="0.6" VerticalAlignment="Center" />
+                                        <Border Classes="nudge-pill">
+                                            <StackPanel Orientation="Horizontal" Spacing="2">
+                                                <Button Classes="nudge-step" Command="{Binding NudgeEarlierCommand}" ToolTip.Tip="{loc:T LyricsStudio.NudgeEarlier}" AutomationProperties.Name="{loc:T LyricsStudio.NudgeEarlier}">
+                                                    <TextBlock Text="−" />
+                                                </Button>
+                                                <TextBlock Text="0.1s" FontSize="12" Opacity="0.75" FontFeatures="+tnum" VerticalAlignment="Center" />
+                                                <Button Classes="nudge-step" Command="{Binding NudgeLaterCommand}" ToolTip.Tip="{loc:T LyricsStudio.NudgeLater}" AutomationProperties.Name="{loc:T LyricsStudio.NudgeLater}">
+                                                    <TextBlock Text="+" />
+                                                </Button>
+                                            </StackPanel>
+                                        </Border>
+                                    </WrapPanel>
                                 </WrapPanel>
                             </DockPanel>
+                            <!-- Divider between the song's tools and the line-level editing below. -->
+                            <Border Classes="review-divider" />
                             <!-- Nudge bar (Discord "Manual lyrics editing", 10-14): the selected line or word,
                                  whole or one edge, 10 ms / 100 ms each way, and Hear it. Keys outside text boxes:
                                  , and . (Shift: 100 ms), / hears it. Clamped, never pushed (TimingNudge).
@@ -1047,7 +1084,7 @@
                             </Border>
                         </StackPanel>
 
-                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,16,0">
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,20,0">
                             <ItemsControl ItemsSource="{Binding ReviewLines}">
                                 <!-- Virtualized: only the lines in view exist. As a StackPanel every line of
                                      the song (a TextBox, buttons and a word strip each) was built and laid
