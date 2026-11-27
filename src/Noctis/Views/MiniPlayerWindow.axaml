@@ -60,6 +60,8 @@
              page keys; keep in sync. -->
         <conv:LyricVoiceToAlignmentConverter x:Key="VoiceAlign"/>
         <conv:LyricLineAlignmentConverter x:Key="LyricLineAlign"/>
+        <conv:LyricLineTextAlignmentConverter x:Key="LyricLineTextAlign"/>
+        <conv:LyricLineFlowDirectionConverter x:Key="LyricLineFlow"/>
         <conv:LyricVoiceToTextAlignmentConverter x:Key="VoiceTextAlign"/>
         <conv:LyricVoiceToItemsAlignmentConverter x:Key="VoiceItemsAlign"/>
         <conv:LyricVoiceToTransformOriginConverter x:Key="VoiceOrigin"/>
@@ -1773,11 +1775,18 @@
                                                            FontWeight="Bold"
                                                            Foreground="White"
                                                            HorizontalAlignment="Left"
-                                                           TextAlignment="{Binding Voice, Converter={StaticResource VoiceTextAlign}}"
+                                                           FlowDirection="{Binding IsRightToLeft, Converter={StaticResource LyricLineFlow}}"
                                                            MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
                                                            Opacity="{Binding LineOpacity, Converter={StaticResource OpacityFloor}, ConverterParameter=0.3}"
                                                            IsVisible="{Binding ShowLineText}"
-                                                           TextWrapping="Wrap"/>
+                                                           TextWrapping="Wrap">
+                                                    <TextBlock.TextAlignment>
+                                                        <MultiBinding Converter="{StaticResource LyricLineTextAlign}">
+                                                            <Binding Path="Voice"/>
+                                                            <Binding Path="IsRightToLeft"/>
+                                                        </MultiBinding>
+                                                    </TextBlock.TextAlignment>
+                                                </TextBlock>
 
                                                 <!-- Word-level karaoke layer (long lyrics: near the sung line only,
                                                      the resting stand-in below elsewhere) -->

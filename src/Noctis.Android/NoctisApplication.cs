@@ -33,6 +33,8 @@ public class NoctisApplication : AvaloniaAndroidApplication<AndroidApp>
     }
 #endif
 
+    // Arabic-script text (Persian lyrics and titles) draws in the bundled Vazirmatn, as on the
+    // desktop (#269); Android finds every other missing glyph on its own.
     protected override AppBuilder CustomizeAppBuilder(AppBuilder builder)
-        => base.CustomizeAppBuilder(builder).WithInterFont();
+        => base.CustomizeAppBuilder(builder).WithInterFont().With(Noctis.Helpers.ScriptFonts.Options());
 }
