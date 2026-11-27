@@ -8750,6 +8750,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Mobile.Artist.MostPlayed" xml:space="preserve"><value>最も再生した作品</value></data>
   <data name="Mobile.Artist.LatestEp" xml:space="preserve"><value>最新EP</value></data>
   <data name="Mobile.Artist.LatestSingle" xml:space="preserve"><value>最新シングル</value></data>
+  <data name="Mobile.Artist.Biography" xml:space="preserve"><value>バイオグラフィ</value></data>
   <data name="Mobile.Player.UnreachableSkipping" xml:space="preserve"><value>コンピューターに接続できません。ダウンロード済みの曲を再生しています。</value></data>
   <data name="Mobile.Player.UnreachableStopped" xml:space="preserve"><value>コンピューターに接続できません。コンピューターでNoctisを開くか、ダウンロード済みの曲を再生してください。</value></data>
   <data name="Mobile.Player.TooManyErrors" xml:space="preserve"><value>複数の曲を続けて再生できなかったため、再生を停止しました。</value></data>

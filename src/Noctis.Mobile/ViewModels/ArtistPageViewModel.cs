@@ -120,6 +120,7 @@ public sealed partial class ArtistPageViewModel : MobilePage, ITintedPage
         Rebuild();
         PhotoLoad = _photo == null ? LoadPhotoAsync(_photoCts.Token) : Task.CompletedTask;
         LogoLoad = _logo == null ? LoadLogoAsync(_photoCts.Token) : Task.CompletedTask;
+        BiographyLoad = LoadBiographyAsync(_photoCts.Token);
     }
 
     public ShellViewModel Shell { get; }
@@ -140,6 +141,18 @@ public sealed partial class ArtistPageViewModel : MobilePage, ITintedPage
 
     public bool HasLogo => Logo != null;
     public string? LogoPath => Logo?.Path;
+
+    /// <summary>The artist's biography (<see cref="ShellViewModel.ArtistBiographies"/>, Last.fm on
+    /// the phone), the album page's description paragraph for an artist; null hides it. Asked
+    /// once as the page opens.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasBiography))]
+    private string? _biography;
+
+    public bool HasBiography => !string.IsNullOrEmpty(Biography);
+
+    /// <summary>The biography lookup started with the page; tests await it.</summary>
+    internal Task BiographyLoad { get; }
 
     /// <summary>Newest release first, then track order, then the artist's other songs: what Play plays.</summary>
     public IReadOnlyList<Track> Songs { get; private set; } = Array.Empty<Track>();
@@ -340,6 +353,33 @@ public sealed partial class ArtistPageViewModel : MobilePage, ITintedPage
         {
             DebugLog.Write("Artist", $"Artist logo failed: {ex.Message}");
         }
+    }
+
+    private async Task LoadBiographyAsync(CancellationToken ct)
+    {
+        if (Shell.ArtistBiographies is not { } source || !LastFmArtistBiographies.IsLookupName(Name)) return;
+        try
+        {
+            var text = await source.GetBiographyAsync(Name, ct);
+            if (!ct.IsCancellationRequested) Biography = string.IsNullOrWhiteSpace(text) ? null : text.Trim();
+        }
+        catch (OperationCanceledException)
+        {
+            // The page closed first.
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Artist", $"Biography failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>The paragraph (or its MORE) tapped: the whole text on the album description's
+    /// glass sheet, under the artist's picture and name.</summary>
+    [RelayCommand]
+    private void ShowBiography()
+    {
+        if (Biography is { Length: > 0 } text)
+            Shell.ShowAlbumNote(new AlbumNoteViewModel(Shell, Name, Loc.T("Mobile.Artist.Biography"), HeroArtworkPath, text));
     }
 
     // A heart or a download changes nothing the page shows (Top Songs ranks by plays). Rebuilding

@@ -3749,6 +3749,7 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Mobile.Artist.MostPlayed" xml:space="preserve"><value>MEISTGESPIELT</value><comment>Artist page card kicker</comment></data>
   <data name="Mobile.Artist.LatestEp" xml:space="preserve"><value>NEUESTE EP</value><comment>Artist page card kicker</comment></data>
   <data name="Mobile.Artist.LatestSingle" xml:space="preserve"><value>NEUESTE SINGLE</value><comment>Artist page card kicker</comment></data>
+  <data name="Mobile.Artist.Biography" xml:space="preserve"><value>Biografie</value><comment>Artist page: the biography sheet's line under the artist's name</comment></data>
   <data name="Mobile.Player.UnreachableSkipping" xml:space="preserve"><value>Dein Computer ist nicht erreichbar. Spiele deine heruntergeladenen Songs.</value><comment>Player banner</comment></data>
   <data name="Mobile.Player.UnreachableStopped" xml:space="preserve"><value>Dein Computer ist nicht erreichbar. Öffne dort Noctis oder spiele Songs, die du heruntergeladen hast.</value><comment>Player banner</comment></data>
   <data name="Mobile.Player.TooManyErrors" xml:space="preserve"><value>Mehrere Songs hintereinander konnten nicht abgespielt werden, daher wurde die Wiedergabe gestoppt.</value><comment>Player banner</comment></data>

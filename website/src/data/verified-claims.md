@@ -144,7 +144,6 @@ Source: `docs/PLUGINS.md`, `docs/LOCAL-API.md` and the plugin host in the app.
 | DSD / DSF / DFF playback | Indexed and browsable only. The bundled VLC 3.x has no DSD decoder. |
 | Streaming from Navidrome, SMB or WebDAV | No shipped UI can create a source connection. WebDAV is a stub returning empty. |
 | An offline cache for remote content | `OfflineCacheService` is dead code; nothing resolves it. |
-| Artist biographies | No bio feature exists. Only album descriptions, from Last.fm. |
 | MusicBrainz as the artist-image source | Portraits come from Deezer only. |
 | Ambient backgrounds on **album** pages | `AlbumDetailViewModel` sets the brush to null; the gradient sits at opacity 0. Lyrics pages only. |
 | A "Compilations" album category | The fourth chip is "Other" — it buckets Compilation, Live, Remix and Soundtrack. |

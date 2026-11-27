@@ -3802,6 +3802,7 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.Artist.MostPlayed" xml:space="preserve"><value>EN ÇOK ÇALINAN</value></data>
   <data name="Mobile.Artist.LatestEp" xml:space="preserve"><value>EN YENİ EP</value></data>
   <data name="Mobile.Artist.LatestSingle" xml:space="preserve"><value>EN YENİ SINGLE</value></data>
+  <data name="Mobile.Artist.Biography" xml:space="preserve"><value>Biyografi</value></data>
   <data name="Mobile.Player.UnreachableSkipping" xml:space="preserve"><value>Bilgisayarına ulaşılamıyor. İndirdiğin şarkılar çalınıyor.</value></data>
   <data name="Mobile.Player.UnreachableStopped" xml:space="preserve"><value>Bilgisayarına ulaşılamıyor. Orada Noctis’i aç ya da indirdiğin şarkıları çal.</value></data>
   <data name="Mobile.Player.TooManyErrors" xml:space="preserve"><value>Art arda birkaç şarkı çalınamadı, bu yüzden çalma durduruldu.</value></data>

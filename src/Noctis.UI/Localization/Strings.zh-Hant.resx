@@ -8750,6 +8750,7 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="Mobile.Artist.MostPlayed" xml:space="preserve"><value>最常播放</value></data>
   <data name="Mobile.Artist.LatestEp" xml:space="preserve"><value>最新 EP</value></data>
   <data name="Mobile.Artist.LatestSingle" xml:space="preserve"><value>最新單曲</value></data>
+  <data name="Mobile.Artist.Biography" xml:space="preserve"><value>簡介</value></data>
   <data name="Mobile.Player.UnreachableSkipping" xml:space="preserve"><value>無法連線到你的電腦。正在播放已下載的歌曲。</value></data>
   <data name="Mobile.Player.UnreachableStopped" xml:space="preserve"><value>無法連線到你的電腦。請在電腦上開啟 Noctis，或播放已下載的歌曲。</value></data>
   <data name="Mobile.Player.TooManyErrors" xml:space="preserve"><value>連續多首歌曲無法播放，因此已停止播放。</value></data>

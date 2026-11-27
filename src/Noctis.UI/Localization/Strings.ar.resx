@@ -8750,6 +8750,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.Artist.MostPlayed" xml:space="preserve"><value>الأكثر تشغيلًا</value></data>
   <data name="Mobile.Artist.LatestEp" xml:space="preserve"><value>أحدث EP</value></data>
   <data name="Mobile.Artist.LatestSingle" xml:space="preserve"><value>أحدث أغنية منفردة</value></data>
+  <data name="Mobile.Artist.Biography" xml:space="preserve"><value>السيرة الذاتية</value></data>
   <data name="Mobile.Player.UnreachableSkipping" xml:space="preserve"><value>تعذّر الوصول إلى الكمبيوتر. يتم تشغيل الأغاني التي نزّلتها.</value></data>
   <data name="Mobile.Player.UnreachableStopped" xml:space="preserve"><value>تعذّر الوصول إلى الكمبيوتر. افتح Noctis عليه، أو شغّل الأغاني التي نزّلتها.</value></data>
   <data name="Mobile.Player.TooManyErrors" xml:space="preserve"><value>تعذّر تشغيل عدة أغانٍ متتالية، لذا توقف التشغيل.</value></data>
