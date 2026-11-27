@@ -662,4 +662,55 @@ public class SettingsViewModelPersistenceTests : IDisposable
         Assert.False(raw.ContainsKey("futureFlag"));
         Assert.NotEqual("9.9.0", raw["writtenByVersion"]?.GetValue<string>());
     }
+
+    /// <summary>
+    /// 11-27 log: "Slow.SettingsSave ms=289" beside a 274 ms UI.Stall after a mini player menu
+    /// click. With the file gate free, the save's load (deserialize, computers.json read, DPAPI)
+    /// and its update (settings.json.bak copy, computers.json write, DPAPI, serialize) ran
+    /// synchronously on the UI thread up to the final write. They now start on the thread pool;
+    /// the save still lands, with the merge semantics the tests above pin.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task Save_DoesItsFileWorkOffTheUiThread()
+    {
+        var recording = new ThreadRecordingPersistence(new PersistenceService(_root));
+        var vm = new SettingsViewModel(recording, new FakeLibraryService(), new NoOpPlayHistoryService());
+        await vm.LoadAsync();
+        recording.Calls.Clear();
+
+        vm.DeveloperMode = true;
+        await vm.SaveAsync();
+
+        Assert.Contains(recording.Calls, c => c.Op == "load");
+        Assert.Contains(recording.Calls, c => c.Op == "update");
+        Assert.All(recording.Calls, c => Assert.False(c.OnUiThread, $"{c.Op} ran on the UI thread"));
+        Assert.True((await new PersistenceService(_root).LoadSettingsAsync()).DeveloperMode);
+    }
+
+    private sealed class ThreadRecordingPersistence(PersistenceService inner) : IPersistenceService
+    {
+        public readonly System.Collections.Concurrent.ConcurrentQueue<(string Op, bool OnUiThread)> Calls = new();
+        private void Note(string op) => Calls.Enqueue((op, Avalonia.Threading.Dispatcher.UIThread.CheckAccess()));
+
+        public string DataDirectory => inner.DataDirectory;
+        public Task<AppSettings> LoadSettingsAsync() { Note("load"); return inner.LoadSettingsAsync(); }
+        public Task SaveSettingsAsync(AppSettings settings) { Note("save"); return inner.SaveSettingsAsync(settings); }
+        public Task UpdateSettingsAsync(Action<AppSettings> change) { Note("update"); return inner.UpdateSettingsAsync(change); }
+        public bool SettingsLoadFailed => inner.SettingsLoadFailed;
+        public Task<List<Track>?> LoadLibraryAsync() => inner.LoadLibraryAsync();
+        public Task SaveLibraryAsync(List<Track> tracks) => inner.SaveLibraryAsync(tracks);
+        public bool LibraryLoadFailed => inner.LibraryLoadFailed;
+        public string? LastCorruptFilePath => inner.LastCorruptFilePath;
+        public Task<List<Playlist>> LoadPlaylistsAsync() => inner.LoadPlaylistsAsync();
+        public Task SavePlaylistsAsync(List<Playlist> playlists) => inner.SavePlaylistsAsync(playlists);
+        public Task<QueueState?> LoadQueueStateAsync() => inner.LoadQueueStateAsync();
+        public Task SaveQueueStateAsync(QueueState state) => inner.SaveQueueStateAsync(state);
+        public Task SaveQueuePositionAsync(Guid? currentTrackId, double positionSeconds) => inner.SaveQueuePositionAsync(currentTrackId, positionSeconds);
+        public Task<LibraryIndexCache?> LoadIndexCacheAsync() => inner.LoadIndexCacheAsync();
+        public Task SaveIndexCacheAsync(LibraryIndexCache cache) => inner.SaveIndexCacheAsync(cache);
+        public string GetArtworkPath(Guid albumId) => inner.GetArtworkPath(albumId);
+        public void SaveArtwork(Guid albumId, byte[] imageData) => inner.SaveArtwork(albumId, imageData);
+        public string GetAnimatedCoverPath(Guid albumId, Guid? trackId, string extension) => inner.GetAnimatedCoverPath(albumId, trackId, extension);
+        public void EnsureAnimatedCoverDir() => inner.EnsureAnimatedCoverDir();
+    }
 }

@@ -4302,10 +4302,13 @@ public partial class SettingsViewModel : ViewModelBase
                 // against that read (taken here, on the UI thread), onto the file as it is under
                 // the gate.
                 var changes = ChangesSinceMerge(onDisk);
-                await _persistence.UpdateSettingsAsync(current =>
+                // The file work (load under the gate, settings.json.bak copy, computers.json
+                // write, DPAPI, serialize) on the thread pool: with the gate free it all ran
+                // synchronously on the UI thread up to the final write.
+                await Task.Run(() => _persistence.UpdateSettingsAsync(current =>
                 {
                     foreach (var (prop, value) in changes) prop.SetValue(current, value);
-                });
+                }));
             }
             UiStallWatchdog.ReportIfSlow("SettingsSave", saveStart);
         }
@@ -4384,7 +4387,11 @@ public partial class SettingsViewModel : ViewModelBase
     {
         try
         {
-            var onDisk = await _persistence.LoadSettingsAsync();
+            // On the thread pool: the load deserializes settings.json, reads computers.json and
+            // DPAPI-decrypts the sign-ins, and its continuations used to come back here on the UI
+            // thread (11-27 log: Slow.SettingsSave ms=289 next to a UI.Stall of 274 ms after a
+            // mini player menu click). The merge below stays on the caller, where _settings lives.
+            var onDisk = await Task.Run(() => _persistence.LoadSettingsAsync());
             if (onDisk == null) return null;
 
             foreach (var prop in MergedSettingsProperties)
