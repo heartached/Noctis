@@ -39,8 +39,11 @@ public sealed class AlbumCarouselCard : Panel
 
     // Jewel case: 142 × 125 mm with a 120 mm insert → the cover fills the lid right of the spine.
     internal const double JewelWidth = 1.17, JewelHeight = 1.04, JewelSpine = 0.12;
-    // Vinyl: the disc's centre sits this far right of the sleeve's centre.
-    internal const double VinylDiscRadius = 0.47, VinylDiscOffset = 0.36;
+    // Vinyl: the disc's centre sits this far right of the sleeve's centre, far enough for the
+    // edge of its label to show past the sleeve.
+    internal const double VinylDiscRadius = 0.47, VinylDiscOffset = 0.42;
+    /// <summary>The record label's radius as a fraction of the disc's (a 12-inch label is about a third).</summary>
+    internal const double VinylLabelRadius = 0.34;
     internal const double VinylWidth = 0.5 + VinylDiscOffset + VinylDiscRadius;
     // Cassette: shell ≈ 100 × 64 mm.
     internal const double CassetteWidth = 1.3, CassetteHeight = 0.83;
@@ -93,7 +96,8 @@ public sealed class AlbumCarouselCard : Panel
         };
 
         // Floor reflection (every style, GitHub #233): the composed card again, flipped,
-        // fading out downwards. Redrawn once the cover has decoded (it draws that bitmap).
+        // fading out downwards. Redrawn once the cover has decoded (it draws that bitmap),
+        // as is the body, whose record label prints the cover too.
         _reflection = new ReflectionLayer(this)
         {
             ClipToBounds = true,
@@ -101,13 +105,14 @@ public sealed class AlbumCarouselCard : Panel
             OpacityMask = ReflectionFade,
         };
         RenderOptions.SetBitmapInterpolationMode(_reflection, Avalonia.Media.Imaging.BitmapInterpolationMode.HighQuality);
-        _cover.PropertyChanged += (_, e) =>
-        {
-            if (e.Property == Image.SourceProperty) _reflection.InvalidateVisual();
-        };
-
         _gloss = new OverlayLayer(this) { IsHitTestVisible = false };
         _body = new BodyLayer(this) { IsHitTestVisible = false };
+        _cover.PropertyChanged += (_, e) =>
+        {
+            if (e.Property != Image.SourceProperty) return;
+            _reflection.InvalidateVisual();
+            if (_style == AlbumCarouselStyle.Vinyl) _body.InvalidateVisual();
+        };
 
         Children.Add(_body);
         Children.Add(_coverFrame);
@@ -245,26 +250,29 @@ public sealed class AlbumCarouselCard : Panel
 
     // ── Case bodies (drawn behind the cover) ──────────────────────────────────
 
-    private static readonly IBrush TrayBrush = new SolidColorBrush(Color.FromRgb(0x0F, 0x0F, 0x12));
-    private static readonly IPen CaseEdgePen = new Pen(new SolidColorBrush(Color.FromArgb(0x50, 0xFF, 0xFF, 0xFF)), 1);
-    private static readonly IPen RidgePen = new Pen(new SolidColorBrush(Color.FromArgb(0x16, 0xFF, 0xFF, 0xFF)), 1);
-    private static readonly IBrush HingeBrush = new SolidColorBrush(Color.FromArgb(0x1C, 0xFF, 0xFF, 0xFF));
-    private static readonly IPen GroovePen = new Pen(new SolidColorBrush(Color.FromArgb(0x0E, 0xFF, 0xFF, 0xFF)), 1);
-    private static readonly IPen DiscRimPen = new Pen(new SolidColorBrush(Color.FromArgb(0x26, 0xFF, 0xFF, 0xFF)), 1);
-    private static readonly IBrush LabelBrush = new SolidColorBrush(Color.FromRgb(0xE9, 0xE3, 0xD6));
-    private static readonly IPen LabelRingPen = new Pen(new SolidColorBrush(Color.FromArgb(0x40, 0, 0, 0)), 1);
-    private static readonly IBrush ShellBrush = new LinearGradientBrush
+    // Every brush here is relative to what it fills, so one set serves every card (and its
+    // reflection) at any size instead of new brushes per drawing.
+    private static LinearGradientBrush Linear(double x0, double y0, double x1, double y1, params (uint Argb, double Offset)[] stops)
     {
-        StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-        EndPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
-        GradientStops = { new GradientStop(Color.FromRgb(0x36, 0x36, 0x3C), 0), new GradientStop(Color.FromRgb(0x1E, 0x1E, 0x22), 1) },
-    };
-    private static readonly IBrush WindowBrush = new SolidColorBrush(Color.FromArgb(0xE6, 0x12, 0x12, 0x15));
-    private static readonly IBrush TapeBrush = new SolidColorBrush(Color.FromRgb(0x4A, 0x32, 0x24));
-    private static readonly IBrush HubBrush = new SolidColorBrush(Color.FromRgb(0xEC, 0xEC, 0xEC));
+        var brush = new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(x0, y0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(x1, y1, RelativeUnit.Relative),
+        };
+        foreach (var (argb, offset) in stops) brush.GradientStops.Add(new GradientStop(Color.FromUInt32(argb), offset));
+        return brush;
+    }
+
+    private static RadialGradientBrush Radial(double originX, double originY, params (uint Argb, double Offset)[] stops)
+    {
+        var brush = new RadialGradientBrush { GradientOrigin = new RelativePoint(originX, originY, RelativeUnit.Relative) };
+        foreach (var (argb, offset) in stops) brush.GradientStops.Add(new GradientStop(Color.FromUInt32(argb), offset));
+        return brush;
+    }
+
+    private static Pen PenOf(uint argb, double thickness = 1) => new(new SolidColorBrush(Color.FromUInt32(argb)), thickness);
+
     private static readonly IBrush HoleBrush = new SolidColorBrush(Color.FromRgb(0x0B, 0x0B, 0x0D));
-    private static readonly IPen ScrewPen = new Pen(new SolidColorBrush(Color.FromArgb(0x70, 0, 0, 0)), 1);
-    private static readonly IBrush ScrewBrush = new SolidColorBrush(Color.FromRgb(0x8A, 0x8A, 0x90));
 
     /// <param name="reflection">Drawing the floor reflection: leaves out the record's grooves,
     /// which cannot be seen at a third of the brightness and are most of a record's shapes.</param>
@@ -278,6 +286,17 @@ public sealed class AlbumCarouselCard : Panel
         }
     }
 
+    // Jewel case: a black tray seen through the clear lid; the hinge spine is clear plastic
+    // curving round the hinge, so it is shaded like a cylinder lit from the left.
+    private static readonly IBrush TrayBrush = Linear(0, 0, 0, 1, (0xFF1C1C21, 0), (0xFF0C0C0E, 1));
+    private static readonly IBrush HingeBrush = Linear(0, 0, 1, 0,
+        (0xFF34343B, 0), (0xFF6E6E78, 0.12), (0xFF2E2E35, 0.32), (0xFF1A1A1F, 0.75), (0xFF111114, 0.96), (0xFF2C2C33, 1));
+    private static readonly IBrush KnuckleBrush = Linear(0, 0, 1, 0,
+        (0xFF4A4A53, 0), (0xFFA4A4AE, 0.35), (0xFF4C4C55, 0.62), (0xFF222228, 1));
+    private static readonly IPen KnucklePen = PenOf(0x70000000);
+    private static readonly IPen RibShadePen = PenOf(0x70000000);
+    private static readonly IPen RibLightPen = PenOf(0x22FFFFFF);
+
     private void RenderJewelTray(DrawingContext ctx)
     {
         var s = _coverSize;
@@ -285,105 +304,184 @@ public sealed class AlbumCarouselCard : Panel
         var body = new Rect(size);
         var r = s * 0.018;
         ctx.DrawRectangle(TrayBrush, null, body, r, r);
-        // Spine: a few moulded ridges and the two hinge knuckles at top and bottom.
         var spineW = JewelSpine * s;
-        for (var i = 1; i <= 3; i++)
+        using (ctx.PushClip(new RoundedRect(body, r)))
         {
-            var x = Math.Round(spineW * i / 4) + 0.5;
-            ctx.DrawLine(RidgePen, new Point(x, s * 0.08), new Point(x, size.Height - s * 0.08));
+            ctx.DrawRectangle(HingeBrush, null, new Rect(0, 0, spineW, size.Height));
+            // Grip ribs moulded into the spine: each a dark groove with a lit edge beside it.
+            var top = s * 0.11;
+            var bottom = size.Height - s * 0.11;
+            for (var i = 0; i < 5; i++)
+            {
+                var x = Math.Round(spineW * (0.34 + i * 0.13)) + 0.5;
+                ctx.DrawLine(RibShadePen, new Point(x, top), new Point(x, bottom));
+                ctx.DrawLine(RibLightPen, new Point(x + 1, top), new Point(x + 1, bottom));
+            }
+            // Hinge knuckles at top and bottom: short clear cylinders on the case's left edge.
+            var kw = spineW * 0.42;
+            var kh = s * 0.075;
+            var kx = spineW * 0.08;
+            foreach (var ky in new[] { s * 0.018, size.Height - s * 0.018 - kh })
+                ctx.DrawRectangle(KnuckleBrush, KnucklePen, new Rect(kx, ky, kw, kh), kw * 0.3, kw * 0.3);
         }
-        var knuckleH = s * 0.07;
-        ctx.DrawRectangle(HingeBrush, null, new Rect(spineW * 0.18, s * 0.02, spineW * 0.64, knuckleH), s * 0.008, s * 0.008);
-        ctx.DrawRectangle(HingeBrush, null, new Rect(spineW * 0.18, size.Height - s * 0.02 - knuckleH, spineW * 0.64, knuckleH), s * 0.008, s * 0.008);
     }
 
-    // The record's brushes are relative to what they fill, so one set serves every card (and
-    // its reflection) instead of three new brushes per drawing.
-    private static readonly IBrush DiscBrush = new RadialGradientBrush
+    // Vinyl: black PVC that is darkest in the grooves and catches the light along the rim.
+    private static readonly IBrush DiscBrush = Radial(0.5, 0.5,
+        (0xFF1E1E21, 0), (0xFF101012, 0.4), (0xFF0E0E10, 0.95), (0xFF222226, 0.985), (0xFF0A0A0B, 1));
+    // Light on grooves fans out in wedges from the centre (the cross-shaped sheen of a record).
+    private static readonly IBrush DiscSheenBrush = new ConicGradientBrush
     {
         GradientStops =
         {
-            new GradientStop(Color.FromRgb(0x22, 0x22, 0x24), 0),
-            new GradientStop(Color.FromRgb(0x0C, 0x0C, 0x0D), 0.75),
-            new GradientStop(Color.FromRgb(0x16, 0x16, 0x18), 1),
+            new GradientStop(Colors.Transparent, 0.03),
+            new GradientStop(Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF), 0.125),
+            new GradientStop(Colors.Transparent, 0.22),
+            new GradientStop(Colors.Transparent, 0.31),
+            new GradientStop(Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF), 0.375),
+            new GradientStop(Colors.Transparent, 0.44),
+            new GradientStop(Colors.Transparent, 0.53),
+            new GradientStop(Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF), 0.625),
+            new GradientStop(Colors.Transparent, 0.72),
+            new GradientStop(Colors.Transparent, 0.81),
+            new GradientStop(Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF), 0.875),
+            new GradientStop(Colors.Transparent, 0.94),
         },
     };
-    private static readonly IBrush DiscSheenBrush = new LinearGradientBrush
-    {
-        StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-        EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
-        GradientStops =
-        {
-            new GradientStop(Colors.Transparent, 0.2),
-            new GradientStop(Color.FromArgb(0x1E, 0xFF, 0xFF, 0xFF), 0.33),
-            new GradientStop(Colors.Transparent, 0.45),
-            new GradientStop(Colors.Transparent, 0.55),
-            new GradientStop(Color.FromArgb(0x1E, 0xFF, 0xFF, 0xFF), 0.67),
-            new GradientStop(Colors.Transparent, 0.8),
-        },
-    };
-    private static readonly IBrush SleeveShadowBrush = new LinearGradientBrush
-    {
-        StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-        EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
-        GradientStops = { new GradientStop(Color.FromArgb(0x90, 0, 0, 0), 0), new GradientStop(Colors.Transparent, 1) },
-    };
+    private static readonly IPen GroovePen = PenOf(0x12FFFFFF);
+    private static readonly IPen GrooveFaintPen = PenOf(0x08FFFFFF);
+    private static readonly IPen TrackGapPen = PenOf(0x90000000, 1.5);
+    private static readonly IPen DiscRimPen = PenOf(0x30FFFFFF);
+    private static readonly IPen RunOutPen = PenOf(0x18FFFFFF);
+    /// <summary>Where the quiet gaps between songs fall, as fractions of the grooved band.</summary>
+    private static readonly double[] TrackGaps = { 0.2, 0.41, 0.6, 0.83 };
+    private static readonly IBrush LabelBrush = new SolidColorBrush(Color.FromRgb(0xE9, 0xE3, 0xD6));
+    // The label's paper edge sits a little in shadow, its centre a little in the light.
+    private static readonly IBrush LabelShadeBrush = Radial(0.4, 0.38,
+        (0x18FFFFFF, 0), (0x00000000, 0.55), (0x00000000, 0.82), (0x50000000, 1));
+    private static readonly IPen LabelRingPen = PenOf(0x50000000);
+    private static readonly IPen SpindleLipPen = PenOf(0x30FFFFFF);
+    private static readonly IBrush SleeveShadowBrush = Linear(0, 0, 1, 0, (0x90000000, 0), (0x00000000, 1));
+
+    private static Point VinylDiscCentre(double s) => new(s * (0.5 + VinylDiscOffset), s * 0.5);
 
     private void RenderDisc(DrawingContext ctx, bool grooves = true)
     {
         var s = _coverSize;
-        var c = new Point(s * (0.5 + VinylDiscOffset), s * 0.5);
+        var c = VinylDiscCentre(s);
         var radius = VinylDiscRadius * s;
-        ctx.DrawEllipse(DiscBrush, DiscRimPen, c, radius, radius);
-        // Grooves: fine rings across the playing surface.
-        var labelR = radius * 0.34;
-        var step = Math.Max(2.5, s * 0.016);
+        var disc = new Rect(c.X - radius, c.Y - radius, radius * 2, radius * 2);
+        ctx.DrawEllipse(DiscBrush, null, c, radius, radius);
+        var labelR = radius * VinylLabelRadius;
+        var runOut = labelR * 1.2;
         if (grooves)
-            for (var g = labelR + step * 1.5; g < radius - step; g += step)
-                ctx.DrawEllipse(null, GroovePen, c, g, g);
-        // Light catching the vinyl: two soft opposite bands across the disc.
-        ctx.DrawEllipse(DiscSheenBrush, null, c, radius, radius);
-        // Paper label and spindle hole (mostly behind the sleeve; its edge shows).
-        ctx.DrawEllipse(LabelBrush, LabelRingPen, c, labelR, labelR);
-        ctx.DrawEllipse(HoleBrush, null, c, s * 0.012, s * 0.012);
+        {
+            // Grooves from the lead-in to the run-out, alternating so they read as texture,
+            // broken by the darker gaps between songs.
+            var outer = radius * 0.965;
+            var step = Math.Max(1.6, s * 0.009);
+            var n = 0;
+            for (var g = runOut + step; g < outer; g += step, n++)
+                ctx.DrawEllipse(null, n % 2 == 0 ? GroovePen : GrooveFaintPen, c, g, g);
+            foreach (var f in TrackGaps)
+            {
+                var g = runOut + step + (outer - runOut - step) * f;
+                ctx.DrawEllipse(null, TrackGapPen, c, g, g);
+            }
+        }
+        ctx.DrawEllipse(null, RunOutPen, c, runOut, runOut);
+        ctx.DrawEllipse(DiscSheenBrush, DiscRimPen, c, radius - 0.5, radius - 0.5);
+
+        // Label: the album art again, printed small, as on the now-playing record.
+        var label = new Rect(c.X - labelR, c.Y - labelR, labelR * 2, labelR * 2);
+        if (_cover.Source is { } image && image.Size.Width > 0 && image.Size.Height > 0)
+        {
+            using (ctx.PushGeometryClip(new EllipseGeometry(label)))
+                ctx.DrawImage(image, UniformToFillSource(image.Size, label.Size), label);
+        }
+        else
+        {
+            ctx.DrawEllipse(LabelBrush, null, c, labelR, labelR);
+        }
+        ctx.DrawEllipse(LabelShadeBrush, LabelRingPen, c, labelR, labelR);
+        ctx.DrawEllipse(HoleBrush, SpindleLipPen, c, s * 0.012, s * 0.012);
+
         // The sleeve's shadow falling on the disc right of its edge.
-        using (ctx.PushGeometryClip(new EllipseGeometry(new Rect(c.X - radius, c.Y - radius, radius * 2, radius * 2))))
+        using (ctx.PushGeometryClip(new EllipseGeometry(disc)))
             ctx.DrawRectangle(SleeveShadowBrush, null, new Rect(s, 0, s * 0.07, s));
     }
+
+    // Cassette: moulded plastic lit from above, a paper label round the art, the raised
+    // ridge at the foot with the tape-head openings, five screws.
+    private static readonly IBrush ShellBrush = Linear(0, 0, 0, 1, (0xFF3E3E46, 0), (0xFF2B2B31, 0.5), (0xFF1D1D22, 1));
+    private static readonly IPen ShellEdgePen = new Pen(Linear(0, 0, 0, 1, (0x70FFFFFF, 0), (0x1CFFFFFF, 0.45), (0x60000000, 1)), 1);
+    private static readonly IPen ShellRimPen = new Pen(Linear(0, 0, 0, 1, (0x50000000, 0), (0x14FFFFFF, 1)), 1);
+    private static readonly IBrush LabelPaperBrush = Linear(0, 0, 0, 1, (0xFFF1ECE1, 0), (0xFFDCD5C6, 1));
+    private static readonly IPen LabelEdgePen = PenOf(0x60000000);
+    private static readonly IBrush RidgeBrush = Linear(0, 0, 0, 1, (0xFF33333A, 0), (0xFF1B1B20, 1));
+    private static readonly IPen RidgeEdgePen = PenOf(0x70000000);
+    private static readonly IPen RidgeLightPen = PenOf(0x38FFFFFF);
+    private static readonly IPen HoleLipPen = PenOf(0x22FFFFFF);
+    private static readonly IBrush ScrewBrush = Radial(0.35, 0.3, (0xFFC4C4CA, 0), (0xFF7A7A82, 0.6), (0xFF4A4A50, 1));
+    private static readonly IPen ScrewPen = PenOf(0xA0000000);
 
     private void RenderShell(DrawingContext ctx)
     {
         var s = _coverSize;
         var w = CassetteWidth * s;
         var h = CassetteHeight * s;
-        ctx.DrawRectangle(ShellBrush, CaseEdgePen, new Rect(0, 0, w, h), s * 0.035, s * 0.035);
+        var shell = new Rect(0, 0, w, h);
+        var r = s * 0.035;
+        ctx.DrawRectangle(ShellBrush, null, shell, r, r);
+        ctx.DrawRectangle(null, ShellEdgePen, shell.Deflate(0.5), r, r);
+        // The moulded rim round the face.
+        ctx.DrawRectangle(null, ShellRimPen, shell.Deflate(s * 0.014), r * 0.7, r * 0.7);
 
-        // Bottom ridge: the trapezoid with the tape-head openings.
+        // Paper label: a cream border round the art (the art itself is the cover image).
+        var paper = CassetteLabelRect(s).Inflate(s * 0.014);
+        ctx.DrawRectangle(LabelPaperBrush, LabelEdgePen, paper, s * 0.024, s * 0.024);
+
+        // Bottom ridge: the raised trapezoid with the tape-head openings.
         var top = h * 0.78;
         var trapezoid = new StreamGeometry();
         using (var g = trapezoid.Open())
         {
             g.BeginFigure(new Point(w * 0.22, top), true);
             g.LineTo(new Point(w * 0.78, top));
-            g.LineTo(new Point(w * 0.83, h));
-            g.LineTo(new Point(w * 0.17, h));
+            g.LineTo(new Point(w * 0.83, h - 0.5));
+            g.LineTo(new Point(w * 0.17, h - 0.5));
             g.EndFigure(true);
         }
-        ctx.DrawGeometry(new SolidColorBrush(Color.FromArgb(0x30, 0, 0, 0)), CaseEdgePen, trapezoid);
+        ctx.DrawGeometry(RidgeBrush, RidgeEdgePen, trapezoid);
+        ctx.DrawLine(RidgeLightPen, new Point(w * 0.22 + 1, top + 1), new Point(w * 0.78 - 1, top + 1));
         var holeR = h * 0.028;
         foreach (var fx in new[] { 0.31, 0.69 })
-            ctx.DrawEllipse(HoleBrush, null, new Point(w * fx, top + (h - top) * 0.55), holeR, holeR);
+            ctx.DrawEllipse(HoleBrush, HoleLipPen, new Point(w * fx, top + (h - top) * 0.5), holeR, holeR);
         foreach (var fx in new[] { 0.42, 0.58 })
-            ctx.DrawRectangle(HoleBrush, null, new Rect(w * fx - holeR, top + (h - top) * 0.35, holeR * 2, holeR * 2.2), holeR * 0.4, holeR * 0.4);
+            ctx.DrawRectangle(HoleBrush, HoleLipPen, new Rect(w * fx - holeR, top + (h - top) * 0.3, holeR * 2, holeR * 2.2), holeR * 0.4, holeR * 0.4);
 
-        // Corner screws.
-        var sr = h * 0.026;
-        foreach (var p in new[] { new Point(w * 0.035, h * 0.06), new Point(w * 0.965, h * 0.06), new Point(w * 0.035, h * 0.94), new Point(w * 0.965, h * 0.94) })
+        // Screws: four corners and one in the ridge.
+        var sr = h * 0.021;
+        var slot = PenOf(0xB0000000, Math.Max(1, sr * 0.28));
+        foreach (var p in new[] { new Point(w * 0.035, h * 0.06), new Point(w * 0.965, h * 0.06), new Point(w * 0.035, h * 0.94), new Point(w * 0.965, h * 0.94), new Point(w * 0.5, top + (h - top) * 0.62) })
         {
             ctx.DrawEllipse(ScrewBrush, ScrewPen, p, sr, sr);
-            ctx.DrawLine(ScrewPen, new Point(p.X - sr * 0.6, p.Y), new Point(p.X + sr * 0.6, p.Y));
+            ctx.DrawLine(slot, new Point(p.X - sr * 0.55, p.Y), new Point(p.X + sr * 0.55, p.Y));
+            ctx.DrawLine(slot, new Point(p.X, p.Y - sr * 0.55), new Point(p.X, p.Y + sr * 0.55));
         }
     }
+
+    private static readonly IBrush WindowBrush = new SolidColorBrush(Color.FromArgb(0xF0, 0x0E, 0x0E, 0x11));
+    // Clear plastic over the window: a soft glare across its upper half.
+    private static readonly IBrush WindowGlareBrush = Linear(0, 0, 0.3, 1, (0x26FFFFFF, 0), (0x0AFFFFFF, 0.42), (0x00FFFFFF, 0.43), (0x00FFFFFF, 1));
+    private static readonly IPen WindowRimPen = PenOf(0xA0000000, 1.5);
+    private static readonly IPen WindowLipPen = new Pen(Linear(0, 0, 0, 1, (0x10FFFFFF, 0), (0x40FFFFFF, 1)), 1);
+    // Wound tape: matt brown, a little lighter towards the outer layers.
+    private static readonly IBrush TapePackBrush = Radial(0.5, 0.5,
+        (0xFF3C2A1E, 0), (0xFF4A3426, 0.7), (0xFF563C2B, 0.9), (0xFF2A1D15, 1));
+    private static readonly IPen TapeEdgePen = PenOf(0x50000000);
+    private static readonly IBrush HubBrush = Radial(0.4, 0.35, (0xFFFFFFFF, 0), (0xFFE4E4E8, 0.6), (0xFFB4B4BC, 1));
+    private static readonly IPen HubEdgePen = PenOf(0x60000000);
 
     /// <summary>Tape window over the lower middle of the label (drawn above the cover), two reels in it.</summary>
     private void RenderCassetteWindow(DrawingContext ctx)
@@ -393,26 +491,53 @@ public sealed class AlbumCarouselCard : Panel
         var h = CassetteHeight * s;
         var label = CassetteLabelRect(s);
         var win = new Rect(w * 0.29, label.Y + label.Height * 0.52, w * 0.42, h * 0.18);
-        ctx.DrawRectangle(WindowBrush, CaseEdgePen, win, h * 0.05, h * 0.05);
+        var wr = h * 0.05;
+        ctx.DrawRectangle(WindowBrush, null, win, wr, wr);
         var cy = win.Center.Y;
-        var reelR = win.Height * 0.36;
-        DrawReel(ctx, new Point(win.X + win.Width * 0.22, cy), reelR, reelR * 1.3);
-        DrawReel(ctx, new Point(win.Right - win.Width * 0.22, cy), reelR, reelR * 0.8);
+        var left = new Point(win.X + win.Width * 0.22, cy);
+        var right = new Point(win.Right - win.Width * 0.22, cy);
+        using (ctx.PushClip(new RoundedRect(win, wr)))
+        {
+            // Most of the tape is wound on the left reel; the window crops the big pack.
+            ctx.DrawEllipse(TapePackBrush, TapeEdgePen, left, win.Height * 0.6, win.Height * 0.6);
+            ctx.DrawEllipse(TapePackBrush, TapeEdgePen, right, win.Height * 0.38, win.Height * 0.38);
+            var hubR = win.Height * 0.27;
+            DrawReel(ctx, left, hubR);
+            DrawReel(ctx, right, hubR);
+            ctx.DrawRectangle(WindowGlareBrush, null, win);
+        }
+        ctx.DrawRectangle(null, WindowRimPen, win, wr, wr);
+        ctx.DrawRectangle(null, WindowLipPen, win.Deflate(1.5), wr, wr);
     }
 
-    private static void DrawReel(DrawingContext ctx, Point c, double hubR, double tapeR)
+    /// <summary>A reel hub: a white ring with six drive teeth pointing into its open centre.</summary>
+    private static void DrawReel(DrawingContext ctx, Point c, double r)
     {
-        ctx.DrawEllipse(TapeBrush, null, c, tapeR, tapeR);
-        ctx.DrawEllipse(HubBrush, null, c, hubR * 0.62, hubR * 0.62);
-        ctx.DrawEllipse(HoleBrush, null, c, hubR * 0.34, hubR * 0.34);
-        // Six drive teeth.
-        for (var i = 0; i < 6; i++)
+        ctx.DrawEllipse(HubBrush, HubEdgePen, c, r, r);
+        var hole = r * 0.66;
+        ctx.DrawEllipse(HoleBrush, null, c, hole, hole);
+        var teeth = new StreamGeometry();
+        using (var g = teeth.Open())
         {
-            var a = i * Math.PI / 3;
-            var p = new Point(c.X + Math.Cos(a) * hubR * 0.34, c.Y + Math.Sin(a) * hubR * 0.34);
-            ctx.DrawEllipse(HubBrush, null, p, hubR * 0.09, hubR * 0.09);
+            for (var i = 0; i < 6; i++)
+            {
+                var a = i * Math.PI / 3;
+                var (dx, dy) = (Math.Cos(a), Math.Sin(a));
+                var (tx, ty) = (-dy, dx);
+                var baseR = hole + 0.5;
+                var tipR = r * 0.47;
+                var bw = r * 0.13;
+                var tw = r * 0.08;
+                g.BeginFigure(new Point(c.X + dx * baseR + tx * bw, c.Y + dy * baseR + ty * bw), true);
+                g.LineTo(new Point(c.X + dx * tipR + tx * tw, c.Y + dy * tipR + ty * tw));
+                g.LineTo(new Point(c.X + dx * tipR - tx * tw, c.Y + dy * tipR - ty * tw));
+                g.LineTo(new Point(c.X + dx * baseR - tx * bw, c.Y + dy * baseR - ty * bw));
+                g.EndFigure(true);
+            }
         }
+        ctx.DrawGeometry(HubBrush, null, teeth);
     }
+
 
     /// <summary>Drawn behind the cover: the case body (Panel.Render is sealed).</summary>
     private sealed class BodyLayer : Control
@@ -422,46 +547,68 @@ public sealed class AlbumCarouselCard : Panel
         public override void Render(DrawingContext context) => _card.RenderBody(context);
     }
 
-    /// <summary>Drawn above the cover: the jewel case's clear lid (edge, spine seam, gloss),
-    /// then the side-card dim, shaped to the card's silhouette so the transparent corners
-    /// round a record or a cassette stay transparent.</summary>
+    /// <summary>Drawn above the cover: the jewel case's clear lid (edges, spine seam, glare),
+    /// the record sleeve's card finish, the cassette's window; then the side-card dim, shaped
+    /// to the card's silhouette so the transparent corners round a record or a cassette stay
+    /// transparent.</summary>
     private sealed class OverlayLayer : Control
     {
         private readonly AlbumCarouselCard _card;
-        private static readonly IPen SeamPen = new Pen(new SolidColorBrush(Color.FromArgb(0x38, 0xFF, 0xFF, 0xFF)), 1);
-        private static readonly IBrush Gloss = new LinearGradientBrush
-        {
-            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-            EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
-            GradientStops =
-            {
-                new GradientStop(Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF), 0),
-                new GradientStop(Color.FromArgb(0x10, 0xFF, 0xFF, 0xFF), 0.38),
-                new GradientStop(Colors.Transparent, 0.39),
-                new GradientStop(Colors.Transparent, 0.7),
-                new GradientStop(Color.FromArgb(0x0C, 0xFF, 0xFF, 0xFF), 0.71),
-                new GradientStop(Colors.Transparent, 0.82),
-            },
-        };
+        // Glare on the lid: a broad wash from the top-left corner that ends in a crisp edge,
+        // then a thin second streak, as clear plastic reflects a window.
+        private static readonly IBrush Gloss = Linear(0, 0, 1, 1,
+            (0x34FFFFFF, 0), (0x14FFFFFF, 0.28), (0x0AFFFFFF, 0.4), (0x00FFFFFF, 0.401),
+            (0x00FFFFFF, 0.64), (0x12FFFFFF, 0.68), (0x00FFFFFF, 0.74));
+        // Polished lid edge: lit along the top and left, falling off to the bottom right.
+        private static readonly IPen LidEdgePen = new Pen(Linear(0, 0, 1, 1, (0xA0FFFFFF, 0), (0x40FFFFFF, 0.5), (0x22FFFFFF, 1)), 1);
+        private static readonly IPen LidInnerPen = PenOf(0x70000000);
+        private static readonly IPen LidLipPen = new Pen(Linear(0, 0, 1, 0, (0x00FFFFFF, 0), (0x50FFFFFF, 0.3), (0x10FFFFFF, 1)), 1);
+        private static readonly IPen SeamPen = PenOf(0x48FFFFFF);
+        private static readonly IPen SeamShadePen = PenOf(0x90000000);
+
+        // Record sleeve: printed card with a faint satin sheen, the record's ring pressed
+        // through it, and the open edge on the right where its two plies part.
+        private static readonly IBrush SleeveSheen = Linear(0, 0, 1, 1, (0x16FFFFFF, 0), (0x00FFFFFF, 0.45), (0x00000000, 0.7), (0x18000000, 1));
+        private static readonly IBrush SleeveOpening = Linear(0, 0, 1, 0, (0x00000000, 0), (0x48000000, 0.85), (0x22FFFFFF, 0.86), (0x30000000, 1));
+        private static readonly IPen SleeveEdgePen = new Pen(Linear(0, 0, 1, 1, (0x50FFFFFF, 0), (0x18FFFFFF, 0.5), (0x40000000, 1)), 1);
+        // Ring wear: a soft worn band where the record inside presses through the card.
+        private static readonly IBrush RingWear = Radial(0.5, 0.5, (0x00FFFFFF, 0.9), (0x0EFFFFFF, 0.95), (0x00FFFFFF, 1));
 
         public OverlayLayer(AlbumCarouselCard card) => _card = card;
 
-        /// <summary>What sits above the cover: the jewel case's lid, the cassette's window.</summary>
+        /// <summary>What sits above the cover: the jewel case's lid, the sleeve's finish, the cassette's window.</summary>
         internal static void RenderLid(AlbumCarouselCard card, DrawingContext context, Rect rect)
         {
             var s = card._coverSize;
             if (card._style == AlbumCarouselStyle.JewelCase)
             {
                 var r = s * 0.018;
-                context.DrawRectangle(Gloss, CaseEdgePen, rect, r, r);
+                context.DrawRectangle(Gloss, null, rect, r, r);
+                // Where the lid's front meets the hinge: a groove with a lit lip beside it.
                 var seam = Math.Round(JewelSpine * s) + 0.5;
-                context.DrawLine(SeamPen, new Point(seam, 1), new Point(seam, rect.Height - 1));
+                context.DrawLine(SeamShadePen, new Point(seam, 1), new Point(seam, rect.Height - 1));
+                context.DrawLine(SeamPen, new Point(seam + 1, 1), new Point(seam + 1, rect.Height - 1));
+                // The front's raised lip catching the light along the top.
+                var lipY = Math.Round(s * 0.009) + 0.5;
+                context.DrawLine(LidLipPen, new Point(seam + s * 0.02, lipY), new Point(rect.Width - s * 0.03, lipY));
+                // Edges last: bright outside, a dark line inside for the plastic's thickness.
+                context.DrawRectangle(null, LidEdgePen, rect.Deflate(0.5), r, r);
+                context.DrawRectangle(null, LidInnerPen, rect.Deflate(1.5), r, r);
+            }
+            else if (card._style == AlbumCarouselStyle.Vinyl)
+            {
+                var sleeve = new Rect(0, 0, s, s);
+                context.DrawRectangle(SleeveSheen, null, sleeve);
+                context.DrawEllipse(RingWear, null, sleeve.Center, s * 0.46, s * 0.46);
+                context.DrawRectangle(SleeveOpening, null, new Rect(s - s * 0.028, 0, s * 0.028, s));
+                context.DrawRectangle(null, SleeveEdgePen, sleeve.Deflate(0.5));
             }
             else if (card._style == AlbumCarouselStyle.Cassette)
             {
                 card.RenderCassetteWindow(context);
             }
         }
+
 
         public override void Render(DrawingContext context)
         {
@@ -474,7 +621,7 @@ public sealed class AlbumCarouselCard : Panel
             switch (_card._style)
             {
                 case AlbumCarouselStyle.Vinyl:
-                    var c = new Point(s * (0.5 + VinylDiscOffset), s * 0.5);
+                    var c = VinylDiscCentre(s);
                     var radius = VinylDiscRadius * s;
                     // One union, so the sleeve-over-disc overlap is not washed twice.
                     context.DrawGeometry(wash, null, new CombinedGeometry(GeometryCombineMode.Union,
