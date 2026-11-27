@@ -1,6 +1,56 @@
 {
   "releases": [
     {
+      "tag": "plugin-albumroulette-v1.0.4",
+      "version": "plugin-albumroulette-v1.0.4",
+      "name": "Album Roulette plugin 1.0.4",
+      "label": "Album Roulette",
+      "publishedAt": "2026-11-27T10:53:27Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/plugin-albumroulette-v1.0.4",
+      "prerelease": true,
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added albums from your music servers to the reel and Album of the Day (needs Noctis 1.7.3). (#268)"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved play counts for server albums, using the counts from Navidrome and Jellyfin. (#268)"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed the reel covering the filter chips at the smallest window size.",
+            "Fixed album mode and Album of the Day picking albums whose songs are all not liked, skipped or snoozed."
+          ]
+        }
+      ],
+      "summary": null
+    },
+    {
+      "tag": "plugin-abloop-v1.0.1",
+      "version": "plugin-abloop-v1.0.1",
+      "name": "A-B Loop plugin 1.0.1",
+      "label": "A-B Loop",
+      "publishedAt": "2026-11-27T10:53:23Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/plugin-abloop-v1.0.1",
+      "prerelease": true,
+      "sections": [
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed long saved loop names pushing Loop it and delete out of the window.",
+            "Fixed playback staying stopped when the plugin was switched off in the pause before a repeat."
+          ]
+        }
+      ],
+      "summary": null
+    },
+    {
       "tag": "v1.7.2",
       "version": "1.7.2",
       "name": "v1.7.2",
@@ -4689,6 +4739,6 @@
       "summary": "Initial Release"
     }
   ],
-  "updatedAt": "2026-11-25T05:01:20.616Z",
+  "updatedAt": "2026-11-27T10:53:32.002Z",
   "degraded": false
 }
