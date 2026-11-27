@@ -201,7 +201,7 @@ public sealed class GaplessSink : IDisposable
         // audible in the air but invisible to any PCM tap. Logging inter-read
         // gaps turns those into session-log lines with timestamps. It also
         // boosts the render thread on first read (see StallProbe).
-        _probe = new StallProbe(renderSource, StallThresholdMs(RequestedOutputLatencyMs),
+        _probe = new StallProbe(renderSource, StallThresholdMs(RequestedOutputLatencyMs), RequestedOutputLatencyMs,
             () => !Provider.Parked && Provider.ActiveSegment != null);
         _renderSource = _probe;
         (_out, _outDevice, _) = CreateOutput();
@@ -493,7 +493,7 @@ public sealed class GaplessSink : IDisposable
             wasapiOut.Init(renderChannels > 2
                 ? new MultichannelLayout.MaskedWaveProvider(render, 32,
                     MultichannelLayout.MaskFor(renderChannels, device != null ? MixMaskOf(device) : 0))
-                : new SampleToWaveProvider(render));
+                : ToWaveProvider(render));
         }
         catch
         {
@@ -503,6 +503,40 @@ public sealed class GaplessSink : IDisposable
         }
         wasapiOut.PlaybackStopped += OnPlaybackStopped;
         return (wasapiOut, device, id);
+    }
+
+    /// <summary>The float chain as the bytes WasapiOut reads. Internal for tests.</summary>
+    internal static IWaveProvider ToWaveProvider(ISampleProvider render) => new RenderWaveProvider(render);
+
+    // NAudio's SampleToWaveProvider wraps the byte buffer in a new WaveBuffer on every
+    // read: 32 bytes per 10 ms period on the render thread (GaplessRenderAllocationTests,
+    // 11-27). WasapiOut reads into the same byte[] each period, so the float view onto it
+    // is made once per buffer; the samples read are the same.
+    private sealed class RenderWaveProvider : IWaveProvider
+    {
+        private readonly ISampleProvider _source;
+        private byte[]? _bytes;
+        private WaveBuffer? _view;
+
+        public RenderWaveProvider(ISampleProvider source)
+        {
+            if (source.WaveFormat.Encoding != WaveFormatEncoding.IeeeFloat)
+                throw new ArgumentException("Must be already floating point");
+            _source = source;
+            WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(source.WaveFormat.SampleRate, source.WaveFormat.Channels);
+        }
+
+        public WaveFormat WaveFormat { get; }
+
+        public int Read(byte[] buffer, int offset, int count)
+        {
+            if (!ReferenceEquals(buffer, _bytes))
+            {
+                _view = new WaveBuffer(buffer);
+                _bytes = buffer;
+            }
+            return _source.Read(_view!.FloatBuffer, offset / 4, count / 4) * 4;
+        }
     }
 
     // The render thread died. With an exception the endpoint is gone (unplug,
@@ -912,6 +946,7 @@ public sealed class GaplessSink : IDisposable
 
         private readonly ISampleProvider _inner;
         private readonly int _thresholdMs;
+        private readonly int _bufferMs;
         private readonly Func<bool> _audible;
         private long _lastReadTick;
         private TimeSpan _lastGcPause;
@@ -919,10 +954,11 @@ public sealed class GaplessSink : IDisposable
         private bool _boosted;
         public WaveFormat WaveFormat => _inner.WaveFormat;
 
-        public StallProbe(ISampleProvider inner, int thresholdMs, Func<bool> audible)
+        public StallProbe(ISampleProvider inner, int thresholdMs, int bufferMs, Func<bool> audible)
         {
             _inner = inner;
             _thresholdMs = thresholdMs;
+            _bufferMs = bufferMs;
             _audible = audible;
         }
 
@@ -983,7 +1019,12 @@ public sealed class GaplessSink : IDisposable
                            // A gap while the provider renders zeros (paused, nothing loaded,
                            // the idle stream after startup) is not heard; say which it was
                            // (11-03: a startup trim's 120 ms gap read as an audible stall).
-                           $"audible={_audible()}";
+                           $"audible={_audible()}, " +
+                           // "audible" only says music was playing. The device keeps up to
+                           // bufferMs queued, so a shorter gap is ridden through, not heard
+                           // (11-27: 25-40 ms gen0 stalls read as cuts next to the real one,
+                           // a 760 ms blocking gen2).
+                           $"bufferMs={_bufferMs}";
                 ThreadPool.QueueUserWorkItem(static m =>
                 {
                     try { DebugLogger.Warn(DebugLogger.Category.Playback, "GaplessEngine.RenderStall", m); }
