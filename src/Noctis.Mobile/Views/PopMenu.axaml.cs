@@ -21,9 +21,9 @@ namespace Noctis.Mobile.Views;
 /// Every ⋯ menu on the phone (<see cref="ShellViewModel.PopMenu"/>: a song's, album's, playlist's
 /// or artist's actions, or the Library tab's): the glass card grows out of <see cref="Anchor"/>,
 /// the ⋯ button tapped (or the row or tile held), as Apple's context menus and the desktop's
-/// right-click menu do: a short spring from 0.85 round the button, the frost, the rows and a light
-/// dim behind fading in together; closing heads back into the button, quicker (the numbers and
-/// the old ones beside them: the constants below). It opens down from the button when it fits
+/// right-click menu do: a short spring from 0.85 round the button, the frost whole from its first
+/// frame, the rows and a light dim behind fading in over it; closing heads back into the button,
+/// quicker (the numbers and the old ones beside them: the constants below). It opens down from the button when it fits
 /// above the mini player and tab bar, else up from it, else wherever it has the most room, its
 /// rows then scrolling.
 /// Like the desktop's glass menus it fades the GlassPanel's own <see cref="GlassPanel.Fade"/> and
@@ -35,9 +35,9 @@ public partial class PopMenu : UserControl
     // The phone's pop (tester 11-04: the desktop numbers read awkward on a phone). Measured old
     // -> new: open 280 ms easeOutQuint (0.22,1,0.36,1) from 0.9, fade 160 ms, rows staggered in
     // over up to 400 ms -> 340 ms spring (PopSpringEase, zeta 0.75: 90 % in ~85 ms, a 2.8 %
-    // overshoot, settled by the end) from 0.85, the frost, the content and the dim in over
-    // 160 ms on the desktop dialogs' long ease-out (0.16,1,0.3,1), rows fading with the card and
-    // never moving on their own. Close 150 ms accelerate (0.4,0,1,1) to 0.94 -> 200 ms back to
+    // overshoot, settled by the end) from 0.85, the content and the dim in over 160 ms on the
+    // desktop dialogs' long ease-out (0.16,1,0.3,1) over a frost whole from the start (beta 6),
+    // rows fading with the card and never moving on their own. Close 150 ms accelerate (0.4,0,1,1) to 0.94 -> 200 ms back to
     // 0.85 at the anchor: the shrink on a quick ease-out (0.2,0,0,1), so it visibly heads home,
     // the fade on the accelerate, so it is gone as it lands.
     internal const double PopScale = 0.85;
@@ -316,14 +316,20 @@ public partial class PopMenu : UserControl
         card.RenderTransformOrigin = origin;
     }
 
-    /// <summary>The pop: the card springs to full size (<see cref="PopOpenMs"/>) while the glass,
-    /// the body and the dim behind fade in together (<see cref="PopFadeMs"/>). Run once the
-    /// <see cref="PopFrom"/> pose has been drawn (<see cref="AfterFirstFrame"/>). Only
-    /// RenderTransform, Opacity and the glass's Fade move: no layout per frame.</summary>
+    /// <summary>The pop: the card springs to full size (<see cref="PopOpenMs"/>) while the body
+    /// and the dim behind fade in together (<see cref="PopFadeMs"/>), over the glass, which is
+    /// whole from the first frame. Run once the <see cref="PopFrom"/> pose has been drawn
+    /// (<see cref="AfterFirstFrame"/>). Only RenderTransform, Opacity and the glass's Fade move: no
+    /// layout per frame.
+    /// Beta 6 (testers: "the glass appears a few ms after the menu"): the glass used to fade in on
+    /// the rows' curve, and a frost at half strength is the backdrop still showing through, sharp,
+    /// while half-opaque text already reads: the rows were seen first and the glass "popped in"
+    /// frames later. The rows now never stand on less glass than their own opacity.</summary>
     internal static void PopIn(Control card, GlassPanel glass, Control body, Control? scrim = null)
     {
         var fade = TimeSpan.FromMilliseconds(PopFadeMs);
-        glass.Transitions = new Transitions { new DoubleTransition { Property = GlassPanel.FadeProperty, Duration = fade, Easing = PopFadeEase } };
+        glass.Transitions = null;
+        glass.Fade = 1;
         body.Transitions = new Transitions { new DoubleTransition { Property = OpacityProperty, Duration = fade, Easing = PopFadeEase } };
         if (scrim != null)
             scrim.Transitions = new Transitions { new DoubleTransition { Property = OpacityProperty, Duration = fade, Easing = PopFadeEase } };
@@ -331,7 +337,6 @@ public partial class PopMenu : UserControl
         {
             new TransformOperationsTransition { Property = RenderTransformProperty, Duration = TimeSpan.FromMilliseconds(PopOpenMs), Easing = PopEase },
         };
-        glass.Fade = 1;
         body.Opacity = 1;
         if (scrim != null) scrim.Opacity = 1;
         card.RenderTransform = PopPose.Rest.Transform();
@@ -347,15 +352,16 @@ public partial class PopMenu : UserControl
     }
 
     /// <summary>The pop reversed, quicker (<see cref="PopCloseMs"/>): back to
-    /// <paramref name="pose"/> toward where it grew from on a quick ease-out while the glass, the
-    /// body and the dim fade on an accelerate; hide the card once it is done.</summary>
+    /// <paramref name="pose"/> toward where it grew from on a quick ease-out while the body and
+    /// the dim fade on an accelerate; the host hides the card once it is done. The glass stays
+    /// whole under the fading rows and goes with the card (beta 6: faded with them, it lingered as
+    /// a ghost after the rows had gone).</summary>
     internal static void PopOut(Control card, GlassPanel glass, Control body, PopPose pose, Control? scrim = null)
     {
         var duration = TimeSpan.FromMilliseconds(PopCloseMs);
         NextLiteRun(glass);
         glass.Transitions = new Transitions
         {
-            new DoubleTransition { Property = GlassPanel.FadeProperty, Duration = duration, Easing = PopCloseFadeEase },
             new DoubleTransition { Property = GlassPanel.LiteProperty, Duration = TimeSpan.FromMilliseconds(LiteInMs) },
         };
         body.Transitions = new Transitions { new DoubleTransition { Property = OpacityProperty, Duration = duration, Easing = PopCloseFadeEase } };
@@ -365,7 +371,6 @@ public partial class PopMenu : UserControl
         {
             new TransformOperationsTransition { Property = RenderTransformProperty, Duration = duration, Easing = PopCloseEase },
         };
-        glass.Fade = 0;
         glass.Lite = 1;
         body.Opacity = 0;
         if (scrim != null) scrim.Opacity = 0;
