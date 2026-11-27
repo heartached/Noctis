@@ -136,6 +136,9 @@ public static class AppIconService
 
     internal static void ApplyTo(Window w)
     {
+        // A window of another UI thread (the tests run several headless apps in one process)
+        // cannot be touched from here; it picks the icon up when it next opens.
+        if (!w.CheckAccess()) return;
         var icon = CurrentIcon;
         if (icon != null && !ReferenceEquals(w.Icon, icon))
             w.Icon = icon;
