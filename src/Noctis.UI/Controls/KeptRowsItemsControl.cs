@@ -2,10 +2,13 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Linq;
 using Avalonia;
 using Avalonia.Collections;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
 
 namespace Noctis.Controls;
 
@@ -22,6 +25,12 @@ namespace Noctis.Controls;
 /// was. Hosts are cheap until shown: the template is applied when a host is first measured, so
 /// picking a song still builds only the lines in view.
 /// </para>
+/// <para>
+/// The rest are then built ahead, a couple per idle tick (paused while the list scrolls, dropped
+/// when the list changes): each goes through the panel's scroll-into-view path, whose scroll
+/// request is swallowed here, so the row is realized, measured and then only hidden. The first
+/// scroll through a new song finds its rows built.
+/// </para>
 /// </summary>
 public class KeptRowsItemsControl : ItemsControl
 {
@@ -31,7 +40,89 @@ public class KeptRowsItemsControl : ItemsControl
     private readonly AvaloniaList<Control> _hosts = new();
     private INotifyCollectionChanged? _watched;
 
-    public KeptRowsItemsControl() => ItemsSource = _hosts;
+    /// <summary>Rows built ahead per idle tick, at most (fewer when a tick runs past <see cref="PrebuildBudgetMs"/>).</summary>
+    internal const int PrebuildPerTick = 3;
+    internal const double PrebuildBudgetMs = 6;
+    /// <summary>A scroll this recent pauses the building ahead, so it never lands in a scrolling frame.</summary>
+    internal int PrebuildQuietMs { get; set; } = 200;
+
+    private readonly DispatcherTimer _prebuild;
+    private ScrollViewer? _scroller;
+    private long _lastScroll;
+    private bool _prebuilding;
+    private int _prebuildNext;
+
+    public KeptRowsItemsControl()
+    {
+        ItemsSource = _hosts;
+        _prebuild = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(30) };
+        _prebuild.Tick += (_, _) => PrebuildTick();
+        // The scroll a scroll-into-view asks for: swallowed while a row is built ahead.
+        AddHandler(RequestBringIntoViewEvent, (_, e) => { if (_prebuilding) e.Handled = true; });
+        AttachedToVisualTree += (_, _) =>
+        {
+            _scroller = this.FindAncestorOfType<ScrollViewer>();
+            if (_scroller is not null) _scroller.ScrollChanged += OnScrollChanged;
+            RestartPrebuild();
+        };
+        DetachedFromVisualTree += (_, _) =>
+        {
+            _prebuild.Stop();
+            if (_scroller is not null) _scroller.ScrollChanged -= OnScrollChanged;
+            _scroller = null;
+        };
+    }
+
+    private void OnScrollChanged(object? sender, ScrollChangedEventArgs e)
+    {
+        if (e.OffsetDelta.Y != 0 || e.OffsetDelta.X != 0) _lastScroll = Environment.TickCount64;
+    }
+
+    /// <summary>Rows are still waiting to be built ahead (tests).</summary>
+    internal bool IsPrebuilding => _prebuild.IsEnabled;
+
+    private void RestartPrebuild()
+    {
+        _prebuildNext = 0;
+        if (_hosts.Count > 0 && this.IsAttachedToVisualTree()) _prebuild.Start();
+        else _prebuild.Stop();
+    }
+
+    /// <summary>
+    /// One idle tick of building ahead: the next rows not built yet (from the first one past the
+    /// screen, so the way down is ready first), until a few are done or the tick's budget is spent.
+    /// Internal so tests can run ticks without waiting on the timer.
+    /// </summary>
+    internal void PrebuildTick()
+    {
+        if (!IsEffectivelyVisible || ItemsPanelRoot is not VirtualizingStackPanel panel || _hosts.Count == 0) { _prebuild.Stop(); return; }
+        if (Environment.TickCount64 - _lastScroll < PrebuildQuietMs) return;
+        // Not while a row is being edited: scrolling a row into view re-lays the rows on screen,
+        // and a hidden-and-shown row loses the keyboard focus (the caret left the line mid-typing).
+        if (IsKeyboardFocusWithin) return;
+        var start = System.Diagnostics.Stopwatch.GetTimestamp();
+        var built = 0;
+        var from = Math.Max(_prebuildNext, panel.LastRealizedIndex + 1);
+        for (var pass = 0; pass < 2 && built < PrebuildPerTick; pass++)
+        {
+            for (var i = pass == 0 ? from : 0; i < _hosts.Count && built < PrebuildPerTick; i++)
+            {
+                if (_hosts[i].GetVisualParent() is not null) continue;
+                _prebuilding = true;
+                try { ScrollIntoView(i); }
+                finally { _prebuilding = false; }
+                built++;
+                _prebuildNext = i + 1;
+                if (System.Diagnostics.Stopwatch.GetElapsedTime(start).TotalMilliseconds > PrebuildBudgetMs) return;
+            }
+        }
+        if (built > 0) return;
+        // All built. Scrolling a row into view realizes the rows up to it as well, so the panel now
+        // holds the rows built ahead as shown; one more measure leaves only those in view shown
+        // (here, in idle time, rather than in the first scroll's first frame).
+        _prebuild.Stop();
+        panel.InvalidateMeasure();
+    }
 
     protected override Type StyleKeyOverride => typeof(ItemsControl);
 
@@ -69,8 +160,23 @@ public class KeptRowsItemsControl : ItemsControl
         var hosts = new List<Control>();
         if (Rows is { } rows)
             foreach (var item in rows) hosts.Add(Host(item));
+        var old = new List<Control>(_hosts);
         _hosts.Clear();
+        DropFromPanel(old);
         _hosts.AddRange(hosts);
+        // A new list: building ahead starts over for it (the old list's rows are gone with it).
+        RestartPrebuild();
+    }
+
+    /// <summary>
+    /// Takes rows whose items are gone out of the panel. The panel only removes the rows it shows:
+    /// a row that is its own item and was hidden when it scrolled away stays its child for good, so
+    /// every song opened in the review left its rows behind (148 children after two songs).
+    /// </summary>
+    private void DropFromPanel(IEnumerable<Control> gone)
+    {
+        foreach (var host in gone)
+            if (host.GetVisualParent() is Panel panel) panel.Children.Remove(host);
     }
 
     private void OnRowsChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -82,12 +188,20 @@ public class KeptRowsItemsControl : ItemsControl
                 var newHosts = new List<Control>(added.Count);
                 foreach (var item in added) newHosts.Add(Host(item));
                 _hosts.InsertRange(at, newHosts);
+                if (!_prebuild.IsEnabled) RestartPrebuild();
                 break;
             case NotifyCollectionChangedAction.Remove when e.OldItems is { } removed && e.OldStartingIndex >= 0:
+                var gone = new List<Control>(_hosts.Skip(e.OldStartingIndex).Take(removed.Count));
                 _hosts.RemoveRange(e.OldStartingIndex, removed.Count);
+                DropFromPanel(gone);
                 break;
             case NotifyCollectionChangedAction.Replace when e.NewItems is { } replaced && e.NewStartingIndex >= 0:
-                for (var i = 0; i < replaced.Count; i++) _hosts[e.NewStartingIndex + i] = Host(replaced[i]);
+                for (var i = 0; i < replaced.Count; i++)
+                {
+                    var was = _hosts[e.NewStartingIndex + i];
+                    _hosts[e.NewStartingIndex + i] = Host(replaced[i]);
+                    DropFromPanel(new[] { was });
+                }
                 break;
             case NotifyCollectionChangedAction.Move when e.OldItems is { Count: 1 } && e.OldStartingIndex >= 0 && e.NewStartingIndex >= 0:
                 _hosts.Move(e.OldStartingIndex, e.NewStartingIndex);

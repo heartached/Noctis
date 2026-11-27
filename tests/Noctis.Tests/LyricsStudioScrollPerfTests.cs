@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
+using Avalonia.Input;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Media;
 using Avalonia.Styling;
@@ -53,11 +54,43 @@ public class LyricsStudioScrollPerfTests : IDisposable
             // after any use of the Studio. The timed song's rows are then new.
             vm.Selected = vm.Queue[1];
             Settle(win);
-            ScrollThrough(win, Scroller(panel, vm), panel, record: false);
+            // Scrolled at once, before any idle time: every row is built as it comes into view.
+            var noIdle = ScrollThrough(win, Scroller(panel, vm), panel, record: false);
+            Report("first scroll with no idle time before it (rows built in the scroll)", noIdle);
             vm.Selected = vm.Queue[0];
             var scroller = Scroller(panel, vm);
-            scroller.Offset = new Vector(0, 0);
             Settle(win);
+            Assert.Equal(0, scroller.Offset.Y);
+
+            // Left alone a moment (reading the song): the rest are built ahead, a few per idle tick.
+            var list = (Noctis.Controls.KeptRowsItemsControl)scroller.GetVisualDescendants().OfType<ItemsControl>().First();
+            list.PrebuildQuietMs = 0; // the test's ticks come back to back; the app waits 200 ms after a scroll
+            var ticks = 0;
+            var longestTick = 0.0;
+            var tickTimes = new List<double>();
+            var idleMs = 0.0;
+            while (list.IsPrebuilding && ticks < 500)
+            {
+                var tick = Stopwatch.StartNew();
+                list.PrebuildTick(); // the timer's tick, run here instead of waiting on the headless timer
+                win.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+                // UI-thread work only: in the app nothing changes on screen while rows are built off it
+                // (the test's software render of the whole window is drawn after the loop).
+                longestTick = Math.Max(longestTick, tick.Elapsed.TotalMilliseconds);
+                tickTimes.Add(tick.Elapsed.TotalMilliseconds);
+                idleMs += tick.Elapsed.TotalMilliseconds;
+                ticks++;
+            }
+            if (HeadlessTestApp.RealRendering) win.CaptureRenderedFrame();
+            _out.WriteLine("idle ticks (ms): " + string.Join(" ", tickTimes.Select(t => t.ToString("0"))));
+            _out.WriteLine($"built ahead in {ticks} idle ticks, {idleMs:0} ms in all, longest tick {longestTick:0.0} ms, median {tickTimes.OrderBy(t => t).ElementAt(tickTimes.Count / 2):0.0} ms");
+            var vsp = (VirtualizingStackPanel)list.ItemsPanelRoot!;
+            // Only the rows in view are shown, and the first song's rows left the panel with it.
+            Assert.Equal(Lines, vsp.Children.Count);
+            Assert.True(vsp.Children.Count(c => c.IsVisible) < Lines / 2);
+            Assert.False(list.IsPrebuilding);
+            Assert.Equal(0, scroller.Offset.Y); // building ahead never scrolls
             Assert.Equal(Lines, vm.ReviewLines.Count);
             Assert.True(scroller.Viewport.Height is > 100 and < 2000, $"viewport {scroller.Viewport.Height}");
             var row = Rows(panel)[0];
@@ -71,16 +104,67 @@ public class LyricsStudioScrollPerfTests : IDisposable
             var again = ScrollThrough(win, scroller, panel, record: false);
             Report("down again", again);
 
-            // Before (11-26): every line coming into view was torn down and built again, ~45 ms a
-            // step in every pass (stub) and the same with Skia. Kept rows: up and down again cost
-            // the scroll itself. The first pass still builds each row once (lighter rows now).
-            foreach (var (name, pass) in new[] { ("back up", up), ("down again", again) })
+            // 11-26 before: every line coming into view was torn down and built again, ~45 ms a step
+            // in every pass. 11-26 after (rows kept): back and forth ~1 ms, the first pass still
+            // built each row in the scroll (24 ms a step stub, 31 ms Skia). Now (11-27) the rows are
+            // built ahead while the list is left alone, so the first pass costs what a later one does.
+            foreach (var (name, pass) in new[] { ("first", first), ("back up", up), ("down again", again) })
             {
-                Assert.Equal(0, pass.RowsBuilt);
                 Assert.True(pass.Avg < 16, $"{name}: average step {pass.Avg:0.0} ms");
                 Assert.True(pass.Worst < 33, $"{name}: worst step {pass.Worst:0.0} ms");
             }
-            Assert.True(first.Avg < 40, $"first pass: average step {first.Avg:0.0} ms");
+            Assert.Equal(0, up.RowsBuilt);
+            Assert.Equal(0, again.RowsBuilt);
+            // A tick builds one row or so: about a frame each, so input waits at most that long.
+            var median = tickTimes.OrderBy(t => t).ElementAt(tickTimes.Count / 2);
+            Assert.True(median < 25, $"median idle tick {median:0.0} ms");
+        }
+        finally { win.Close(); }
+    }
+
+    /// <summary>A row's text is plain text until clicked or tabbed into; then a text box takes its
+    /// place with the caret where it was clicked, at the same size, and typing edits the line.</summary>
+    [AvaloniaFact]
+    public void RowText_BecomesATextBoxInPlace_OnClickOrFocus_WithoutMovingAnything()
+    {
+        EnsureAppResources();
+        var vm = StudioWithRestoredReviews(1);
+        var panel = new LyricsStudioPanel { DataContext = vm, ShowHeader = false };
+        var win = new Window { Width = 1400, Height = 900, Content = panel, RequestedThemeVariant = ThemeVariant.Dark };
+        win.Show();
+        try
+        {
+            vm.Selected = vm.Queue[0];
+            Settle(win);
+            var texts = panel.GetVisualDescendants().OfType<Noctis.Controls.EditOnDemandText>().Where(t => t.IsEffectivelyVisible).ToList();
+            Assert.All(texts, t => Assert.Null(t.Editor));
+            Assert.Empty(panel.GetVisualDescendants().OfType<TextBox>().Where(t => t.Classes.Contains("line-edit")));
+
+            // Click in the middle of the first row's text.
+            var first = texts[0];
+            var row = first.FindAncestorOfType<Border>(includeSelf: false)!;
+            while (!row.Classes.Contains("review-line")) row = row.FindAncestorOfType<Border>()!;
+            var rowHeight = row.Bounds.Height;
+            var textHeight = first.Bounds.Height;
+            var textTop = first.TranslatePoint(new Point(0, 0), win)!.Value;
+            var click = textTop + new Point(first.Bounds.Width * 0.3, first.Bounds.Height / 2);
+            win.MouseDown(click, MouseButton.Left);
+            win.MouseUp(click, MouseButton.Left);
+            Settle(win);
+            var editor = Assert.IsType<TextBox>(first.Editor);
+            Assert.True(editor.IsFocused);
+            Assert.InRange(editor.CaretIndex, 1, (editor.Text?.Length ?? 0) - 1);
+            Assert.Equal(textHeight, first.Bounds.Height);
+            Assert.Equal(rowHeight, row.Bounds.Height);
+            Assert.Same(vm.ReviewLines[0], vm.SelectedLine); // the row is picked, as a click in its text box did
+
+            // Tabbed into: the next row's text box takes the focus, caret at the end.
+            var second = texts[1];
+            second.Focus(NavigationMethod.Tab);
+            Settle(win);
+            Assert.NotNull(second.Editor);
+            Assert.True(second.Editor!.IsFocused);
+            Assert.Equal(second.Editor.Text?.Length, second.Editor.CaretIndex);
         }
         finally { win.Close(); }
     }
