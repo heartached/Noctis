@@ -40,6 +40,59 @@ public static class MemoryTrim
     private static bool _playing;
     private static bool _deferred;
     private static GCLatencyMode _restoreMode = GCLatencyMode.Interactive;
+    private static bool? _appInBackground; // null: the host does not report it (server, phone)
+    private static long _idleSince = Environment.TickCount64;
+
+    /// <summary>
+    /// How long playback must have been stopped or paused before a blocking compacting trim
+    /// may run. Play pressed during that collection waits for it: a headless harness (575 MB
+    /// heap, resume landing inside the trim) measured up to 68.7 ms from resume to the next
+    /// render with the blocking trim (pauses 59-99 ms) against 15.3 ms with a background one
+    /// (pauses 0.1 ms; the rest is the 10 ms render period).
+    /// </summary>
+    public static TimeSpan LongIdle { get; set; } = TimeSpan.FromSeconds(60);
+
+    /// <summary>Test seam: the clock idle time is measured on (milliseconds).</summary>
+    internal static Func<long> Now { get; set; } = () => Environment.TickCount64;
+
+    /// <summary>
+    /// Set by the desktop app: true while nothing of it is on screen (main window hidden or
+    /// minimized and no mini player). Once reported, a blocking compacting trim only runs
+    /// then, see <see cref="MayBlock"/>; a play button on screen never waits behind one.
+    /// </summary>
+    public static void SetAppInBackground(bool inBackground)
+    {
+        bool owed;
+        lock (Gate)
+        {
+            _appInBackground = inBackground;
+            owed = inBackground && _deferred && !_playing;
+        }
+        if (owed) RequestAfterIdle("app in the background (deferred trim)", LongIdle + Quiet);
+    }
+
+    /// <summary>Test seam: back to a host that never reported its windows.</summary>
+    internal static void ForgetAppState()
+    {
+        lock (Gate)
+        {
+            _appInBackground = null;
+            _deferred = false;
+        }
+    }
+
+    /// <summary>
+    /// Whether the trim may be a blocking compacting collection. Never while music plays (the
+    /// render thread would freeze with it). Where the host reports its windows (the desktop),
+    /// only with the whole app in the background and playback idle for <see cref="LongIdle"/>:
+    /// a resume pressed while a blocking trim runs waits for it to end. Otherwise it is a
+    /// background collection, which frees the dead objects without the pause; the compaction
+    /// (which also gives the emptied regions back to the OS) stays owed until such a moment.
+    /// Hosts that never report (server, phone) keep the old rule: block whenever not playing.
+    /// Pure; internal for tests.
+    /// </summary>
+    internal static bool MayBlock(bool playing, bool? appInBackground, long idleMs, TimeSpan longIdle) =>
+        !playing && (appInBackground is not { } background || (background && idleMs >= longIdle.TotalMilliseconds));
 
     /// <summary>
     /// Called by the app on every playback state change. While music plays the GC runs in
@@ -79,24 +132,31 @@ public static class MemoryTrim
             }
             if (!playing)
             {
+                _idleSince = Now();
                 runDeferred = _deferred;
-                _deferred = false;
             }
         }
-        if (runDeferred) RequestAfterIdle("playback stopped (deferred trim)");
+        // Not right away: the compacting trim needs playback idle for LongIdle, and is checked
+        // again when it fires (a resume in between keeps it a background collection). Quiet on
+        // top so the timer never lands a clock tick short of LongIdle.
+        if (runDeferred) RequestAfterIdle("playback stopped (deferred trim)", LongIdle + Quiet);
     }
 
     private static bool AudioPlaying => IsAudioPlaying?.Invoke() == true || Volatile.Read(ref _playing);
 
-    public static void RequestAfterIdle(string reason)
+    public static void RequestAfterIdle(string reason) => RequestAfterIdle(reason, Quiet);
+
+    /// <summary>As <see cref="RequestAfterIdle(string)"/>, waiting <paramref name="after"/> (at least <see cref="Quiet"/>).</summary>
+    public static void RequestAfterIdle(string reason, TimeSpan after)
     {
+        if (after < Quiet) after = Quiet;
         int ticket;
         lock (Gate)
         {
             ticket = ++_pending;
             _reason = reason;
         }
-        _ = Task.Delay(Quiet).ContinueWith(_ =>
+        _ = Task.Delay(after).ContinueWith(_ =>
         {
             lock (Gate)
             {
@@ -112,11 +172,13 @@ public static class MemoryTrim
         {
             // Checked when the quiet period ends, not when the trim was asked for: playback
             // may have started since.
-            var blocking = !AudioPlaying;
-            if (!blocking)
+            var playing = AudioPlaying;
+            bool blocking;
+            lock (Gate)
             {
-                // The compacting trim waits for playback to stop (SetAudioPlaying).
-                lock (Gate) _deferred = true;
+                blocking = MayBlock(playing, _appInBackground, Now() - _idleSince, LongIdle);
+                // The compacting trim waits for its moment (SetAudioPlaying, SetAppInBackground).
+                _deferred = !blocking;
             }
             if (Collector is { } custom)
             {
@@ -131,7 +193,8 @@ public static class MemoryTrim
                 // would otherwise ride along on the next blocking gen2 during playback.
                 GC.Collect(2, GCCollectionMode.Forced, blocking: false, compacting: false);
                 DebugLog.Write("Memory",
-                    $"trim after {_reason}: managed {before / 1048576} MB, background collection (audio playing; compacting trim deferred until playback stops)");
+                    $"trim after {_reason}: managed {before / 1048576} MB, background collection " +
+                    $"({(playing ? "audio playing" : "app on screen or playback idle under " + LongIdle.TotalSeconds + " s")}; compacting trim deferred)");
                 return;
             }
             // Aggressive, not Forced + LOH CompactOnce: with regions (.NET 7+) a Forced

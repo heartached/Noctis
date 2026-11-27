@@ -201,7 +201,7 @@ public sealed class GaplessSink : IDisposable
         // audible in the air but invisible to any PCM tap. Logging inter-read
         // gaps turns those into session-log lines with timestamps. It also
         // boosts the render thread on first read (see StallProbe).
-        _probe = new StallProbe(renderSource, StallThresholdMs(RequestedOutputLatencyMs), RequestedOutputLatencyMs,
+        _probe = new StallProbe(renderSource, StallThresholdMs(RequestedOutputLatencyMs), QueuedAheadMs,
             () => !Provider.Parked && Provider.ActiveSegment != null);
         _renderSource = _probe;
         (_out, _outDevice, _) = CreateOutput();
@@ -282,6 +282,30 @@ public sealed class GaplessSink : IDisposable
     /// internal for tests.
     /// </summary>
     internal static int StallThresholdMs(int latencyMs) => latencyMs > OutputLatencyMs ? 60 : 25;
+
+    /// <summary>
+    /// Audio queued at the device right after a render read, the most a render stall can last
+    /// before the sound runs out: WasapiOut tops its buffer up to full on every period event,
+    /// so the whole requested buffer (the stall probe raises it to the largest single read,
+    /// WasapiOut's first fill of the buffer the device granted). The pulse server keeps 110 ms
+    /// of the 200 ms stream (see <see cref="LinuxOutputLatencyMs"/>).
+    /// </summary>
+    private static int QueuedAheadMs =>
+        !OperatingSystem.IsWindows() && !NullWavePlayer.SilentMode ? 110 : OutputLatencyMs;
+
+    /// <summary>
+    /// The RenderStall line. "playing" says music was playing (a gap over rendered zeros is not
+    /// heard). "underrun" says the gap outlasted the audio queued at the device, so the sound
+    /// actually ran out: the 11-27 report's 25-40 ms gen0 stalls read as cuts next to the real
+    /// one, a 760 ms blocking gen2. Pure; internal for tests.
+    /// </summary>
+    internal static string RenderStallLine(double gapMs, double gcPauseMs, int gen0, int gen1, int gen2,
+        bool playing, int queuedMs) =>
+        $"gapMs={gapMs:F1}, gcPauseMs={gcPauseMs:F1}, gcs={gen0}/{gen1}/{gen2}, " +
+        $"playing={playing}, queuedMs={queuedMs}, underrun={IsUnderrun(gapMs, queuedMs)}";
+
+    /// <summary>Whether a render gap of <paramref name="gapMs"/> drained <paramref name="queuedMs"/> of queued audio. Pure; internal for tests.</summary>
+    internal static bool IsUnderrun(double gapMs, int queuedMs) => gapMs > queuedMs;
 
     private static string OutputName =>
         NullWavePlayer.SilentMode ? "null" : OperatingSystem.IsWindows() ? "wasapi" : "pulse";
@@ -946,20 +970,21 @@ public sealed class GaplessSink : IDisposable
 
         private readonly ISampleProvider _inner;
         private readonly int _thresholdMs;
-        private readonly int _bufferMs;
-        private readonly Func<bool> _audible;
+        private readonly int _queuedMs;
+        private int _largestRead;
+        private readonly Func<bool> _playing;
         private long _lastReadTick;
         private TimeSpan _lastGcPause;
         private int _lastGen0, _lastGen1, _lastGen2;
         private bool _boosted;
         public WaveFormat WaveFormat => _inner.WaveFormat;
 
-        public StallProbe(ISampleProvider inner, int thresholdMs, int bufferMs, Func<bool> audible)
+        public StallProbe(ISampleProvider inner, int thresholdMs, int queuedMs, Func<bool> playing)
         {
             _inner = inner;
             _thresholdMs = thresholdMs;
-            _bufferMs = bufferMs;
-            _audible = audible;
+            _queuedMs = queuedMs;
+            _playing = playing;
         }
 
         // The boost latches per render thread; a rebuilt WasapiOut spins up a
@@ -967,6 +992,7 @@ public sealed class GaplessSink : IDisposable
         public void RearmBoost()
         {
             _boosted = false;
+            _largestRead = 0; // the new output's buffer may differ
             _lastReadTick = 0; // don't count the dead-sink gap as a render stall
         }
 
@@ -1009,22 +1035,20 @@ public sealed class GaplessSink : IDisposable
             var gcPause = GC.GetTotalPauseDuration();
             int gen0 = GC.CollectionCount(0), gen1 = GC.CollectionCount(1), gen2 = GC.CollectionCount(2);
             var gapMs = (now - last) * 1000.0 / Stopwatch.Frequency;
+            if (count > _largestRead) _largestRead = count;
             if (last != 0 && gapMs > _thresholdMs)
             {
                 // Logged off this thread: with Developer Mode on the line goes through
                 // DebugLog's lock into CrashJournal's AutoFlush file write, and that time
                 // landed inside the NEXT gap — one stall could log its way into the next.
-                var meta = $"gapMs={gapMs:F1}, gcPauseMs={(gcPause - _lastGcPause).TotalMilliseconds:F1}, " +
-                           $"gcs={gen0 - _lastGen0}/{gen1 - _lastGen1}/{gen2 - _lastGen2}, " +
-                           // A gap while the provider renders zeros (paused, nothing loaded,
-                           // the idle stream after startup) is not heard; say which it was
-                           // (11-03: a startup trim's 120 ms gap read as an audible stall).
-                           $"audible={_audible()}, " +
-                           // "audible" only says music was playing. The device keeps up to
-                           // bufferMs queued, so a shorter gap is ridden through, not heard
-                           // (11-27: 25-40 ms gen0 stalls read as cuts next to the real one,
-                           // a 760 ms blocking gen2).
-                           $"bufferMs={_bufferMs}";
+                // A gap while the provider renders zeros (paused, nothing loaded, the idle
+                // stream after startup) is not heard (11-03: a startup trim's 120 ms gap read
+                // as an audible stall), and one shorter than the queued audio is ridden through.
+                var fmt = WaveFormat;
+                var largestReadMs = (int)((long)_largestRead / Math.Max(1, fmt.Channels) * 1000 / Math.Max(1, fmt.SampleRate));
+                var meta = RenderStallLine(gapMs, (gcPause - _lastGcPause).TotalMilliseconds,
+                    gen0 - _lastGen0, gen1 - _lastGen1, gen2 - _lastGen2, _playing(),
+                    Math.Max(_queuedMs, largestReadMs));
                 ThreadPool.QueueUserWorkItem(static m =>
                 {
                     try { DebugLogger.Warn(DebugLogger.Category.Playback, "GaplessEngine.RenderStall", m); }
