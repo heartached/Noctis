@@ -145,6 +145,28 @@ public sealed partial class ContextSheetViewModel : ObservableObject
         if (playlist != null) await _shell.RemovePlaylistCoverAsync(playlist);
     }
 
+    /// <summary>An album's menu: Choose Animated Cover (a video from the phone), where there is a picker.</summary>
+    public bool CanChooseAnimatedCover => Album != null && _shell.ChosenCovers != null;
+
+    /// <summary>An album's menu: Remove Animated Cover, while one is chosen for it.</summary>
+    public bool CanRemoveAnimatedCover => Album is { } album && _shell.ChosenCovers?.Has(album.Id) == true;
+
+    [RelayCommand]
+    private async Task ChooseAnimatedCoverAsync()
+    {
+        var album = Album;
+        _shell.CloseSheet();
+        if (album != null) await _shell.ChooseAnimatedCoverAsync(album);
+    }
+
+    [RelayCommand]
+    private void RemoveAnimatedCover()
+    {
+        var album = Album;
+        _shell.CloseSheet();
+        if (album != null) _shell.RemoveAnimatedCover(album);
+    }
+
     /// <summary>An artist sheet is about the artist (play, queue, pin), not a heart on every song.</summary>
     public bool CanFavourite => Artist == null;
 

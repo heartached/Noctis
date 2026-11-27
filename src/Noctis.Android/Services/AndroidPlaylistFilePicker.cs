@@ -46,6 +46,22 @@ public sealed class AndroidPlaylistFilePicker : IPlaylistFilePicker
         return await Task.Run(() => Read(uris[0], Noctis.Services.Sync.PlaylistCovers.MaxBytes));
     }
 
+    /// <summary>The videos an animated cover can be (the desktop's cover.mp4 / cover.webm types).</summary>
+    private static readonly string[] VideoTypes = { "video/mp4", "video/webm" };
+
+    /// <summary>Album ⋯ › Choose Animated Cover: one video, streamed by the caller while this
+    /// activity's grant on it lasts (ChosenAnimatedCovers copies it in at once).</summary>
+    public async Task<PickedVideoFile?> PickVideoAsync()
+    {
+        if (MainActivity.Current is not { } activity) return null;
+        var uris = await activity.OpenDocumentsAsync(VideoTypes, multiple: false);
+        if (uris.Count == 0) return null;
+        var uri = uris[0];
+        var resolver = _context.ContentResolver!;
+        var name = await Task.Run(() => DisplayName(resolver, uri)) ?? uri.LastPathSegment ?? "cover.mp4";
+        return new PickedVideoFile(name, () => resolver.OpenInputStream(uri) ?? throw new IOException("The picked video cannot be opened"));
+    }
+
     private PickedPlaylistFile? Read(global::Android.Net.Uri uri, long maxBytes)
     {
         try

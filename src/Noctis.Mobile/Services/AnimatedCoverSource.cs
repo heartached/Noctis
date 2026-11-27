@@ -13,6 +13,8 @@ namespace Noctis.Mobile.Services;
 /// Finds the animated cover Now Playing shows for a song (Discord beta 11-23, "no animated cover
 /// support ... I downloaded all those animations for nothing"):
 /// <list type="number">
+/// <item>the loop chosen for the album on the phone (Album ⋯ › Choose Animated Cover,
+/// <see cref="ChosenAnimatedCovers"/>);</item>
 /// <item>the phone's own music: <c>cover.mp4</c> / <c>cover.webm</c> beside the song, the desktop's
 /// own sidecar names (<see cref="AnimatedCoverLocator.SidecarNames"/>), read through the folder grant;</item>
 /// <item>the computer's songs (streamed, downloaded or paired): the computer's loop for the album
@@ -21,6 +23,7 @@ namespace Noctis.Mobile.Services;
 /// Only: on an unmetered network), and a saved one is asked about again at most every
 /// <see cref="RecheckAfter"/> (an ETag, so an unchanged loop costs one small request).</item>
 /// </list>
+/// The first two cost no data: they play under Wi-Fi Only and Always alike, offline too.
 /// An album the computer has no loop for is not asked about again for <see cref="NoneMemo"/>.
 /// Nothing here throws: no loop is the still cover.
 /// </summary>
@@ -48,6 +51,9 @@ public sealed class AnimatedCoverSource
     /// Called on a worker thread. Null: the phone's own music has no loops (tests, no grant).</summary>
     public Func<Track, string?>? FindSidecar { get; init; }
 
+    /// <summary>The loops chosen on the phone, one per album; null: none (tests, no storage).</summary>
+    public ChosenAnimatedCovers? Chosen { get; init; }
+
     /// <summary>The song is the computer's (streamed, downloaded, or a phone file paired with one).</summary>
     public Func<Track, bool>? IsComputerSong { get; init; }
 
@@ -60,9 +66,10 @@ public sealed class AnimatedCoverSource
 
     /// <summary>The source for the signed-in computer's songs (and, with <paramref name="findSidecar"/>, the phone's own).</summary>
     public static AnimatedCoverSource ForAccount(AnimatedCoverCache cache, Func<bool> isOnWifi, INoctisAccountService? account,
-        Func<Track, string?>? findSidecar) =>
+        Func<Track, string?>? findSidecar, ChosenAnimatedCovers? chosen = null) =>
         new(cache, isOnWifi)
         {
+            Chosen = chosen,
             FindSidecar = findSidecar,
             IsComputerSong = account is null ? null : t => account.IsSignedIn && (account.IsRemote(t) || account.DesktopIdOf(t) is not null),
             Fetch = account is null ? null : account.FetchAnimatedCoverAsync,
@@ -74,6 +81,11 @@ public sealed class AnimatedCoverSource
         if (setting == AnimatedCoversSetting.Off) return null;
         try
         {
+            if (Chosen is { } chosen && await Task.Run(() => chosen.Find(track.AlbumId), ct).ConfigureAwait(false) is { } picked)
+            {
+                DebugLog.Write("AnimatedCover", "using the loop chosen for the album");
+                return picked;
+            }
             if (FindSidecar is { } find && !string.IsNullOrEmpty(track.FilePath))
             {
                 var own = await Task.Run(() => find(track), ct).ConfigureAwait(false);
