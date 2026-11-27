@@ -209,6 +209,15 @@ public partial class Track : ObservableObject
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool AlbumGroupingUnwritten { get; set; }
 
+    /// <summary>
+    /// Undo Grouping (Discord 11-27): what this song had before "Group into One Album" or "Move to
+    /// Album" changed it (<see cref="AlbumGroupUndo"/>). Null when no grouping changed it, or when
+    /// the song was edited since (see <see cref="Services.AlbumUndo"/>). Not written while null, so
+    /// old library files load as they are.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AlbumGroupUndo? GroupUndo { get; set; }
+
     /// <summary>File size in bytes, used for change detection during rescan.</summary>
     public long FileSize { get; set; }
 

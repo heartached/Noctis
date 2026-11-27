@@ -715,6 +715,15 @@ public class MetadataService : IMetadataService
         => WriteTrackMetadataCore(track, track.FilePath, null, genreEdited: false, albumIdentity);
 
     /// <inheritdoc />
+    public bool WriteAlbumUndo(Track track, AlbumUndoWrite write)
+        => WriteTrackMetadataCore(track, track.FilePath, null, genreEdited: false, write.Identity, file =>
+        {
+            if (write.RemoveAlbumArtist) file.Tag.AlbumArtists = Array.Empty<string>();
+            if (write.RemoveAlbum) file.Tag.Album = null;
+            if (write.RemoveYear) file.Tag.Year = 0; // as ClearYear
+        });
+
+    /// <inheritdoc />
     public AlbumIdentityTags? ReadAlbumIdentity(string filePath)
     {
         try
@@ -766,8 +775,9 @@ public class MetadataService : IMetadataService
         }
     }
 
+    /// <param name="finish">Runs last in the same save (Undo Grouping takes tags out there).</param>
     private bool WriteTrackMetadataCore(Track track, string targetFilePath, string? titleOverride, bool genreEdited,
-        AlbumIdentityTags? albumIdentity = null)
+        AlbumIdentityTags? albumIdentity = null, Action<TagLib.File>? finish = null)
     {
         var ok = SaveTagsAtomically(targetFilePath, file =>
         {
@@ -836,6 +846,7 @@ public class MetadataService : IMetadataService
             // clearing a version on purpose goes through ClearVersion, like the year.
             if (!string.IsNullOrWhiteSpace(track.Version))
                 ExtendedTagIO.WriteVersion(file, track.Version);
+            finish?.Invoke(file);
         });
         // The album artist is now in the file's own tag (written above), so the album-grouping
         // pass must treat it as a real tag from here on, as the next scan of the file will

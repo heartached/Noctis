@@ -108,6 +108,15 @@ public interface IMetadataService
     AlbumIdentityTags? ReadAlbumIdentity(string filePath) => null;
 
     /// <summary>
+    /// Undo Grouping (<see cref="AlbumUndo"/>): <see cref="WriteTrackMetadata(Track)"/> (with
+    /// <see cref="AlbumUndoWrite.Identity"/>'s tags when set, as Move to Album writes them) and,
+    /// in the same save, takes out the album artist, album and year tags the grouping wrote into
+    /// a file that had none. The default writes the track's tags only, so test stubs keep compiling.
+    /// </summary>
+    bool WriteAlbumUndo(Track track, AlbumUndoWrite write) =>
+        write.Identity != null ? WriteTrackMetadata(track, write.Identity) : WriteTrackMetadata(track);
+
+    /// <summary>
     /// Sets the embedded album artwork on an audio file.
     /// Pass null to remove artwork.
     /// </summary>
