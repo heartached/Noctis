@@ -1,7 +1,7 @@
 {
   "id": "dev.noctis.plugins.chords",
   "name": "Chords",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "Noctis",
   "description": "Shows the playing song's chords, found from its audio.",
   "type": "dotnet",
