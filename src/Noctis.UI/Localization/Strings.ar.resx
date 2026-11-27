@@ -7277,9 +7277,6 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="StudioPicker.Clear" xml:space="preserve"><value>مسح</value><comment>Choose songs footer: Select all once every row on show is ticked (unticks them)</comment></data>
   <data name="StudioPicker.OneSong" xml:space="preserve"><value>أغنية واحدة</value><comment>Choose songs: tag on an album row with one local song</comment></data>
   <data name="StudioPicker.SongCount" xml:space="preserve"><value>الأغاني: {0}</value><comment>Choose songs: tag on an album row ({0} = local songs on it)</comment></data>
-    <value>الأغاني</value>
-    <comment>Queue column header</comment>
-  </data>
   <data name="LyricsStudio.ReviewEmptyTitle" xml:space="preserve">
     <value>لا شيء للمراجعة بعد</value>
     <comment>Review pane empty state</comment>
