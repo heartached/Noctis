@@ -75,7 +75,10 @@ public partial class SettingsViewModel
         MarkWhatsNewSeen();
         try
         {
-            await ShowWhatsNewDialog(CreateWhatsNewViewModel());
+            // Cached notes are read and laid out before the window opens, not during its fade-in.
+            var vm = CreateWhatsNewViewModel();
+            await vm.PrimeAsync();
+            await ShowWhatsNewDialog(vm);
         }
         catch (Exception ex)
         {

@@ -80,6 +80,32 @@ public class WhatsNewViewModelTests : IDisposable
         Assert.Equal(Now, cached.FetchedUtc);
     }
 
+    /// <summary>The cached notes are in place before the dialog opens (PrimeAsync), so its
+    /// first frame has them; the open then neither reads the file again nor rebuilds the rows.</summary>
+    [Fact]
+    public async Task Prime_FillsTheNotesBeforeTheDialogOpens_AndLoadKeepsThem()
+    {
+        SeedCache("v1.7.2", Body("v1.7.2"), Now - TimeSpan.FromHours(2));
+        var source = new FakeSource();
+        var vm = Make(source);
+
+        await vm.PrimeAsync();
+        Assert.True(vm.IsLoaded);
+        Assert.False(vm.IsLoading);
+        Assert.Equal(3, vm.Sections.Count);
+        var rows = vm.Sections.ToList();
+
+        await vm.LoadAsync();
+        Assert.Equal(rows, vm.Sections.ToList()); // the same row objects: nothing was rebuilt
+        Assert.Empty(source.Calls);
+
+        // No cache: priming leaves the loading state for the open to fetch.
+        var other = new WhatsNewViewModel("1.7.3", source, Cache);
+        await other.PrimeAsync();
+        Assert.True(other.IsLoading);
+        Assert.False(other.IsLoaded);
+    }
+
     [Fact]
     public async Task FreshCache_ShowsAtOnce_WithoutFetching()
     {
