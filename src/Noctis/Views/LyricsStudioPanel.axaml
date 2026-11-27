@@ -886,9 +886,11 @@
                             <DockPanel Classes="review-toolbar" Container.Name="ReviewHead" Container.Sizing="Width">
                                 <!-- Save and "…" as a pair, so the dots never sit alone on a line. -->
                                 <StackPanel Classes="review-primary" Orientation="Horizontal" Spacing="6">
-                                    <!-- No accent rim: the same height as the toolbar's pills beside it. -->
+                                    <!-- The rim takes the fill's colour: no visible ring, and the same height as
+                                         the outlined pills beside it (without a border Save came out 2px shorter). -->
                                     <Button Command="{Binding SaveCommand}" IsEnabled="{Binding CanSave}"
-                                            Classes="studio-btn accent-btn" BorderThickness="0"
+                                            Classes="studio-btn accent-btn" BorderThickness="1"
+                                            BorderBrush="{DynamicResource AccentButtonBackground}"
                                             Background="{DynamicResource AccentButtonBackground}" Foreground="{DynamicResource AccentForegroundBrush}">
                                         <TextBlock Text="{loc:T LyricsStudio.Save}" />
                                     </Button>
