@@ -108,6 +108,19 @@ internal sealed class SidebarMotion
         _content.HorizontalAlignment = HorizontalAlignment.Stretch;
     }
 
+    /// <summary>Give <paramref name="page"/> its left margin at once, dropping any slide in
+    /// flight (the sidebar hidden / shown, or its edge dragged: the page follows the pointer).</summary>
+    public static void PlacePage(Layoutable page, double left)
+    {
+        var m = page.Margin;
+        page.Margin = new Thickness(left, m.Top, m.Right, m.Bottom);
+        if (page.RenderTransform is not TranslateTransform t) return;
+        var slide = t.Transitions;
+        t.Transitions = null;
+        t.X = 0;
+        t.Transitions = slide;
+    }
+
     /// <summary>Give <paramref name="page"/> its new left margin in one layout, and slide it
     /// there from where it is drawn now with its TranslateTransform, on the rail's curve.</summary>
     public static void SlidePage(Layoutable page, double left, bool opening)

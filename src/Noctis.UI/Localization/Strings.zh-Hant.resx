@@ -5805,6 +5805,7 @@ Deezer 和 TIDAL：貼上連結。</value></data>
     <value>搜尋 (Ctrl+F)</value>
     <comment>ToolTip.Tip in SidebarView.axaml</comment>
   </data>
+  <data name="Sidebar.GripTip" xml:space="preserve"><value>按一下可摺疊或展開 (Ctrl+B)，拖曳可調整寬度</value><comment>ToolTip.Tip in MainWindow.axaml (sidebar edge)</comment></data>
   <data name="Sidebar.Search" xml:space="preserve">
     <value>搜尋</value>
     <comment>Text in SidebarView.axaml</comment>
