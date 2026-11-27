@@ -145,9 +145,10 @@
 
         <!-- Live preview: what a page looks like over the chosen background. -->
         <Border Name="PreviewCard" CornerRadius="28" ClipToBounds="True" Height="232"
-                Background="{DynamicResource PhoneBackgroundBrush}"
                 BorderThickness="0.5" BorderBrush="{DynamicResource PhoneChromeOutlineBrush}">
             <Panel>
+                <!-- The page brush as the pages draw it (PageBackdrop: a mesh drawn directly). -->
+                <views:PageBackdrop Brush="{DynamicResource PhoneBackgroundBrush}" />
                 <StackPanel Margin="20,18,20,0" Spacing="10" VerticalAlignment="Top">
                     <TextBlock Text="{loc:T Nav.Home}" FontSize="30" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}" />
                     <StackPanel Orientation="Horizontal" Spacing="10">

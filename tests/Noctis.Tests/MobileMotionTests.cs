@@ -362,7 +362,7 @@ public class MobileMotionTests : IDisposable
         var list = Assert.IsType<SongListPageViewModel>(rig.Shell.CurrentPage);
         var sheet = view.FindControl<PageStack>("SheetHost")!;
         Assert.Same(list, sheet.Top);
-        Assert.NotNull(sheet.ViewOf(list)!.Background);
+        Assert.NotNull(Assert.IsType<PageView>(sheet.ViewOf(list)).Backdrop);
         var home = Find<HomePage>(view)!;
         Assert.True(home.IsEffectivelyVisible);   // still under the sheet, as in the recording
 
