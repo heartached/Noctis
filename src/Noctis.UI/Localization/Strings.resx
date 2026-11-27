@@ -3758,6 +3758,7 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Artist.MostPlayed" xml:space="preserve"><value>MOST PLAYED</value><comment>Artist page card kicker</comment></data>
   <data name="Mobile.Artist.LatestEp" xml:space="preserve"><value>LATEST EP</value><comment>Artist page card kicker</comment></data>
   <data name="Mobile.Artist.LatestSingle" xml:space="preserve"><value>LATEST SINGLE</value><comment>Artist page card kicker</comment></data>
+  <data name="Mobile.Artist.Biography" xml:space="preserve"><value>Biography</value><comment>Artist page: the biography sheet's line under the artist's name</comment></data>
   <data name="Mobile.Player.UnreachableSkipping" xml:space="preserve"><value>Can't reach your computer. Playing your downloaded songs.</value><comment>Player banner</comment></data>
   <data name="Mobile.Player.UnreachableStopped" xml:space="preserve"><value>Can't reach your computer. Open Noctis on it, or play songs you've downloaded.</value><comment>Player banner</comment></data>
   <data name="Mobile.Player.TooManyErrors" xml:space="preserve"><value>Several songs in a row couldn't be played, so playback stopped.</value><comment>Player banner</comment></data>

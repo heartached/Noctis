@@ -3758,6 +3758,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Artist.MostPlayed" xml:space="preserve"><value>ЧАЩЕ ВСЕГО</value></data>
   <data name="Mobile.Artist.LatestEp" xml:space="preserve"><value>НОВЫЙ EP</value></data>
   <data name="Mobile.Artist.LatestSingle" xml:space="preserve"><value>НОВЫЙ СИНГЛ</value></data>
+  <data name="Mobile.Artist.Biography" xml:space="preserve"><value>Биография</value></data>
   <data name="Mobile.Player.UnreachableSkipping" xml:space="preserve"><value>Нет связи с компьютером. Играют скачанные песни.</value></data>
   <data name="Mobile.Player.UnreachableStopped" xml:space="preserve"><value>Нет связи с компьютером. Откройте на нём Noctis или слушайте скачанные песни.</value></data>
   <data name="Mobile.Player.TooManyErrors" xml:space="preserve"><value>Несколько песен подряд не удалось воспроизвести, поэтому воспроизведение остановлено.</value></data>

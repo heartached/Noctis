@@ -3749,6 +3749,7 @@ Les lignes et leur minutage sont supprimés et une zone de paroles vide s'ouvre 
   <data name="Mobile.Artist.MostPlayed" xml:space="preserve"><value>LE PLUS ÉCOUTÉ</value><comment>Artist page card kicker</comment></data>
   <data name="Mobile.Artist.LatestEp" xml:space="preserve"><value>DERNIER EP</value><comment>Artist page card kicker</comment></data>
   <data name="Mobile.Artist.LatestSingle" xml:space="preserve"><value>DERNIER SINGLE</value><comment>Artist page card kicker</comment></data>
+  <data name="Mobile.Artist.Biography" xml:space="preserve"><value>Biographie</value><comment>Artist page: the biography sheet's line under the artist's name</comment></data>
   <data name="Mobile.Player.UnreachableSkipping" xml:space="preserve"><value>Impossible de joindre votre ordinateur. Lecture de vos morceaux téléchargés.</value><comment>Player banner</comment></data>
   <data name="Mobile.Player.UnreachableStopped" xml:space="preserve"><value>Impossible de joindre votre ordinateur. Ouvrez-y Noctis, ou écoutez les morceaux téléchargés.</value><comment>Player banner</comment></data>
   <data name="Mobile.Player.TooManyErrors" xml:space="preserve"><value>Plusieurs morceaux d’affilée n’ont pas pu être lus, la lecture s’est donc arrêtée.</value><comment>Player banner</comment></data>

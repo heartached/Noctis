@@ -3749,6 +3749,7 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Mobile.Artist.MostPlayed" xml:space="preserve"><value>LO MÁS ESCUCHADO</value><comment>Artist page card kicker</comment></data>
   <data name="Mobile.Artist.LatestEp" xml:space="preserve"><value>ÚLTIMO EP</value><comment>Artist page card kicker</comment></data>
   <data name="Mobile.Artist.LatestSingle" xml:space="preserve"><value>ÚLTIMO SENCILLO</value><comment>Artist page card kicker</comment></data>
+  <data name="Mobile.Artist.Biography" xml:space="preserve"><value>Biografía</value><comment>Artist page: the biography sheet's line under the artist's name</comment></data>
   <data name="Mobile.Player.UnreachableSkipping" xml:space="preserve"><value>No se puede conectar con tu equipo. Se reproducen tus canciones descargadas.</value><comment>Player banner</comment></data>
   <data name="Mobile.Player.UnreachableStopped" xml:space="preserve"><value>No se puede conectar con tu equipo. Abre Noctis en él o reproduce las canciones que hayas descargado.</value><comment>Player banner</comment></data>
   <data name="Mobile.Player.TooManyErrors" xml:space="preserve"><value>No se pudieron reproducir varias canciones seguidas, así que se detuvo la reproducción.</value><comment>Player banner</comment></data>
