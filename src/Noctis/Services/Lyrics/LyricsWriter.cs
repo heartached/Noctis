@@ -302,9 +302,48 @@ public sealed class LyricsWriter
             }
             replaced = true;
         }
-        File.WriteAllText(sidecarPath, Normalize(content), new UTF8Encoding(false));
+        WriteAllTextAtomic(sidecarPath, Normalize(content));
         _registry.Add(sidecarPath);
         written = true;
+    }
+
+    /// <summary>
+    /// Writes a temp file beside <paramref name="path"/> and swaps it in, so a crash, a full disk or a
+    /// cut power mid-write never leaves a half-written lyrics file (written in place, it did). An
+    /// existing file is replaced under its own on-disk name ("Song.LRC" stays "Song.LRC", as the
+    /// in-place write kept it). Where the swap is refused (some network shares), it writes in place.
+    /// </summary>
+    internal static void WriteAllTextAtomic(string path, string text)
+    {
+        var encoding = new UTF8Encoding(false);
+        var tmp = path + ".noctis-tmp";
+        try
+        {
+            File.WriteAllText(tmp, text, encoding);
+            if (OnDiskName(path) is { } existing) File.Replace(tmp, existing, null, ignoreMetadataErrors: true);
+            else File.Move(tmp, path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or PlatformNotSupportedException)
+        {
+            try { File.Delete(tmp); } catch { /* best effort */ }
+            File.WriteAllText(path, text, encoding);
+        }
+    }
+
+    /// <summary>The existing file at <paramref name="path"/> as the file system spells it, or null when there is none.</summary>
+    private static string? OnDiskName(string path)
+    {
+        if (!File.Exists(path)) return null;
+        try
+        {
+            var dir = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(dir)
+                && Directory.EnumerateFiles(dir, Path.GetFileName(path)).FirstOrDefault() is { } spelled
+                && string.Equals(spelled, path, StringComparison.OrdinalIgnoreCase))
+                return spelled;
+        }
+        catch { /* unlistable: the path as given */ }
+        return path;
     }
 
     /// <summary>Trashes our own sidecar at the path, or a foreign one when asked; leaves a foreign one alone otherwise.</summary>
