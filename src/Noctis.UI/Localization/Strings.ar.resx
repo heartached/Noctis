@@ -1377,10 +1377,6 @@ Deezer وTIDAL: الصق الرابط.</value>
     <value>الطيف الكامل</value>
     <comment>Text in SettingsView.axaml (GitHub #205)</comment>
   </data>
-  <data name="Settings.FullSpectrumHint" xml:space="preserve">
-    <value>يوزن الأعمدة مثل محلّل الاستوديو، لتبقى الترددات العالية الهادئة حتى 20 kHz مرئية.</value>
-    <comment>Text in SettingsView.axaml (GitHub #205)</comment>
-  </data>
   <data name="Settings.FrequencyBarsRisingFromTip" xml:space="preserve">
     <value>أعمدة تردد ترتفع من الأسفل</value>
     <comment>ToolTip.Tip in SettingsView.axaml</comment>
@@ -1629,24 +1625,12 @@ Deezer وTIDAL: الصق الرابط.</value>
     <value>إخفاء جزيرة التشغيل في وضع ملء الشاشة</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsFullScreenHideIslandHint" xml:space="preserve">
-    <value>في وضع ملء الشاشة تُبقي صفحة الكلمات شريط التقدم فقط أسفل الأغنية. يظل بإمكانك التحكم في التشغيل باختصارات لوحة المفاتيح.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.LyricsMinLineOpacity" xml:space="preserve">
     <value>الحد الأدنى لعتامة السطر</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsMinLineOpacityHint" xml:space="preserve">
-    <value>يُبقي كل سطر ظاهرًا بشكل خافت لتتمكن من النقر على أي منها. 0% يخفي الأسطر البعيدة.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.JoinSplitWords" xml:space="preserve">
     <value>ضم الكلمات المجزأة</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.KeepWordsWholeWhen" xml:space="preserve">
-    <value>يبقي الكلمات كاملة عندما تجزئها كلمات TTML إلى مقاطع صوتية.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsGlowAndLift" xml:space="preserve">
@@ -1661,20 +1645,12 @@ Deezer وTIDAL: الصق الرابط.</value>
     <value>عارض الكلمات</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsRendererHint" xml:space="preserve">
-    <value>يرسم أسطر الكلمات بإضافة. يحتفظ Noctis بالتمرير والتوقيت والانتقال بالنقر.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.LyricsRendererOff" xml:space="preserve">
     <value>{0} (الإضافة معطّلة)</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsCenterWhenNoLyrics" xml:space="preserve">
     <value>توسيط المشغّل عندما لا توجد كلمات للأغنية</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve">
-    <value>ينقل الغلاف وعناصر التحكم إلى المنتصف عندما لا توجد كلمات للأغنية.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsBackgroundBehindSidebar" xml:space="preserve">
@@ -1689,32 +1665,16 @@ Deezer وTIDAL: الصق الرابط.</value>
     <value>شريط تقدم بشكل موجي</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsWaveformSeekBarHint" xml:space="preserve">
-    <value>يعرض الشكل الموجي للأغنية في شريط التقدم بصفحة الكلمات.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.ShowTranslations" xml:space="preserve">
     <value>عرض الترجمات</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.ShowTranslationsHint" xml:space="preserve">
-    <value>يعرض الترجمة التي يحملها ملف كلمات TTML تحت كل سطر.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ShowRomanization" xml:space="preserve">
     <value>عرض الكتابة بالحروف اللاتينية</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.ShowRomanizationHint" xml:space="preserve">
-    <value>يعرض الكلمات المكتوبة بالحروف اللاتينية (romaji، pinyin) تحت كل سطر عندما يحتويها الملف.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.ShowBackgroundVocals" xml:space="preserve">
     <value>عرض الغناء الخلفي</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.ShowBackgroundVocalsHint" xml:space="preserve">
-    <value>يعرض الغناء الخلفي والارتجالات في صف أصغر تحت السطر.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.PlayerBarOpacity" xml:space="preserve">
@@ -2397,10 +2357,6 @@ Deezer وTIDAL: الصق الرابط.</value>
     <value>فهرس كبير للكلمات المتزامنة</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.MusixmatchHint" xml:space="preserve">
-    <value>كلمات متزامنة كلمةً بكلمة · قد يتوقف عندما يطلب رمز captcha</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.KugouHint" xml:space="preserve">
     <value>كتالوج كلمات متزامنة كلمةً بكلمة</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -2412,10 +2368,6 @@ Deezer وTIDAL: الصق الرابط.</value>
   <data name="Settings.UnisonHint" xml:space="preserve">
     <value>كلمات مجتمع Better Lyrics · Lyrics from Unison (unison.boidu.dev)</value>
     <comment>Text in SettingsView.axaml; keep "Lyrics from Unison (unison.boidu.dev)": the attribution Unison's ODbL licence asks for</comment>
-  </data>
-  <data name="Settings.LrcMuxHint" xml:space="preserve">
-    <value>كلمات Deezer وKuGou وYouTube Music وMusixmatch عبر lrcmux.dev، يُسأل أخيرًا</value>
-    <comment>Text in SettingsView.axaml (GitHub #219)</comment>
   </data>
   <data name="Settings.YouTubeMusicLyricsHint" xml:space="preserve">
     <value>كلمات متزامنة · بحث أبطأ</value>
@@ -2699,14 +2651,6 @@ Deezer وTIDAL: الصق الرابط.</value>
   </data>
   <data name="Settings.ClearArtworkCache" xml:space="preserve">
     <value>مسح ذاكرة الأغلفة المؤقتة</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.DeleteCachedArtworkWill" xml:space="preserve">
-    <value>يحذف الأغلفة المخزنة مؤقتًا. سيُعاد بناؤها في الفحص التالي.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.NoteRemovesAllArtwork" xml:space="preserve">
-    <value>ملاحظة: هذا يزيل كل الأغلفة من مكتبتك.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ClearCache" xml:space="preserve">
@@ -6441,20 +6385,12 @@ Deezer وTIDAL: الصق الرابط.</value>
     <value>الملف</value>
     <comment>Header in MetadataWindow.axaml</comment>
   </data>
-  <data name="Metadata.Format" xml:space="preserve">
-    <value>الصيغة</value>
-    <comment>Text in MetadataWindow.axaml</comment>
-  </data>
   <data name="Metadata.Duration" xml:space="preserve">
     <value>المدة</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.Size" xml:space="preserve">
     <value>الحجم</value>
-    <comment>Text in MetadataWindow.axaml</comment>
-  </data>
-  <data name="Metadata.Bitrate" xml:space="preserve">
-    <value>معدل البت</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.BitDepth" xml:space="preserve">
@@ -6467,10 +6403,6 @@ Deezer وTIDAL: الصق الرابط.</value>
   </data>
   <data name="Metadata.Channels" xml:space="preserve">
     <value>القنوات</value>
-    <comment>Text in MetadataWindow.axaml</comment>
-  </data>
-  <data name="Metadata.Codec" xml:space="preserve">
-    <value>الترميز</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.Quality" xml:space="preserve">
@@ -9234,9 +9166,6 @@ Deezer وTIDAL: الصق الرابط.</value>
   <data name="Plugins.Card.Off" xml:space="preserve">
     <value>متوقفة</value>
   </data>
-  <data name="Plugins.Card.Verified" xml:space="preserve">
-    <value>إضافة Noctis رسمية</value>
-  </data>
   <data name="Plugins.Card.A11yOfficial" xml:space="preserve">
     <value>{0}، إضافة رسمية من Noctis</value>
   </data>
@@ -10370,10 +10299,6 @@ Deezer وTIDAL: الصق الرابط.</value>
     <value>الأغاني: {0}</value>
     <comment>Choose songs: tag on an album row ({0} = local songs on it)</comment>
   </data>
-  <data name="LyricsStudio.Queue" xml:space="preserve">
-    <value>الأغاني</value>
-    <comment>Queue column header</comment>
-  </data>
   <data name="LyricsStudio.ReviewEmptyTitle" xml:space="preserve">
     <value>لا شيء للمراجعة بعد</value>
     <comment>Review pane empty state</comment>
@@ -10529,10 +10454,6 @@ Deezer وTIDAL: الصق الرابط.</value>
   <data name="LyricsStudio.Align" xml:space="preserve">
     <value>محاذاة الكلمات</value>
     <comment>Lyrics box primary button</comment>
-  </data>
-  <data name="LyricsStudio.Beta" xml:space="preserve">
-    <value>تجريبي</value>
-    <comment>Pill next to the Lyrics Studio title (top bar and dialog header)</comment>
   </data>
   <data name="LyricsStudio.Preview" xml:space="preserve">
     <value>معاينة</value>
@@ -11090,40 +11011,20 @@ Deezer وTIDAL: الصق الرابط.</value>
     <value>تنزيل الكلمات تلقائيًا</value>
     <comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsAutoDownloadHint" xml:space="preserve">
-    <value>يبحث عن كلمات للأغاني التي لا تملكها ويحفظها. لا تُستبدل الكلمات الموجودة أبدًا.</value>
-    <comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment>
-  </data>
   <data name="Settings.LyricsPreferredType" xml:space="preserve">
     <value>نوع الكلمات المفضّل</value>
-    <comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.LyricsPreferredTypeHint" xml:space="preserve">
-    <value>ما يحتفظ به Noctis عندما يختار الكلمات من الإنترنت بنفسه.</value>
     <comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsUpgradePlain" xml:space="preserve">
     <value>تحسين الكلمات العادية</value>
     <comment>Settings ▸ Lyrics (GitHub #194), SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsUpgradePlainHint" xml:space="preserve">
-    <value>عندما لا تملك الأغنية سوى كلمات عادية، يبحث عن النوع المتزامن المفضّل لديك. إن لم يُعثر على شيء، تبقى الكلمات العادية.</value>
-    <comment>Settings ▸ Lyrics (GitHub #194), SettingsView.axaml</comment>
-  </data>
   <data name="Settings.LyricsAutoFindNew" xml:space="preserve">
     <value>البحث عن كلمات للأغاني الجديدة</value>
     <comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsAutoFindNewHint" xml:space="preserve">
-    <value>يبحث في الخلفية عن كلمات للأغاني المضافة إلى مكتبتك. تُترك الأغاني ذات الكلمات المتزامنة كما هي.</value>
-    <comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment>
-  </data>
   <data name="Settings.LyricsAutoFindLibrary" xml:space="preserve">
     <value>البحث عن كلمات للمكتبة كلها</value>
-    <comment>Settings ▸ Lyrics (GitHub #219), SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.LyricsAutoFindLibraryHint" xml:space="preserve">
-    <value>يبحث في الخلفية عن كلمات للأغاني التي لا تملك كلمات متزامنة بعد.</value>
     <comment>Settings ▸ Lyrics (GitHub #219), SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsPreferredType.WordSynced" xml:space="preserve">
@@ -12268,10 +12169,6 @@ Deezer وTIDAL: الصق الرابط.</value>
   </data>
   <data name="Settings.AnimArtCacheSize" xml:space="preserve">
     <value>حجم الذاكرة المؤقتة</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve">
-    <value>عند امتلائها، تُحذف أقدم الأغلفة.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AnimArtCacheUsedOf" xml:space="preserve">
@@ -15044,10 +14941,6 @@ Deezer وTIDAL: الصق الرابط.</value>
     <value>إخفاء الشريط الجانبي حتى التمرير</value>
     <comment>Settings &gt; General &gt; Sidebar toggle (GitHub #233)</comment>
   </data>
-  <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve">
-    <value>يخفي الشريط الجانبي تمامًا لتستخدم الصفحات العرض الكامل. حرّك المؤشر إلى الحافة اليسرى للنافذة لإظهاره.</value>
-    <comment>Description under Hide sidebar until hover</comment>
-  </data>
   <data name="Count.Tracks" xml:space="preserve">
     <value>{0:N0} مقطع|{0:N0} مقطع|{0:N0} مقطعان|{0:N0} مقاطع|{0:N0} مقطعًا|{0:N0} مقطع</value>
     <comment>Count with plural forms (one|other; see Loc.Plural)</comment>
@@ -15957,10 +15850,6 @@ Deezer وTIDAL: الصق الرابط.</value>
   </data>
   <data name="Settings.LyricsPageHideLyrics" xml:space="preserve">
     <value>إخفاء الكلمات في صفحة الكلمات</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.LyricsPageHideLyricsHint" xml:space="preserve">
-    <value>يعرض المشغّل في الوسط بدلًا منها، حتى عندما تكون للأغنية كلمات.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="LyricShare.Watermark" xml:space="preserve">
