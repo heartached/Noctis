@@ -162,6 +162,8 @@ public partial class App : Application
     {
         // The core rewrites cover files without knowing about the UI's bitmap cache.
         global::Noctis.Services.LibraryService.ArtworkFileReplaced += global::Noctis.Services.ArtworkCache.Invalidate;
+        // A cover written back at a path a control found empty (Clear Artwork Cache, then the heal).
+        global::Noctis.Services.PersistenceService.ArtworkSaved += global::Noctis.Services.ArtworkCache.FileWritten;
         // Downscaled cover decodes kept on disk: a 3000px cover is decoded at full size once.
         ArtworkThumbnailCache.Enable(System.IO.Path.Combine(Noctis.Helpers.AppPaths.DataRoot, "cache", "artwork_thumbs"));
         // A few cover decodes at a time, so a grid glide leaves cores to the UI and render threads.

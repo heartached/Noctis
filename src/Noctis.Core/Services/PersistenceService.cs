@@ -544,6 +544,13 @@ public class PersistenceService : IPersistenceService
         return Path.Combine(ArtworkDirectory, $"{albumId}.jpg");
     }
 
+    /// <summary>
+    /// Raised (on the writing thread) after a cover file is written. The app hands it to the
+    /// bitmap cache: a cover written back at a path a control found empty (Clear Artwork Cache,
+    /// then the heal) keeps the same path, so nothing else tells that control to load it.
+    /// </summary>
+    public static event Action<string>? ArtworkSaved;
+
     public void SaveArtwork(Guid albumId, byte[] imageData)
     {
         // The "Unknown Artist::Unknown Album" bucket is one AlbumId shared by every
@@ -556,7 +563,9 @@ public class PersistenceService : IPersistenceService
         try
         {
             // Never in place: the grid may be decoding this file right now (GitHub #224).
-            Helpers.AtomicFileWriter.WriteAllBytes(GetArtworkPath(albumId), imageData);
+            var path = GetArtworkPath(albumId);
+            Helpers.AtomicFileWriter.WriteAllBytes(path, imageData);
+            ArtworkSaved?.Invoke(path);
         }
         catch
         {

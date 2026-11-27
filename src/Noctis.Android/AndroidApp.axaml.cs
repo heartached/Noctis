@@ -86,6 +86,7 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         // bitmap budget cost a full decode again. The thumbnails live in the cache dir, which
         // Android may clear; a missing one is simply decoded from the source once more.
         LibraryService.ArtworkFileReplaced += ArtworkCache.Invalidate;
+        PersistenceService.ArtworkSaved += ArtworkCache.FileWritten;
         ArtworkThumbnailCache.Enable(Path.Combine((context.CacheDir ?? context.FilesDir!).AbsolutePath, "artwork_thumbs"));
         // Two cover decodes at a time: mid-range phones have two fast cores, and a grid fling
         // otherwise ran a full-size decode per tile at once (see CachedImage.MaxConcurrentDecodes).
