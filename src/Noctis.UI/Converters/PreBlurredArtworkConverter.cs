@@ -158,6 +158,10 @@ public class PreBlurredArtworkConverter : IValueConverter, IMultiValueConverter
     // native buffer and frees it after (MobileWashCacheTests); Skia, the phone's, reads back fine.
     private static readonly ConditionalWeakTable<Bitmap, StrongBox<WashTones>> WashToneCache = new();
 
+    /// <summary>The "wash" this converter already made of <paramref name="source"/>, or null: a
+    /// caller that makes washes off the UI thread shows a known one at once.</summary>
+    public static Bitmap? CachedWash(Bitmap source) => WashCache.TryGetValue(source, out var wash) ? wash : null;
+
     /// <summary>The <see cref="WashTones"/> of a bitmap this converter made as a "wash"; null for any other bitmap.</summary>
     public static WashTones? WashTonesOf(Bitmap wash) => WashToneCache.TryGetValue(wash, out var tones) ? tones.Value : null;
 
@@ -165,8 +169,8 @@ public class PreBlurredArtworkConverter : IValueConverter, IMultiValueConverter
     /// black; plus the rest of white, over white.</summary>
     internal static WashTones MeasureTones(byte[] pixels)
     {
-        // The Now Playing wash is made on the UI thread (its binding): DominantColorExtractor's
-        // relative luminance from a table, not six Math.Pow calls a pixel.
+        // Every 128 px pixel, for each wash: DominantColorExtractor's relative luminance from a
+        // table, not six Math.Pow calls a pixel.
         var lin = LinearTable;
         Color brightest = Colors.Black, darkest = Colors.White;
         double most = -1, least = 2;
