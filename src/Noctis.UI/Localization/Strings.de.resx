@@ -2889,7 +2889,6 @@ Jahre: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar sear
   <data name="StudioPicker.Clear" xml:space="preserve"><value>Leeren</value><comment>Choose songs footer: Select all once every row on show is ticked (unticks them)</comment></data>
   <data name="StudioPicker.OneSong" xml:space="preserve"><value>1 Song</value><comment>Choose songs: tag on an album row with one local song</comment></data>
   <data name="StudioPicker.SongCount" xml:space="preserve"><value>{0} Songs</value><comment>Choose songs: tag on an album row ({0} = local songs on it)</comment></data>
-  <data name="LyricsStudio.Queue" xml:space="preserve"><value>SONGS</value><comment>Queue column header</comment></data>
   <data name="LyricsStudio.ReviewEmptyTitle" xml:space="preserve"><value>Noch nichts zu prüfen</value><comment>Review pane empty state</comment></data>
   <data name="LyricsStudio.ReviewEmptyBody" xml:space="preserve"><value>Wähle einen Song in der Liste. Songs mit Songtext werden bei Start getimt; Songs ohne öffnen eine Box zum Einfügen.</value><comment>Review pane empty state</comment></data>
   <data name="LyricsStudio.Upgrade" xml:space="preserve"><value>Jedes Wort timen</value><comment>Review button, shown for line-level lyrics</comment></data>
@@ -2933,7 +2932,6 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="LyricsStudio.TranscribeDraft" xml:space="preserve"><value>Lieber zuhören · Experimentell</value><comment>Lyrics box button: transcribe the song into the box</comment></data>
   <data name="LyricsStudio.TranscribeDraftTip" xml:space="preserve"><value>Lullaby schreibt auf, was es hört. Gesungene Vocals transkribieren oft schlecht: Korrigiere die Wörter vor dem Ausrichten.</value><comment>Tooltip "Lullaby" is the model's name: keep it untranslated.</comment></data>
   <data name="LyricsStudio.Align" xml:space="preserve"><value>Songtext ausrichten</value><comment>Lyrics box primary button</comment></data>
-  <data name="LyricsStudio.Beta" xml:space="preserve"><value>Beta</value><comment>Pill next to the Lyrics Studio title (top bar and dialog header)</comment></data>
   <data name="LyricsStudio.Preview" xml:space="preserve"><value>Vorschau</value><comment>Review button: play the song on the lyrics page with the unsaved timings</comment></data>
   <data name="LyricsStudio.PreviewTip" xml:space="preserve"><value>Song abspielen und diese ungespeicherten Timings auf der Songtextseite ansehen, im gewählten Format. Nichts wird gespeichert.</value><comment>Tooltip</comment></data>
   <data name="LyricsStudio.AlignTip" xml:space="preserve"><value>Diesen Songtext im gewählten Format gegen den Song timen, dann vor dem Speichern prüfen</value><comment>Tooltip</comment></data>

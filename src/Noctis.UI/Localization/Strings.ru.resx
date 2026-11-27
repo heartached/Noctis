@@ -2897,7 +2897,6 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="StudioPicker.Clear" xml:space="preserve"><value>Снять выбор</value><comment>Choose songs footer: Select all once every row on show is ticked (unticks them)</comment></data>
   <data name="StudioPicker.OneSong" xml:space="preserve"><value>1 песня</value><comment>Choose songs: tag on an album row with one local song</comment></data>
   <data name="StudioPicker.SongCount" xml:space="preserve"><value>Песен: {0}</value><comment>Choose songs: tag on an album row ({0} = local songs on it)</comment></data>
-  <data name="LyricsStudio.Queue" xml:space="preserve"><value>ПЕСНИ</value><comment>Queue column header</comment></data>
   <data name="LyricsStudio.ReviewEmptyTitle" xml:space="preserve"><value>Пока нечего проверять</value><comment>Review pane empty state</comment></data>
   <data name="LyricsStudio.ReviewEmptyBody" xml:space="preserve"><value>Выберите песню в списке. Песни с текстом синхронизируются, когда вы нажмёте «Начать»; для песен без текста откроется поле, куда его можно вставить.</value><comment>Review pane empty state</comment></data>
   <data name="LyricsStudio.Upgrade" xml:space="preserve"><value>Расставить тайминг слов</value><comment>Review button, shown for line-level lyrics</comment></data>
@@ -2941,7 +2940,6 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="LyricsStudio.TranscribeDraft" xml:space="preserve"><value>Распознать на слух · Экспериментально</value><comment>Lyrics box button: transcribe the song into the box</comment></data>
   <data name="LyricsStudio.TranscribeDraftTip" xml:space="preserve"><value>Lullaby записывает то, что слышит. Пение часто распознаётся плохо: исправьте слова до выравнивания.</value><comment>Tooltip "Lullaby" is the model's name: keep it untranslated.</comment></data>
   <data name="LyricsStudio.Align" xml:space="preserve"><value>Выровнять текст</value><comment>Lyrics box primary button</comment></data>
-  <data name="LyricsStudio.Beta" xml:space="preserve"><value>Бета</value><comment>Pill next to the Lyrics Studio title (top bar and dialog header)</comment></data>
   <data name="LyricsStudio.Preview" xml:space="preserve"><value>Предпросмотр</value><comment>Review button: play the song on the lyrics page with the unsaved timings</comment></data>
   <data name="LyricsStudio.PreviewTip" xml:space="preserve"><value>Воспроизвести песню и посмотреть несохранённый тайминг на странице текста в выбранном формате. Ничего не сохраняется.</value><comment>Tooltip</comment></data>
   <data name="LyricsStudio.AlignTip" xml:space="preserve"><value>Синхронизировать этот текст с песней в выбранном формате, затем проверить перед сохранением</value><comment>Tooltip</comment></data>

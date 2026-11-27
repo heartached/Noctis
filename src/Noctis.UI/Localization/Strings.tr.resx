@@ -2916,7 +2916,6 @@ Yıllar: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar se
   <data name="StudioPicker.Clear" xml:space="preserve"><value>Temizle</value><comment>Choose songs footer: Select all once every row on show is ticked (unticks them)</comment></data>
   <data name="StudioPicker.OneSong" xml:space="preserve"><value>1 şarkı</value><comment>Choose songs: tag on an album row with one local song</comment></data>
   <data name="StudioPicker.SongCount" xml:space="preserve"><value>{0} şarkı</value><comment>Choose songs: tag on an album row ({0} = local songs on it)</comment></data>
-  <data name="LyricsStudio.Queue" xml:space="preserve"><value>ŞARKILAR</value><comment>Queue column header</comment></data>
   <data name="LyricsStudio.ReviewEmptyTitle" xml:space="preserve"><value>Henüz incelenecek bir şey yok</value><comment>Review pane empty state</comment></data>
   <data name="LyricsStudio.ReviewEmptyBody" xml:space="preserve"><value>Listeden bir şarkı seç. Sözü olan şarkılar Başlat'a bastığında zamanlanır; sözü olmayanlar için yapıştırma kutusu açılır.</value><comment>Review pane empty state</comment></data>
   <data name="LyricsStudio.Upgrade" xml:space="preserve"><value>Her kelimeyi zamanla</value><comment>Review button, shown for line-level lyrics</comment></data>
@@ -2960,7 +2959,6 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="LyricsStudio.TranscribeDraft" xml:space="preserve"><value>Bunun yerine dinlet · Deneysel</value><comment>Lyrics box button: transcribe the song into the box</comment></data>
   <data name="LyricsStudio.TranscribeDraftTip" xml:space="preserve"><value>Lullaby duyduğunu yazar. Söylenen vokaller genellikle kötü yazıya dökülür: hizalamadan önce kelimeleri düzelt.</value><comment>Tooltip "Lullaby" is the model's name: keep it untranslated.</comment></data>
   <data name="LyricsStudio.Align" xml:space="preserve"><value>Sözleri hizala</value><comment>Lyrics box primary button</comment></data>
-  <data name="LyricsStudio.Beta" xml:space="preserve"><value>Beta</value><comment>Pill next to the Lyrics Studio title (top bar and dialog header)</comment></data>
   <data name="LyricsStudio.Preview" xml:space="preserve"><value>Önizle</value><comment>Review button: play the song on the lyrics page with the unsaved timings</comment></data>
   <data name="LyricsStudio.PreviewTip" xml:space="preserve"><value>Şarkıyı çal ve kaydedilmemiş bu zamanlamaları seçilen biçimde söz sayfasında izle. Hiçbir şey kaydedilmez.</value><comment>Tooltip</comment></data>
   <data name="LyricsStudio.AlignTip" xml:space="preserve"><value>Bu sözleri seçilen biçimde şarkıya göre zamanla, ardından kaydetmeden önce gözden geçir</value><comment>Tooltip</comment></data>
