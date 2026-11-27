@@ -7462,7 +7462,7 @@ public partial class SettingsViewModel : ViewModelBase
                 // Loon first so the artwork URL resolves for the republish below.
                 await ConnectLoonAsync();
                 // Republish current playback state so the track appears immediately.
-                await RepublishDiscordPresenceAsync();
+                await RepublishDiscordPresenceAsync(clearWhenIdle: true);
             }
         }
         else
@@ -7511,18 +7511,21 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Pushes the current playback state to Discord after a reconnect,
-    /// so the user doesn't have to wait for the next track/state event.
+    /// Pushes the current playback state to Discord after a reconnect (<paramref name="clearWhenIdle"/>)
+    /// or an option change, so the user doesn't have to wait for the next track/state event.
+    /// Only a playing song is shown: a pause or stop clears the presence (MainWindowViewModel's
+    /// state handler), so an option changed then sends nothing. It used to send the paused song,
+    /// which put the card back on Discord while nothing played.
     /// </summary>
-    private async Task RepublishDiscordPresenceAsync()
+    private async Task RepublishDiscordPresenceAsync(bool clearWhenIdle = false)
     {
         if (_discord == null || !_discord.IsConnected || _player == null)
             return;
 
         var track = _player.CurrentTrack;
-        if (track == null || _player.State == PlaybackState.Stopped)
+        if (track == null || _player.State != PlaybackState.Playing)
         {
-            await _discord.ClearAsync();
+            if (clearWhenIdle) await _discord.ClearAsync();
             return;
         }
 
