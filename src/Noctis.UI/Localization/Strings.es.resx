@@ -1373,10 +1373,6 @@ Deezer y TIDAL: pega el enlace.</value>
     <value>Espectro completo</value>
     <comment>Text in SettingsView.axaml (GitHub #205)</comment>
   </data>
-  <data name="Settings.FullSpectrumHint" xml:space="preserve">
-    <value>Pondera las barras como un analizador de estudio, para que los agudos suaves de hasta 20 kHz sigan visibles.</value>
-    <comment>Text in SettingsView.axaml (GitHub #205)</comment>
-  </data>
   <data name="Settings.FrequencyBarsRisingFromTip" xml:space="preserve">
     <value>Barras de frecuencia que suben desde abajo</value>
     <comment>ToolTip.Tip in SettingsView.axaml</comment>
@@ -1621,24 +1617,12 @@ Deezer y TIDAL: pega el enlace.</value>
     <value>Ocultar la isla de reproducción en pantalla completa</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsFullScreenHideIslandHint" xml:space="preserve">
-    <value>En pantalla completa, la página de letras solo muestra la barra de progreso bajo la canción. Los atajos de teclado siguen controlando la reproducción.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.LyricsMinLineOpacity" xml:space="preserve">
     <value>Opacidad de línea mínima</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsMinLineOpacityHint" xml:space="preserve">
-    <value>Mantiene todas las líneas levemente visibles para que puedas hacer clic en cualquiera. 0% oculta las lejanas.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.JoinSplitWords" xml:space="preserve">
     <value>Unir palabras divididas</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.KeepWordsWholeWhen" xml:space="preserve">
-    <value>Mantén las palabras enteras cuando las letras TTML las dividan en sílabas.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsGlowAndLift" xml:space="preserve">
@@ -1653,20 +1637,12 @@ Deezer y TIDAL: pega el enlace.</value>
     <value>Renderizador de letras</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsRendererHint" xml:space="preserve">
-    <value>Dibuja las líneas de la letra con un complemento. Noctis mantiene el desplazamiento, la sincronización y el clic para saltar.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.LyricsRendererOff" xml:space="preserve">
     <value>{0} (complemento desactivado)</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsCenterWhenNoLyrics" xml:space="preserve">
     <value>Centrar el reproductor si la canción no tiene letra</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve">
-    <value>Mueve la portada y los controles al centro cuando una canción no tiene letra.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsBackgroundBehindSidebar" xml:space="preserve">
@@ -1681,32 +1657,16 @@ Deezer y TIDAL: pega el enlace.</value>
     <value>Barra de progreso con forma de onda</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsWaveformSeekBarHint" xml:space="preserve">
-    <value>Muestra la forma de onda de la canción en la barra de progreso de la página de letras.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.ShowTranslations" xml:space="preserve">
     <value>Mostrar traducciones</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.ShowTranslationsHint" xml:space="preserve">
-    <value>Muestra bajo cada línea la traducción que incluye un archivo de letras TTML.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ShowRomanization" xml:space="preserve">
     <value>Mostrar romanización</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.ShowRomanizationHint" xml:space="preserve">
-    <value>Muestra la letra romanizada (romaji, pinyin) bajo cada línea cuando el archivo la incluye.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.ShowBackgroundVocals" xml:space="preserve">
     <value>Mostrar voces de fondo</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.ShowBackgroundVocalsHint" xml:space="preserve">
-    <value>Muestra las voces de fondo y los adlibs en una fila más pequeña bajo la línea.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.PlayerBarOpacity" xml:space="preserve">
@@ -2393,10 +2353,6 @@ Deezer y TIDAL: pega el enlace.</value>
     <value>Gran catálogo de letras sincronizadas</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.MusixmatchHint" xml:space="preserve">
-    <value>Letras sincronizadas por palabra · puede pausarse cuando pide un captcha</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.KugouHint" xml:space="preserve">
     <value>Catálogo de letras sincronizadas por palabra</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -2408,10 +2364,6 @@ Deezer y TIDAL: pega el enlace.</value>
   <data name="Settings.UnisonHint" xml:space="preserve">
     <value>Letras de la comunidad de Better Lyrics · Lyrics from Unison (unison.boidu.dev)</value>
     <comment>Text in SettingsView.axaml; keep "Lyrics from Unison (unison.boidu.dev)": the attribution Unison's ODbL licence asks for</comment>
-  </data>
-  <data name="Settings.LrcMuxHint" xml:space="preserve">
-    <value>Letras de Deezer, KuGou, YouTube Music y Musixmatch a través de lrcmux.dev, consultado en último lugar</value>
-    <comment>Text in SettingsView.axaml (GitHub #219)</comment>
   </data>
   <data name="Settings.YouTubeMusicLyricsHint" xml:space="preserve">
     <value>Letras sincronizadas · búsquedas más lentas</value>
@@ -2695,14 +2647,6 @@ Deezer y TIDAL: pega el enlace.</value>
   </data>
   <data name="Settings.ClearArtworkCache" xml:space="preserve">
     <value>Limpiar caché de portadas</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.DeleteCachedArtworkWill" xml:space="preserve">
-    <value>Elimina las portadas en caché. Se reconstruirá en el próximo escaneo.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.NoteRemovesAllArtwork" xml:space="preserve">
-    <value>Nota: esto elimina todas las portadas de tu biblioteca.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ClearCache" xml:space="preserve">
@@ -6430,20 +6374,12 @@ Al guardar se reemplazan por la letra en pantalla. Un archivo de letra que no es
     <value>Archivo</value>
     <comment>Header in MetadataWindow.axaml</comment>
   </data>
-  <data name="Metadata.Format" xml:space="preserve">
-    <value>Formato</value>
-    <comment>Text in MetadataWindow.axaml</comment>
-  </data>
   <data name="Metadata.Duration" xml:space="preserve">
     <value>duración</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.Size" xml:space="preserve">
     <value>tamaño</value>
-    <comment>Text in MetadataWindow.axaml</comment>
-  </data>
-  <data name="Metadata.Bitrate" xml:space="preserve">
-    <value>Tasa de bits</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.BitDepth" xml:space="preserve">
@@ -6456,10 +6392,6 @@ Al guardar se reemplazan por la letra en pantalla. Un archivo de letra que no es
   </data>
   <data name="Metadata.Channels" xml:space="preserve">
     <value>canales</value>
-    <comment>Text in MetadataWindow.axaml</comment>
-  </data>
-  <data name="Metadata.Codec" xml:space="preserve">
-    <value>Códec</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.Quality" xml:space="preserve">
@@ -9212,9 +9144,6 @@ Años: year:1990-1999, year:&gt;2000</value>
   <data name="Plugins.Card.Off" xml:space="preserve">
     <value>Desactivado</value>
   </data>
-  <data name="Plugins.Card.Verified" xml:space="preserve">
-    <value>Complemento oficial de Noctis</value>
-  </data>
   <data name="Plugins.Card.A11yOfficial" xml:space="preserve">
     <value>{0}, complemento oficial de Noctis</value>
   </data>
@@ -10345,10 +10274,6 @@ Años: year:1990-1999, year:&gt;2000</value>
     <value>{0} canciones</value>
     <comment>Choose songs: tag on an album row ({0} = local songs on it)</comment>
   </data>
-  <data name="LyricsStudio.Queue" xml:space="preserve">
-    <value>CANCIONES</value>
-    <comment>Queue column header</comment>
-  </data>
   <data name="LyricsStudio.ReviewEmptyTitle" xml:space="preserve">
     <value>Nada que revisar aún</value>
     <comment>Review pane empty state</comment>
@@ -11061,40 +10986,20 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
     <value>Descargar letras automáticamente</value>
     <comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsAutoDownloadHint" xml:space="preserve">
-    <value>Busca y guarda letras para las canciones que no tienen. Las letras existentes nunca se reemplazan.</value>
-    <comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment>
-  </data>
   <data name="Settings.LyricsPreferredType" xml:space="preserve">
     <value>Tipo de letra preferido</value>
-    <comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.LyricsPreferredTypeHint" xml:space="preserve">
-    <value>Lo que Noctis conserva cuando elige letras en línea por su cuenta.</value>
     <comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsUpgradePlain" xml:space="preserve">
     <value>Mejorar letras sin sincronizar</value>
     <comment>Settings ▸ Lyrics (GitHub #194), SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsUpgradePlainHint" xml:space="preserve">
-    <value>Si una canción solo tiene letra sin sincronizar, busca tu tipo sincronizado preferido. Si no encuentra ninguno, se queda la letra sin sincronizar.</value>
-    <comment>Settings ▸ Lyrics (GitHub #194), SettingsView.axaml</comment>
-  </data>
   <data name="Settings.LyricsAutoFindNew" xml:space="preserve">
     <value>Buscar letras para canciones nuevas</value>
     <comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsAutoFindNewHint" xml:space="preserve">
-    <value>Busca letras en segundo plano para las canciones que se añaden a tu biblioteca. Las canciones con letra sincronizada no se tocan.</value>
-    <comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment>
-  </data>
   <data name="Settings.LyricsAutoFindLibrary" xml:space="preserve">
     <value>Buscar letras para toda la biblioteca</value>
-    <comment>Settings ▸ Lyrics (GitHub #219), SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.LyricsAutoFindLibraryHint" xml:space="preserve">
-    <value>Busca letras en segundo plano para las canciones que aún no tienen letra sincronizada.</value>
     <comment>Settings ▸ Lyrics (GitHub #219), SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsPreferredType.WordSynced" xml:space="preserve">
@@ -12203,10 +12108,6 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   </data>
   <data name="Settings.AnimArtCacheSize" xml:space="preserve">
     <value>Tamaño de la caché</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve">
-    <value>Cuando se llena, se eliminan las portadas más antiguas.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AnimArtCacheUsedOf" xml:space="preserve">
@@ -14899,10 +14800,6 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
     <value>Ocultar la barra lateral hasta pasar el ratón</value>
     <comment>Settings &gt; General &gt; Sidebar toggle (GitHub #233)</comment>
   </data>
-  <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve">
-    <value>Oculta la barra lateral por completo para que las páginas usen todo el ancho. Lleva el puntero al borde izquierdo de la ventana para mostrarla.</value>
-    <comment>Description under Hide sidebar until hover</comment>
-  </data>
   <data name="Count.Tracks" xml:space="preserve">
     <value>{0:N0} pista|{0:N0} pistas</value>
     <comment>Count with plural forms (one|other; see Loc.Plural)</comment>
@@ -15804,10 +15701,6 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   </data>
   <data name="Settings.LyricsPageHideLyrics" xml:space="preserve">
     <value>Ocultar la letra en la página de letras</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.LyricsPageHideLyricsHint" xml:space="preserve">
-    <value>Muestra en su lugar el reproductor centrado, aunque la canción tenga letra.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="LyricShare.Watermark" xml:space="preserve">
