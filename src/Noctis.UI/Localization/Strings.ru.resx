@@ -3441,7 +3441,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.AnimArtAutoFetch" xml:space="preserve"><value>Искать анимированные обложки автоматически</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtAutoFetchDesc" xml:space="preserve"><value>Ищет анимированную обложку при открытии альбома.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtCacheSize" xml:space="preserve"><value>Размер кэша</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve"><value>Когда кэш заполнен, старые обложки удаляются.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve"><value>Для анимированных обложек и видео исполнителей. Когда кэш заполнен, самые старые удаляются.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtCacheUsedOf" xml:space="preserve"><value>Использовано {0} из {1}</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtQuality" xml:space="preserve"><value>Animated Artwork Quality</value><comment>Settings › Appearance › Artwork: quality fetched loops are downloaded at (GitHub #185)</comment></data>
   <data name="Settings.AnimArtQualityDesc" xml:space="preserve"><value>For covers found automatically. 2160p looks sharper but each cover is about 3× the size, so the cache fills sooner. Albums without a 2160p cover get 1080p.</value><comment>Settings › Appearance › Artwork › Animated Artwork Quality hint</comment></data>

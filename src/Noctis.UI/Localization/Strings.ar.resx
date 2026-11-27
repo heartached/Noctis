@@ -8431,7 +8431,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve">
-    <value>عند امتلائها، تُحذف أقدم الأغلفة.</value>
+    <value>للأغلفة المتحركة وفيديوهات الفنانين. عند امتلائه يُحذف الأقدم.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AnimArtCacheUsedOf" xml:space="preserve">

@@ -8431,7 +8431,7 @@ Deezer 和 TIDAL：貼上連結。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve">
-    <value>存滿後會刪除最早的封面。</value>
+    <value>用於動態封面和藝人影片。存滿後會刪除最舊的內容。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AnimArtCacheUsedOf" xml:space="preserve">

@@ -3432,7 +3432,7 @@ Les lignes et leur minutage sont supprimés et une zone de paroles vide s'ouvre 
   <data name="Settings.AnimArtAutoFetch" xml:space="preserve"><value>Rechercher les pochettes animées automatiquement</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtAutoFetchDesc" xml:space="preserve"><value>Recherche la pochette animée d'un album à son ouverture.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtCacheSize" xml:space="preserve"><value>Taille du cache</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve"><value>Une fois plein, les pochettes les plus anciennes sont supprimées.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve"><value>Pour les pochettes animées et les vidéos d’artistes. Une fois plein, les plus anciennes sont supprimées.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtCacheUsedOf" xml:space="preserve"><value>{0} sur {1} utilisés</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtQuality" xml:space="preserve"><value>Qualité des pochettes animées</value><comment>Settings › Appearance › Artwork: quality fetched loops are downloaded at (GitHub #185)</comment></data>
   <data name="Settings.AnimArtQualityDesc" xml:space="preserve"><value>Le 2160p est plus net mais prend environ 3 fois plus de place. Les pochettes sans 2160p utilisent le 1080p.</value><comment>Settings › Appearance › Artwork › Animated Artwork Quality hint</comment></data>

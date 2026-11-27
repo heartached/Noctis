@@ -3433,7 +3433,7 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Settings.AnimArtAutoFetch" xml:space="preserve"><value>Animiertes Artwork automatisch suchen</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtAutoFetchDesc" xml:space="preserve"><value>Sucht das animierte Cover eines Albums, wenn du es öffnest.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtCacheSize" xml:space="preserve"><value>Cache-Größe</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve"><value>Ist er voll, werden die ältesten Cover entfernt.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve"><value>Für animierte Cover und Künstlervideos. Ist er voll, werden die ältesten entfernt.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtCacheUsedOf" xml:space="preserve"><value>{0} von {1} belegt</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtQuality" xml:space="preserve"><value>Animated Artwork Quality</value><comment>Settings › Appearance › Artwork: quality fetched loops are downloaded at (GitHub #185)</comment></data>
   <data name="Settings.AnimArtQualityDesc" xml:space="preserve"><value>For covers found automatically. 2160p looks sharper but each cover is about 3× the size, so the cache fills sooner. Albums without a 2160p cover get 1080p.</value><comment>Settings › Appearance › Artwork › Animated Artwork Quality hint</comment></data>

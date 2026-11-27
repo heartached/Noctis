@@ -3485,7 +3485,7 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Settings.AnimArtAutoFetch" xml:space="preserve"><value>Hareketli Kapakları Otomatik Bul</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtAutoFetchDesc" xml:space="preserve"><value>Bir albümü açtığında hareketli kapağını arar.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtCacheSize" xml:space="preserve"><value>Önbellek Boyutu</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve"><value>Dolduğunda en eski kapaklar silinir.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve"><value>Hareketli kapaklar ve sanatçı videoları için. Dolduğunda en eskiler silinir.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtCacheUsedOf" xml:space="preserve"><value>{1} alanın {0} kadarı kullanılıyor</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtQuality" xml:space="preserve"><value>Hareketli Kapak Kalitesi</value><comment>Settings › Appearance › Artwork: quality fetched loops are downloaded at (GitHub #185)</comment></data>
   <data name="Settings.AnimArtQualityDesc" xml:space="preserve"><value>2160p daha keskin görünür ama yaklaşık 3 kat yer kaplar. 2160p'si olmayan kapaklar 1080p kullanır.</value><comment>Settings › Appearance › Artwork › Animated Artwork Quality hint</comment></data>

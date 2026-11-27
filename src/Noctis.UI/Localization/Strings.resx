@@ -3441,7 +3441,7 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Settings.AnimArtAutoFetch" xml:space="preserve"><value>Find Animated Artwork Automatically</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtAutoFetchDesc" xml:space="preserve"><value>Looks up an album's animated cover when you open it.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtCacheSize" xml:space="preserve"><value>Cache Size</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve"><value>When it's full, the oldest covers are removed.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve"><value>For animated covers and artist videos. When it's full, the oldest are removed.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtCacheUsedOf" xml:space="preserve"><value>{0} of {1} used</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtQuality" xml:space="preserve"><value>Animated Artwork Quality</value><comment>Settings › Appearance › Artwork: quality fetched loops are downloaded at (GitHub #185)</comment></data>
   <data name="Settings.AnimArtQualityDesc" xml:space="preserve"><value>2160p looks sharper but takes about 3x the space. Covers without 2160p use 1080p.</value><comment>Settings › Appearance › Artwork › Animated Artwork Quality hint</comment></data>
