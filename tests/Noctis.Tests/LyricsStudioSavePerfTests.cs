@@ -85,7 +85,7 @@ public class LyricsStudioSavePerfTests : IDisposable
         return sw.Elapsed.TotalMilliseconds;
     }
 
-    private (LyricsStudioViewModel vm, LyricsViewModel lyrics, Track track, Window win) Mount()
+    private (LyricsStudioViewModel vm, LyricsViewModel lyrics, Track track, Window win) Mount(bool saveTtml = false)
     {
         EnsureAppResources();
         var audio = new FakeAudioPlayer();
@@ -103,7 +103,7 @@ public class LyricsStudioSavePerfTests : IDisposable
             SaveTarget = () => LyricsSaveTarget.Sidecar,
         };
         var vm = new LyricsStudioViewModel(new[] { track }, new NoRunEngine(_root), writer, new FakeLibraryService(), player,
-            () => new AppSettings { LyricsStudioLivePreview = true, LyricsStudioWordTimings = true }, _ => { });
+            () => new AppSettings { LyricsStudioLivePreview = true, LyricsStudioWordTimings = true, LyricsStudioSaveTtml = saveTtml }, _ => { });
         vm.Confirm = _ => Task.FromResult(true);
         var panel = new LyricsStudioPanel { DataContext = vm, ShowHeader = false, PreviewLyrics = lyrics };
         var win = new Window { Width = 1600, Height = 900, Content = panel };
@@ -122,10 +122,14 @@ public class LyricsStudioSavePerfTests : IDisposable
         Settle(win);
     }
 
-    [AvaloniaFact]
-    public async Task Save_WithTheSongPlayingAndThePreviewOpen_KeepsTheLinesOnScreen_InsteadOfRebuildingThemAll()
+    // TTML on: the reload reads the .ttml written beside the .elrc (the lyrics page reads it first),
+    // which parses into equivalent lines that are not field-for-field the preview's.
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Save_WithTheSongPlayingAndThePreviewOpen_KeepsTheLinesOnScreen_InsteadOfRebuildingThemAll(bool saveTtml)
     {
-        var (vm, lyrics, track, win) = Mount();
+        var (vm, lyrics, track, win) = Mount(saveTtml);
         try
         {
             await WaitFor(win, () => lyrics.IsPreviewActive);
@@ -148,8 +152,9 @@ public class LyricsStudioSavePerfTests : IDisposable
             var end = Environment.TickCount64 + 10000;
             var ticks = 0;
             var longest = 0.0;
-            // CanSaveTtmlToFile comes on only once the lines of the .elrc on disk are applied (never for a preview).
-            while (!lyrics.CanSaveTtmlToFile && Environment.TickCount64 < end)
+            // The lines of the file on disk applied (the .ttml with TTML on, else the .elrc).
+            var source = saveTtml ? "Sidecar:Ttml" : "Sidecar:Elrc";
+            while (lyrics.LastAppliedSource != source && Environment.TickCount64 < end)
             {
                 // A 10 ms wait that comes back late = the UI thread was busy with posted work.
                 var tick = Stopwatch.StartNew();
@@ -165,12 +170,13 @@ public class LyricsStudioSavePerfTests : IDisposable
             var replaced = lyrics.LyricLines.Count == before.Count
                 ? lyrics.LyricLines.Where((l, k) => !ReferenceEquals(l, before[k])).Count()
                 : lyrics.LyricLines.Count;
-            _out.WriteLine($"save: command {commandMs:0} ms, settled UI work {ui:0} ms, reload done at {reloadMs:0} ms, longest 10 ms tick {longest:0} ms, total {total.Elapsed.TotalMilliseconds:0} ms, {mb:0} MB, lines replaced {replaced} of {before.Count}");
+            _out.WriteLine($"save (ttml={saveTtml}): command {commandMs:0} ms, settled UI work {ui:0} ms, reload done at {reloadMs:0} ms, longest 10 ms tick {longest:0} ms, total {total.Elapsed.TotalMilliseconds:0} ms, {mb:0} MB, lines replaced {replaced} of {before.Count}");
 
             Assert.Equal(LyricsStudioViewModel.StudioStatus.Saved, vm.Queue[0].Status);
             Assert.False(lyrics.IsPreviewActive);
-            Assert.True(lyrics.CanSaveTtmlToFile);
+            Assert.Equal(source, lyrics.LastAppliedSource);
             Assert.True(File.Exists(Path.ChangeExtension(track.FilePath, ".elrc")));
+            Assert.Equal(saveTtml, File.Exists(Path.ChangeExtension(track.FilePath, ".ttml")));
             // The saved file holds the edit, and the lines on screen are the saved ones.
             var nudged = vm.ReviewLines[10].Words[2].Start;
             Assert.Contains(lyrics.LyricLines, l => l.Words?.Any(w => w.Start == nudged) == true);
