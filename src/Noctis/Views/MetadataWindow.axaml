@@ -694,7 +694,8 @@
                                                           StarSize="18"
                                                           StarSpacing="4"
                                                           Cursor="Hand"
-                                                          Foreground="{DynamicResource AccentColorBrush}"
+                                                          Foreground="{DynamicResource StarGoldBrush}"
+                                                          EmptyForeground="{DynamicResource SystemControlForegroundBaseHighBrush}"
                                                           VerticalAlignment="Center" />
                                     <CheckBox Classes="metadata-pill-checkbox"
                                               Content="{loc:T Metadata.NotLiked}"

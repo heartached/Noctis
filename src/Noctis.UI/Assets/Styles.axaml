@@ -36,6 +36,10 @@
                     <SolidColorBrush x:Key="AccentTextBrush" Color="{StaticResource SystemAccentColor}" />
                     <SolidColorBrush x:Key="AccentTextExactBrush" Color="{StaticResource SystemAccentColor}" />
                     <SolidColorBrush x:Key="NowPlayingRowBrush" Color="{StaticResource SystemAccentColor}" />
+                    <!-- Every lit star in the app (ratings, favourite artists, starred playlists): gold,
+                         not the accent (owner 11-27). A deeper gold on the light themes, where the
+                         bright one washed out on white. -->
+                    <SolidColorBrush x:Key="StarGoldBrush" Color="#F5C518" />
                     <SolidColorBrush x:Key="NowPlayingRowForegroundBrush" Color="White" />
 
                     <!-- Custom App Background Colors -->
@@ -202,6 +206,7 @@
                     <SolidColorBrush x:Key="AccentTextBrush" Color="{StaticResource SystemAccentColor}" />
                     <SolidColorBrush x:Key="AccentTextExactBrush" Color="{StaticResource SystemAccentColor}" />
                     <SolidColorBrush x:Key="NowPlayingRowBrush" Color="{StaticResource SystemAccentColor}" />
+                    <SolidColorBrush x:Key="StarGoldBrush" Color="#E0A200" />
                     <!-- Light theme: black row text. App.SetAccent overrides with the same rule. -->
                     <SolidColorBrush x:Key="NowPlayingRowForegroundBrush" Color="Black" />
 
@@ -1057,11 +1062,11 @@
         <Setter Property="Stroke" Value="#E74856" />
         <Setter Property="Fill" Value="#E74856" />
     </Style>
-    <!-- "Unstar from Sidebar": the star filled in the accent, like the playlist page's starred
+    <!-- "Unstar from Sidebar": the star filled in gold, like the playlist page's starred
          star (owner 10-09: a pinned playlist's star reads as on). -->
     <Style Selector="Path.mv2-icon.mv2-pinned">
-        <Setter Property="Stroke" Value="{DynamicResource AccentColorBrush}" />
-        <Setter Property="Fill" Value="{DynamicResource AccentColorBrush}" />
+        <Setter Property="Stroke" Value="{DynamicResource StarGoldBrush}" />
+        <Setter Property="Fill" Value="{DynamicResource StarGoldBrush}" />
     </Style>
     <!-- Quick-action tiles (Play / Shuffle / Play Next / Queue). -->
     <Style Selector="Button.mv2-tile">
@@ -1114,8 +1119,8 @@
         <Setter Property="Background" Value="Transparent" />
     </Style>
     <Style Selector="Button.mv2-star.lit Path.mv2-icon">
-        <Setter Property="Stroke" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-        <Setter Property="Fill" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+        <Setter Property="Stroke" Value="{DynamicResource StarGoldBrush}" />
+        <Setter Property="Fill" Value="{DynamicResource StarGoldBrush}" />
     </Style>
 
     <!-- Sidebar styling -->
@@ -1244,7 +1249,8 @@
         <Setter Property="Foreground" Value="{DynamicResource AccentTextExactBrush}" />
     </Style>
     <Style Selector="ListBox.track-list controls|RatingStars">
-        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource StarGoldBrush}" />
+        <Setter Property="EmptyForeground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
     </Style>
 
     <!-- Now-playing row: Apple-Music-style box on the current track
@@ -1265,8 +1271,11 @@
     <Style Selector="Border.now-playing PathIcon.row-dots-icon">
         <Setter Property="Foreground" Value="{DynamicResource NowPlayingRowForegroundBrush}" />
     </Style>
+    <!-- The playing row is filled with the accent: gold stars on it could not be read on a
+         yellow or orange accent, so they take the row's own text colour here. -->
     <Style Selector="Border.now-playing controls|RatingStars">
         <Setter Property="Foreground" Value="{DynamicResource NowPlayingRowForegroundBrush}" />
+        <Setter Property="EmptyForeground" Value="{DynamicResource NowPlayingRowForegroundBrush}" />
     </Style>
     <!-- The row's playing indicator (EqVisualizer, desktop-only) takes the row foreground
          via a style in src/Noctis/Controls/EqVisualizer.axaml; it cannot be named here. -->

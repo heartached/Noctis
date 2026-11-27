@@ -36,6 +36,10 @@ public class RatingStars : Control
     public static readonly StyledProperty<IBrush?> ForegroundProperty =
         AvaloniaProperty.Register<RatingStars, IBrush?>(nameof(Foreground), Brushes.Gold);
 
+    /// <summary>The unlit stars' colour (drawn at 25%); null takes <see cref="Foreground"/>.</summary>
+    public static readonly StyledProperty<IBrush?> EmptyForegroundProperty =
+        AvaloniaProperty.Register<RatingStars, IBrush?>(nameof(EmptyForeground));
+
     public static readonly StyledProperty<bool> IsInteractiveProperty =
         AvaloniaProperty.Register<RatingStars, bool>(nameof(IsInteractive));
 
@@ -50,7 +54,7 @@ public class RatingStars : Control
 
     static RatingStars()
     {
-        AffectsRender<RatingStars>(ValueProperty, ForegroundProperty, StarSizeProperty, StarSpacingProperty);
+        AffectsRender<RatingStars>(ValueProperty, ForegroundProperty, EmptyForegroundProperty, StarSizeProperty, StarSpacingProperty);
         AffectsMeasure<RatingStars>(StarSizeProperty, StarSpacingProperty);
     }
 
@@ -77,6 +81,12 @@ public class RatingStars : Control
     {
         get => GetValue(ForegroundProperty);
         set => SetValue(ForegroundProperty, value);
+    }
+
+    public IBrush? EmptyForeground
+    {
+        get => GetValue(EmptyForegroundProperty);
+        set => SetValue(EmptyForegroundProperty, value);
     }
 
     /// <summary>When false the control is display-only and ignores pointer input.</summary>
@@ -114,7 +124,7 @@ public class RatingStars : Control
                 else
                 {
                     using (context.PushOpacity(0.25))
-                        context.DrawGeometry(brush, null, StarGeometry);
+                        context.DrawGeometry(EmptyForeground ?? brush, null, StarGeometry);
                 }
             }
         }

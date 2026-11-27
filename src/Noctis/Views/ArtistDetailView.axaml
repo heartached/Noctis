@@ -889,7 +889,7 @@
                                 <ctrl:HeartIcon IsFavorite="{Binding IsFavorite}"
                                                     Glyph="{StaticResource StarIcon}"
                                                     Size="18"
-                                                    OnBrush="{DynamicResource AccentColorBrush}"
+                                                    OnBrush="{DynamicResource StarGoldBrush}"
                                                     OffOpacity="0.7"
                                                     OutlineWhenOff="False"
                                                     ZoomOnToggle="True" />

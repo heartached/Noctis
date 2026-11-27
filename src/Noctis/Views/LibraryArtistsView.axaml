@@ -127,7 +127,7 @@
                                             Margin="0,0,6,6"
                                             IsHitTestVisible="False"
                                             IsVisible="{Binding IsFavorite}">
-                                        <Path Data="{StaticResource StarIcon}" Stretch="Uniform" Width="15" Height="15" Fill="{DynamicResource AccentColorBrush}"
+                                        <Path Data="{StaticResource StarIcon}" Stretch="Uniform" Width="15" Height="15" Fill="{DynamicResource StarGoldBrush}"
                                               HorizontalAlignment="Center"
                                               VerticalAlignment="Center" />
                                     </Border>
@@ -291,7 +291,7 @@
                                                     Margin="0,0,-3,-3"
                                                     IsHitTestVisible="False"
                                                     IsVisible="{Binding IsFavorite}">
-                                                <Path Data="{StaticResource StarIcon}" Stretch="Uniform" Width="9" Height="9" Fill="{DynamicResource AccentColorBrush}"
+                                                <Path Data="{StaticResource StarIcon}" Stretch="Uniform" Width="9" Height="9" Fill="{DynamicResource StarGoldBrush}"
                                                       HorizontalAlignment="Center"
                                                       VerticalAlignment="Center" />
                                             </Border>

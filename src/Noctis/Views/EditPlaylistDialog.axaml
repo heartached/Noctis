@@ -312,7 +312,7 @@
                                     IsFavorite="{Binding IsPinned}"
                                     Glyph="{StaticResource StarIcon}"
                                     Size="16"
-                                    OnBrush="{DynamicResource AccentColorBrush}"
+                                    OnBrush="{DynamicResource StarGoldBrush}"
                                     OffOpacity="0.45"
                                     OutlineWhenOff="False"
                                     ZoomOnToggle="True"
