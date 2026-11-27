@@ -70,11 +70,12 @@ public partial class SettingsViewModel
     public bool HasCommunityCards => CommunityCards.Count > 0;
     private bool IsSearchingPlugins => PluginSearchText.Trim().Length > 0;
     /// <summary>No listing came back at all (not a search miss).</summary>
-    public bool ShowOfficialEmpty => !IsSearchingPlugins && HasNoOfficialPlugins && !_pluginCardOrder.Any(c => c.IsOfficial);
+    public bool ShowOfficialEmpty => !IsSearchingPlugins && HasNoOfficialPlugins && !_pluginCardOrder.Any(c => c.IsOfficialListing);
     /// <summary>Nothing installed or listed from the community yet (not a search miss).</summary>
-    public bool ShowCommunityEmpty => !IsSearchingPlugins && !_pluginCardOrder.Any(c => !c.IsOfficial);
-    /// <summary>A search that matched nothing in either section.</summary>
-    public bool ShowNoPluginMatches => IsSearchingPlugins && OfficialCards.Count == 0 && (!ShowCommunityPlugins || CommunityCards.Count == 0);
+    public bool ShowCommunityEmpty => !IsSearchingPlugins && !_pluginCardOrder.Any(c => !c.IsOfficialListing);
+    /// <summary>A search that matched nothing in either section, nor a Built-in Feature's name.</summary>
+    public bool ShowNoPluginMatches => IsSearchingPlugins && OfficialCards.Count == 0 && (!ShowCommunityPlugins || CommunityCards.Count == 0)
+                                       && !ShowBuiltInFeatures;
     public bool ShowOfficialSection => HasOfficialCards || ShowOfficialEmpty;
     /// <summary>The Community switch off hides the whole section (the host's state, so it doesn't
     /// show while the turn-on confirmation is still open).</summary>
@@ -203,8 +204,9 @@ public partial class SettingsViewModel
     }
 
     /// <summary>
-    /// One card per listing (keyed by id) and one per installed plugin that no listing took (an
-    /// unverified copy of an official id gets its own community card). Cards are reused across
+    /// One card per listing (keyed by id) and one per installed plugin that no listing took. A copy
+    /// with a listed id is that listing's card (an unverified copy of an official plugin shows there
+    /// as a local copy, never as a second, community card). Cards are reused across
     /// refreshes so an open detail page and the card containers survive a list reload.
     /// </summary>
     private void SyncPluginCards()
@@ -248,12 +250,12 @@ public partial class SettingsViewModel
     private void ApplyPluginFilter()
     {
         var terms = PluginSearchText.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
-        SyncList(OfficialCards, _pluginCardOrder.Where(c => c.IsOfficial && c.Matches(terms))
+        SyncList(OfficialCards, _pluginCardOrder.Where(c => c.IsOfficialListing && c.Matches(terms))
             .OrderBy(c => !c.IsInstalled).ToList());
         // Community: listed ones (the list's order), then what the user added (the host's order);
         // installed ones of both first.
-        SyncList(CommunityCards, _pluginCardOrder.Where(c => !c.IsOfficial && c.IsListed && c.Matches(terms))
-            .Concat(_pluginCardOrder.Where(c => !c.IsOfficial && !c.IsListed && c.Matches(terms)))
+        SyncList(CommunityCards, _pluginCardOrder.Where(c => !c.IsOfficialListing && c.IsListed && c.Matches(terms))
+            .Concat(_pluginCardOrder.Where(c => !c.IsOfficialListing && !c.IsListed && c.Matches(terms)))
             .OrderBy(c => !c.IsInstalled).ToList());
         foreach (var name in new[]
                  {
@@ -477,9 +479,15 @@ public sealed partial class PluginCardItem : ObservableObject
     /// <summary>Added by the user (from a file or the folder), not one of the plugins listed in
     /// Noctis: the user may always remove it, on release builds too (owner 10-29).</summary>
     public bool IsUserAdded => Listing is null && Local is not null;
-    /// <summary>The verified mark: an official listing (author Noctis on plugins/index.json). An
-    /// installed zip is never official on its own say, see PluginHost.IsVerifiedOfficial.</summary>
-    public bool IsOfficial => Listing?.IsOfficial == true;
+    /// <summary>An official listing (author Noctis on plugins/index.json): the card sits in the
+    /// Official section, whatever copy is installed.</summary>
+    public bool IsOfficialListing => Listing?.IsOfficial == true;
+    /// <summary>A copy with an official listing's id that was not checked against the list (from a
+    /// file, a hand-copied build, or a zip rebuilt since): "Local copy", no verified mark.</summary>
+    public bool IsLocalCopy => Listing?.HasUnverifiedCopy == true;
+    /// <summary>The verified mark: an official listing, not installed or installed as its verified
+    /// copy. An installed zip is never official on its own say, see PluginHost.IsVerifiedOfficial.</summary>
+    public bool IsOfficial => IsOfficialListing && !IsLocalCopy;
 
     public string Id => Listing?.Entry.Id ?? Local?.Id ?? "";
     public string Name => Listing?.Name ?? Local?.Name ?? "";
@@ -488,6 +496,7 @@ public sealed partial class PluginCardItem : ObservableObject
     /// Official plugins keep author "Noctis" (the trust check) but credit their maker (owner 10-29);
     /// only a verified listing gets that name, never a zip that merely says "Noctis".</summary>
     public string ByLine => IsOfficial ? Loc.T("Plugins.Get.By", PluginTrust.OfficialMaker)
+        : IsLocalCopy ? Loc.T("Plugins.Card.LocalCopy")
         : Author.Trim().Length > 0 ? Loc.T("Plugins.Get.By", Author.Trim()) : Loc.T("Plugins.Card.NoAuthor");
     public string Description => Listing is { Description.Length: > 0 } l ? l.Description : Local?.Description ?? "";
     public bool HasDescription => Description.Length > 0;
@@ -525,17 +534,26 @@ public sealed partial class PluginCardItem : ObservableObject
     [RelayCommand]
     private void TogglePermissions() => IsPermissionsExpanded = !IsPermissionsExpanded;
 
-    /// <summary>The small pill in the card's corner: Update, On, Off, or a problem (Failed, ...).
-    /// Empty for a plugin that is not installed (its card is just the plugin).</summary>
+    /// <summary>The small pill in the card's corner, on every card: Installing, Update, On, Off,
+    /// Blocked (Community plugins off), a problem (Failed, ...), or for a listing not installed yet
+    /// Not installed / Needs newer Noctis / Not for this OS.</summary>
     public string ChipText
     {
         get
         {
             if (Listing is { IsBusy: true }) return Loc.T("Plugins.Card.Installing");
             if (Listing is { State: OfficialPluginState.Update }) return Loc.T("Plugins.Get.Update");
-            if (Installed is not { } p) return "";
+            if (Installed is not { } p)
+                return Listing?.State switch
+                {
+                    null => "",
+                    OfficialPluginState.NeedsNewerApp => Loc.T("Plugins.Card.NeedsNewerApp"),
+                    OfficialPluginState.NotForThisOs => Loc.T("Plugins.Card.NotForThisOs"),
+                    _ => Loc.T("Plugins.Card.NotInstalled"),
+                };
             if (p.ShowStatusBadge) return p.StatusText;
-            return p.IsEnabled && !p.IsRestricted ? Loc.T("Plugins.Card.On") : Loc.T("Plugins.Card.Off");
+            if (p.IsRestricted) return Loc.T("Plugins.Card.Blocked");
+            return p.IsEnabled ? Loc.T("Plugins.Card.On") : Loc.T("Plugins.Card.Off");
         }
     }
     public bool HasChip => ChipText.Length > 0;
@@ -545,6 +563,7 @@ public sealed partial class PluginCardItem : ObservableObject
     /// <summary>What a screen reader says for the card: name, maker and what kind of plugin it is.</summary>
     public string AccessibleName => IsOfficial
         ? Loc.T("Plugins.Card.A11yOfficial", Name)
+        : IsLocalCopy ? Loc.T("Plugins.Card.A11yLocalCopy", Name)
         : Author.Trim().Length > 0 ? Loc.T("Plugins.Card.A11yCommunity", Name, Author.Trim()) : Loc.T("Plugins.Card.A11yCommunityNoAuthor", Name);
 
     // ── Picture ──
@@ -617,6 +636,7 @@ public sealed partial class PluginCardItem : ObservableObject
     private static readonly string[] Derived =
     {
         nameof(Listing), nameof(Local), nameof(Installed), nameof(IsInstalled), nameof(IsUserAdded), nameof(IsListed), nameof(IsOfficial),
+        nameof(IsOfficialListing), nameof(IsLocalCopy),
         nameof(Id), nameof(Name), nameof(Author), nameof(ByLine), nameof(Description), nameof(HasDescription),
         nameof(Version), nameof(VersionText), nameof(HasVersion), nameof(Homepage), nameof(HasHomepage), nameof(IsRestricted), nameof(EnableLine),
         nameof(MetaLine), nameof(HasEnableLine), nameof(HasMoreMenu), nameof(HasHeaderActions),

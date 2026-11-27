@@ -6552,6 +6552,12 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Plugins.Card.A11yOfficial" xml:space="preserve"><value>{0}, Noctis 공식 플러그인</value></data>
   <data name="Plugins.Card.A11yCommunity" xml:space="preserve"><value>{0}, {1}의 커뮤니티 플러그인</value></data>
   <data name="Plugins.Card.A11yCommunityNoAuthor" xml:space="preserve"><value>{0}, 커뮤니티 플러그인</value></data>
+  <data name="Plugins.Card.LocalCopy" xml:space="preserve"><value>로컬 사본 · 확인되지 않음</value></data>
+  <data name="Plugins.Card.A11yLocalCopy" xml:space="preserve"><value>{0}, 로컬 사본, 확인되지 않음</value></data>
+  <data name="Plugins.Card.NotInstalled" xml:space="preserve"><value>설치 안 됨</value></data>
+  <data name="Plugins.Card.NeedsNewerApp" xml:space="preserve"><value>Noctis 업데이트 필요</value></data>
+  <data name="Plugins.Card.NotForThisOs" xml:space="preserve"><value>이 OS 미지원</value></data>
+  <data name="Plugins.Card.Blocked" xml:space="preserve"><value>차단됨</value></data>
   <data name="Plugins.Detail.Back" xml:space="preserve"><value>플러그인</value></data>
   <data name="Plugins.Detail.Version" xml:space="preserve"><value>v{0}</value></data>
   <data name="Plugins.Detail.Homepage" xml:space="preserve"><value>홈페이지 방문</value></data>

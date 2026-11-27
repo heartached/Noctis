@@ -94,8 +94,20 @@ public partial class SettingsViewModel
     /// <summary>The Built-in Features rows, in the order the card shows them.</summary>
     public IReadOnlyList<BuiltInFeatureRow> BuiltInFeatures => _builtInFeatures ??= CreateBuiltInFeatures();
 
-    /// <summary>The card hides while the Plugins search box has text: it searches plugins.</summary>
-    public bool ShowBuiltInFeatures => !IsSearchingPlugins;
+    /// <summary>The rows the card shows: all of them, or while the Plugins search box has text the
+    /// ones whose name matches every word (searching "Discord" finds the built-in switch).</summary>
+    public IReadOnlyList<BuiltInFeatureRow> VisibleBuiltInFeatures
+    {
+        get
+        {
+            if (!IsSearchingPlugins) return BuiltInFeatures;
+            var terms = PluginSearchText.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+            return BuiltInFeatures.Where(r => r.Matches(terms)).ToList();
+        }
+    }
+
+    /// <summary>The card shows unless a search matches none of its rows.</summary>
+    public bool ShowBuiltInFeatures => VisibleBuiltInFeatures.Count > 0;
 
     private IReadOnlyList<BuiltInFeatureRow> CreateBuiltInFeatures()
     {
@@ -132,7 +144,9 @@ public partial class SettingsViewModel
     {
         if (e.PropertyName == nameof(PluginSearchText))
         {
+            OnPropertyChanged(nameof(VisibleBuiltInFeatures));
             OnPropertyChanged(nameof(ShowBuiltInFeatures));
+            OnPropertyChanged(nameof(ShowNoPluginMatches));
             return;
         }
         if (e.PropertyName is nameof(LastFmScrobblingEnabled) or nameof(ListenBrainzScrobblingEnabled))
@@ -213,6 +227,10 @@ public sealed class BuiltInFeatureRow : ObservableObject
     }
 
     internal bool Watches(string propertyName) => _watched.Contains(propertyName);
+
+    /// <summary>The name holds every search word (the Plugins search box).</summary>
+    internal bool Matches(IReadOnlyList<string> terms)
+        => terms.All(t => Title.Contains(t, StringComparison.CurrentCultureIgnoreCase));
 
     internal void Refresh()
     {

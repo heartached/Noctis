@@ -154,6 +154,30 @@ public class PluginsGridTests : IDisposable
         Assert.True(m.Vm.ShowCommunitySection);
     }
 
+    /// <summary>The corner pill was a white wash (#1FFFFFFF): on the light theme's pale cards the
+    /// "Off" pill had no visible shape (owner 11-26 review shots).</summary>
+    [AvaloniaFact]
+    public async Task Chip_HasAVisiblePillOnTheLightTheme()
+    {
+        using var m = Mount();
+        Publish(m, File.ReadAllBytes(Zip("official.zip", OfficialId, "1.0.0", "Noctis")));
+        await m.Vm.LoadOfficialPluginsAsync();
+        m.Vm.SelectedSettingsTab = SettingsViewModel.TabPlugins;
+        var view = new SettingsView { DataContext = m.Vm };
+        var window = new Window { Width = 1100, Height = 900, Content = view, RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Light };
+        try
+        {
+            window.Show();
+            Pump();
+            window.UpdateLayout();
+            var chip = view.FindControl<ItemsControl>("OfficialPluginsGrid")!.GetVisualDescendants().OfType<Border>()
+                .First(b => b.Classes.Contains("plugin-chip") && b.IsEffectivelyVisible);
+            var color = Assert.IsAssignableFrom<ISolidColorBrush>(chip.Background).Color;
+            Assert.True(color.A > 0 && color.R < 128, $"chip background {color} on the light theme");
+        }
+        finally { window.Close(); }
+    }
+
     [AvaloniaFact]
     public async Task VerifiedMark_ShowsOnOfficialCardsAndPagesOnly()
     {
@@ -189,8 +213,8 @@ public class PluginsGridTests : IDisposable
             // Owner 10-29: the mark says exactly this, to the mouse and to a screen reader.
             foreach (var mark in Marks(officialGrid).Append(pageMark))
             {
-                Assert.Equal("Official Noctis Plugin", ToolTip.GetTip(mark));
-                Assert.Equal("Official Noctis Plugin", AutomationProperties.GetName(mark));
+                Assert.Equal(Loc.T("Plugins.Card.Verified"), ToolTip.GetTip(mark));
+                Assert.Equal(Loc.T("Plugins.Card.Verified"), AutomationProperties.GetName(mark));
             }
 
             m.Vm.OpenPluginCardCommand.Execute(m.Vm.CommunityCards.Single(c => c.Id == "dev.test.hand"));
@@ -216,15 +240,19 @@ public class PluginsGridTests : IDisposable
         Assert.True(await m.Vm.InstallPluginPackageAsync(spoof));
 
         var listing = Assert.Single(m.Vm.OfficialPlugins, o => o.Entry.Id == OfficialId);
-        Assert.Null(listing.Installed);
+        var copy = m.Host.FindById(OfficialId)!;
+        // One card for the id (owner 11-26: no second "by Noctis" community card): the official
+        // listing's, holding the copy as a local copy, without the verified mark.
+        Assert.Same(copy, listing.Installed);
         Assert.True(listing.HasUnverifiedCopy);
         Assert.Equal(Loc.T("Plugins.Get.Replace"), listing.ButtonText);
         Assert.True(listing.CanClick && listing.IsPrimary && listing.ShowButton);
-        var spoofCard = Assert.Single(m.Vm.CommunityCards, c => c.Id == OfficialId);
+        Assert.DoesNotContain(m.Vm.CommunityCards, c => c.Id == OfficialId);
+        var spoofCard = Assert.Single(m.Vm.OfficialCards);
         Assert.False(spoofCard.IsOfficial);
-        Assert.False(m.Vm.OfficialCards.Single().IsInstalled);
+        Assert.True(spoofCard.IsLocalCopy && spoofCard.IsInstalled && spoofCard.ShowInlineButton);
+        Assert.Equal(Loc.T("Plugins.Card.LocalCopy"), spoofCard.ByLine);
         Assert.Empty(_box.Settings.VerifiedOfficialPlugins);
-        var copy = m.Host.FindById(OfficialId)!;
         Assert.False(m.Host.IsVerifiedOfficial(copy, listing.Entry));
 
         // A folder dropped in by hand, or a forged record for another version, does not count either.
@@ -240,6 +268,8 @@ public class PluginsGridTests : IDisposable
         Assert.False(listing.ShowButton); // the page's switch stands in for "Installed"
         Assert.DoesNotContain(m.Vm.CommunityCards, c => c.Id == OfficialId);
         Assert.True(m.Vm.OfficialCards.Single().IsInstalled);
+        Assert.True(m.Vm.OfficialCards.Single().IsOfficial);
+        Assert.False(m.Vm.OfficialCards.Single().IsLocalCopy);
         Assert.Equal("1.0.0|" + listing.Entry.Sha256, _box.Settings.VerifiedOfficialPlugins[OfficialId]);
 
         // Remove drops the record; the official zip installed by hand is verified again (same SHA).
@@ -263,8 +293,83 @@ public class PluginsGridTests : IDisposable
 
         Assert.Single(m.Host.Plugins);
         Assert.Empty(_box.Settings.VerifiedOfficialPlugins);
-        Assert.Contains(m.Vm.CommunityCards, c => c.Id == OfficialId);
+        Assert.DoesNotContain(m.Vm.CommunityCards, c => c.Id == OfficialId);
+        Assert.True(Assert.Single(m.Vm.OfficialCards).IsLocalCopy);
         Assert.True(m.Vm.OfficialPlugins.Single(o => o.Entry.Id == OfficialId).HasUnverifiedCopy);
+    }
+
+    /// <summary>
+    /// Owner 11-26: A-B Loop, Album Roulette and Add from YouTube showed twice, under Official
+    /// ("by heartached", no badge) and again under Community ("by Noctis", Off). Their folders were
+    /// copies with no matching install-time check on record (a hand-copied build; a zip rebuilt at
+    /// the same version): one card per id now, in the Official section, flagged as a local copy.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task Duplicates_AnUnverifiedCopyOfAnOfficialId_ShowsOnce_AsALocalCopy_CountsMatch()
+    {
+        using var m = Mount();
+        var officialZip = File.ReadAllBytes(Zip("official.zip", OfficialId, "1.0.0", "Noctis"));
+        Publish(m, officialZip);
+        // A build copied into the folder by hand (another folder name, no install-time record).
+        _box.WriteFolder("hand-copied-build", PluginSandbox.Manifest(id: OfficialId, name: "Test Plugin", version: "1.0.0", author: "Noctis"),
+            ("Test.Plugin.dll", new byte[] { 9 }));
+        m.Host.LoadAll();
+        await m.Vm.LoadOfficialPluginsAsync();
+
+        var all = m.Vm.OfficialCards.Concat(m.Vm.CommunityCards)
+            .Where(c => string.Equals(c.Id, OfficialId, StringComparison.OrdinalIgnoreCase)).ToList();
+        var card = Assert.Single(all);
+        Assert.Contains(card, m.Vm.OfficialCards);
+        Assert.True(card.IsInstalled && card.IsLocalCopy && card.IsOfficialListing);
+        Assert.False(card.IsOfficial); // no verified mark
+        Assert.Equal(Loc.T("Plugins.Card.LocalCopy"), card.ByLine);
+        Assert.Equal(Loc.T("Plugins.Card.A11yLocalCopy", "Test Plugin"), card.AccessibleName);
+        Assert.True(card.HasChip); // its own On/Off, like any installed plugin
+        // The counts are the cards shown.
+        Assert.Equal("1", m.Vm.OfficialCountText);
+        Assert.Equal(m.Vm.CommunityCards.Count.ToString(), m.Vm.CommunityCountText);
+        Assert.Equal(new[] { "dev.community.listed" }, m.Vm.CommunityCards.Select(c => c.Id));
+        // Still a community plugin for running: the Community switch off blocks it, and the card
+        // (in the Official section, which stays) says so instead of disappearing.
+        Assert.False(m.Host.IsTrustedOfficial(m.Host.FindById(OfficialId)!));
+        m.Host.SetCommunityPluginsEnabled(false);
+        Assert.True(m.Vm.ShowOfficialSection);
+        Assert.Contains(card, m.Vm.OfficialCards);
+        Assert.Equal(Loc.T("Plugins.Card.Blocked"), card.ChipText);
+
+        // A copy installed from the list whose zip was rebuilt at the same version since (A-B Loop,
+        // 8c402942): the list's hash wins, so it is a local copy too, still the one card.
+        m.Host.SetCommunityPluginsEnabled(true);
+        _box.Settings.VerifiedOfficialPlugins[OfficialId] = "1.0.0|" + new string('0', 64);
+        m.Host.LoadAll();
+        await m.Vm.LoadOfficialPluginsAsync();
+        Assert.Single(m.Vm.OfficialCards.Concat(m.Vm.CommunityCards), c => c.Id == OfficialId);
+        Assert.True(m.Vm.OfficialCards.Single().IsLocalCopy);
+    }
+
+    /// <summary>Every card has a state pill (owner 11-26: three official cards had none because
+    /// they were not installed): Not installed / Needs newer Noctis / On / Off.</summary>
+    [AvaloniaFact]
+    public async Task Chips_EveryCardSaysWhatItIs()
+    {
+        using var m = Mount();
+        var zip = File.ReadAllBytes(Zip("official.zip", OfficialId, "1.0.0", "Noctis"));
+        m.Server[OfficialUrl] = zip;
+        m.Server[PluginCatalog.DefaultUrl] = System.Text.Encoding.UTF8.GetBytes(PluginCatalogTests.Index(
+            PluginCatalogTests.Entry(id: OfficialId, name: "Test Plugin", version: "1.0.0", download: OfficialUrl,
+                sha256: PluginCatalogTests.Hash(zip), size: zip.LongLength, minAppVersion: null),
+            PluginCatalogTests.Entry(id: "dev.test.future", name: "Future", version: "1.0.0", download: OfficialUrl, minAppVersion: "9.0.0")));
+        await m.Vm.LoadOfficialPluginsAsync();
+
+        var card = m.Vm.OfficialCards.Single(c => c.Id == OfficialId);
+        Assert.Equal(Loc.T("Plugins.Card.NotInstalled"), card.ChipText);
+        Assert.False(card.ChipIsAccent);
+        Assert.Equal(Loc.T("Plugins.Card.NeedsNewerApp"), m.Vm.OfficialCards.Single(c => c.Id == "dev.test.future").ChipText);
+        Assert.All(m.Vm.OfficialCards.Concat(m.Vm.CommunityCards), c => Assert.True(c.HasChip));
+
+        await m.Vm.InstallOfficialPluginAsync(m.Vm.OfficialPlugins.Single(o => o.Entry.Id == OfficialId));
+        Assert.True(card.IsInstalled && card.IsOfficial);
+        Assert.Contains(card.ChipText, new[] { Loc.T("Plugins.Card.On"), Loc.T("Plugins.Card.Off"), card.Installed!.StatusText });
     }
 
     [Fact]

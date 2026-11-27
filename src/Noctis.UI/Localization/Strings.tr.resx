@@ -2564,6 +2564,12 @@ Yıllar: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar se
   <data name="Plugins.Card.A11yOfficial" xml:space="preserve"><value>{0}, Noctis'in resmi eklentisi</value></data>
   <data name="Plugins.Card.A11yCommunity" xml:space="preserve"><value>{0}, topluluk eklentisi, yapan: {1}</value></data>
   <data name="Plugins.Card.A11yCommunityNoAuthor" xml:space="preserve"><value>{0}, topluluk eklentisi</value></data>
+  <data name="Plugins.Card.LocalCopy" xml:space="preserve"><value>Yerel kopya · doğrulanmadı</value></data>
+  <data name="Plugins.Card.A11yLocalCopy" xml:space="preserve"><value>{0}, yerel kopya, doğrulanmadı</value></data>
+  <data name="Plugins.Card.NotInstalled" xml:space="preserve"><value>Yüklü değil</value></data>
+  <data name="Plugins.Card.NeedsNewerApp" xml:space="preserve"><value>Noctis güncellenmeli</value></data>
+  <data name="Plugins.Card.NotForThisOs" xml:space="preserve"><value>Bu işletim sistemi için değil</value></data>
+  <data name="Plugins.Card.Blocked" xml:space="preserve"><value>Engellendi</value></data>
   <data name="Plugins.Detail.Back" xml:space="preserve"><value>Eklentiler</value></data>
   <data name="Plugins.Detail.Version" xml:space="preserve"><value>v{0}</value></data>
   <data name="Plugins.Detail.Homepage" xml:space="preserve"><value>Ana sayfayı ziyaret et</value></data>

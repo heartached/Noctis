@@ -1759,7 +1759,8 @@
         <Style Selector="Border.plugin-chip">
             <Setter Property="CornerRadius" Value="999"/>
             <Setter Property="Padding" Value="8,2"/>
-            <Setter Property="Background" Value="#1FFFFFFF"/>
+            <!-- The count badge's brush: a white wash vanished on the light theme's cards. -->
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
         </Style>
         <Style Selector="Border.plugin-chip > TextBlock">
             <Setter Property="Opacity" Value="0.75"/>
@@ -9239,14 +9240,14 @@
 
             <!-- Built-in Features (Discord, Mistery 11-02): parts of Noctis behind one switch each, like
                  plugins that ship on. A row is the feature's own setting where one existed (Discord,
-                 scrobbling, Inbox, animated artwork, NEW badge). Hidden while searching plugins. -->
+                 scrobbling, Inbox, animated artwork, NEW badge). While searching, only the rows whose name matches. -->
             <StackPanel x:Name="BuiltInFeaturesSection" IsVisible="{Binding ShowBuiltInFeatures}">
                 <StackPanel Spacing="2" Margin="4,12,0,10">
                     <TextBlock Classes="section-title" Text="{loc:T Features.Section}" Margin="0" TextWrapping="Wrap"/>
                     <TextBlock Text="{loc:T Features.SectionLine}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                 </StackPanel>
                 <Border Classes="setting-card group-card" Margin="0,0,0,4">
-                    <ItemsControl x:Name="BuiltInFeaturesList" Classes="row-list" ItemsSource="{Binding BuiltInFeatures}">
+                    <ItemsControl x:Name="BuiltInFeaturesList" Classes="row-list" ItemsSource="{Binding VisibleBuiltInFeatures}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:BuiltInFeatureRow">
                                 <Border Classes="setting-row">

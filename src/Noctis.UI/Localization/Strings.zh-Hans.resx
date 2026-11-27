@@ -6552,6 +6552,12 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Plugins.Card.A11yOfficial" xml:space="preserve"><value>{0}，Noctis 官方插件</value></data>
   <data name="Plugins.Card.A11yCommunity" xml:space="preserve"><value>{0}，{1} 制作的社区插件</value></data>
   <data name="Plugins.Card.A11yCommunityNoAuthor" xml:space="preserve"><value>{0}，社区插件</value></data>
+  <data name="Plugins.Card.LocalCopy" xml:space="preserve"><value>本地副本 · 未验证</value></data>
+  <data name="Plugins.Card.A11yLocalCopy" xml:space="preserve"><value>{0}，本地副本，未验证</value></data>
+  <data name="Plugins.Card.NotInstalled" xml:space="preserve"><value>未安装</value></data>
+  <data name="Plugins.Card.NeedsNewerApp" xml:space="preserve"><value>需更新 Noctis</value></data>
+  <data name="Plugins.Card.NotForThisOs" xml:space="preserve"><value>不适用于此系统</value></data>
+  <data name="Plugins.Card.Blocked" xml:space="preserve"><value>已阻止</value></data>
   <data name="Plugins.Detail.Back" xml:space="preserve"><value>插件</value></data>
   <data name="Plugins.Detail.Version" xml:space="preserve"><value>v{0}</value></data>
   <data name="Plugins.Detail.Homepage" xml:space="preserve"><value>访问主页</value></data>
