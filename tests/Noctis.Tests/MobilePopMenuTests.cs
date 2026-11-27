@@ -166,9 +166,9 @@ public class MobilePopMenuTests(ITestOutputHelper output)
 
     /// <summary>The phone's pop (tester 11-04): the card starts at <see cref="PopMenu.PopScale"/>
     /// with its frost and the dim faded out, holds that pose until it has been drawn, then springs
-    /// out of the ⋯ button (most of the way at once, a hair past, settled), the frost and the dim
-    /// in together; the close is quicker and heads back into the button, inert at once, hiding
-    /// the card after it.</summary>
+    /// out of the ⋯ button (most of the way at once, a hair past, settled), the frost whole at once
+    /// and the rows and the dim fading in over it; the close is quicker and heads back into the
+    /// button, inert at once, hiding the card after it.</summary>
     [AvaloniaFact]
     public void TheMenu_GrowsOutOfTheButton_AndShrinksBackIntoIt_Smoothly()
     {
@@ -197,9 +197,11 @@ public class MobilePopMenuTests(ITestOutputHelper output)
         // the slow first frame. (Headless, the dispatcher runs those frames as jobs.)
         Assert.Null(card.Transitions);
 
+        var body = menu.FindControl<ScrollViewer>("Body")!;
         var scales = new List<double> { PopMenu.PopScale };
         var fades = new List<double> { 0 };
         var dims = new List<double> { 0 };
+        var rows = new List<double> { body.Opacity };
         var checkedTransitions = false;
         for (var i = 0; i < 40; i++)
         {
@@ -207,19 +209,27 @@ public class MobilePopMenuTests(ITestOutputHelper output)
             scales.Add(ScaleOf(card));
             fades.Add(glass.Fade);
             dims.Add(dim.Opacity);
+            rows.Add(body.Opacity);
             if (!checkedTransitions && card.Transitions is { Count: > 0 })
             {
                 checkedTransitions = true;
                 var grow = Assert.IsType<TransformOperationsTransition>(Assert.Single(card.Transitions));
                 Assert.Equal(TimeSpan.FromMilliseconds(PopMenu.PopOpenMs), grow.Duration);
                 Assert.IsType<PopSpringEase>(grow.Easing);
-                var frost = Assert.IsType<DoubleTransition>(Assert.Single(glass.Transitions!));
+                var content = Assert.IsType<DoubleTransition>(Assert.Single(body.Transitions!));
                 var shade = Assert.IsType<DoubleTransition>(Assert.Single(dim.Transitions!));
-                Assert.Equal(TimeSpan.FromMilliseconds(PopMenu.PopFadeMs), frost.Duration);
-                Assert.Equal(frost.Duration, shade.Duration);                // the dim fades with the frost
-                Assert.Same(frost.Easing, shade.Easing);
+                Assert.Equal(TimeSpan.FromMilliseconds(PopMenu.PopFadeMs), content.Duration);
+                Assert.Equal(content.Duration, shade.Duration);              // the dim fades with the rows
+                Assert.Same(content.Easing, shade.Easing);
             }
         }
+        // Beta 6: the glass is whole on the first frame anything of the card shows; the rows fade
+        // in over it, never ahead of it (a half-strength frost under readable rows read as the
+        // glass arriving late).
+        Assert.All(fades, f => Assert.True(f == 0 || f == 1, $"glass faded in: {string.Join(" ", fades)}"));
+        for (var i = 0; i < rows.Count; i++)
+            Assert.True(fades[i] >= rows[i], $"frame {i}: rows {rows[i]:0.000} over glass {fades[i]:0.000}");
+        Assert.Contains(rows, r => r > 0.02 && r < 0.98);                 // the rows still glide in
         Assert.True(checkedTransitions);
         output.WriteLine("open scale: " + string.Join(" ", scales.Select(v => v.ToString("0.0000"))));
         output.WriteLine("open fade:  " + string.Join(" ", fades.Select(v => v.ToString("0.000"))));
@@ -243,15 +253,22 @@ public class MobilePopMenuTests(ITestOutputHelper output)
         Assert.Equal(origin, card.RenderTransformOrigin.ToPixels(card.Bounds.Size));   // back into the button
         var closing = new List<double>();
         var closingFade = new List<double>();
+        var closingRows = new List<double>();
         for (var i = 0; i < (int)(PopMenu.PopCloseMs / 16) + 8 && menu.IsVisible; i++)
         {
             Pump(1);
+            if (!menu.IsVisible) break;
             closing.Add(ScaleOf(card));
             closingFade.Add(glass.Fade);
+            closingRows.Add(body.Opacity);
         }
         output.WriteLine("close scale: " + string.Join(" ", closing.Select(v => v.ToString("0.000"))));
         output.WriteLine("close fade:  " + string.Join(" ", closingFade.Select(v => v.ToString("0.000"))));
+        output.WriteLine("close rows:  " + string.Join(" ", closingRows.Select(v => v.ToString("0.000"))));
         Assert.Contains(closing, s => s > PopMenu.PopCloseScale + 1e-3 && s < 1 - 1e-3);  // shrinks through the frames
+        // The rows fade out on the whole glass, which goes with the card: no faded glass lingers.
+        Assert.All(closingFade, f => Assert.Equal(1, f));
+        Assert.Contains(closingRows, r => r > 0.02 && r < 0.98);
         Assert.False(menu.IsVisible);
         window.Close();
     }
@@ -364,7 +381,7 @@ public class MobilePopMenuTests(ITestOutputHelper output)
             var fade = PopMenu.PopFadeEase.Ease(Math.Min(1, t * PopMenu.PopOpenMs / PopMenu.PopFadeMs));
             var scale = PopMenu.PopScale + (1 - PopMenu.PopScale) * spring.Ease(t);
             foreach (var c in new Control[] { card, glass, body, dim }) c.Transitions = null;
-            glass.Fade = fade;
+            glass.Fade = 1;   // whole from the first frame (PopIn)
             body.Opacity = fade;
             dim.Opacity = fade;
             card.RenderTransform = new PopPose(scale, 0).Transform();

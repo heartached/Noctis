@@ -376,7 +376,8 @@
             </controls:GlassPanel>
         </Grid>
 
-        <!-- Select mode's bar (Select All, "3 Selected", Done) in the buttons' place. -->
+        <!-- Select mode's bar (Select All, "3 Selected", Done) in the buttons' place, below the
+             status bar with them (HeroChrome sets both margins). -->
         <views:SelectionHeader Name="SelectBar" VerticalAlignment="Top" Margin="16,6,16,0" DataContext="{Binding Selection}" />
     </Panel>
 </UserControl>

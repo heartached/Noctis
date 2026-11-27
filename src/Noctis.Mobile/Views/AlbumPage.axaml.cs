@@ -34,7 +34,7 @@ public partial class AlbumPage : UserControl
         InitializeComponent();
         _description = new DescriptionFold(DescriptionText, DescriptionClip, DescriptionFolded, DescriptionFoldedHead,
             DescriptionFoldedTail, DescriptionMore, DescriptionLines);
-        _chrome = new HeroChrome(this, Hero, HeroFade, TopFade, TopScrim, TopBar, PageBody, "Album", UpdateScrollChrome, _description.SetMoreFade);
+        _chrome = new HeroChrome(this, Hero, HeroFade, TopFade, TopScrim, TopBar, PageBody, "Album", UpdateScrollChrome, _description.SetMoreFade, SelectBar);
         AlbumScroll.SizeChanged += (_, _) => LayoutHero();
         AlbumScroll.ScrollChanged += (_, _) => UpdateScrollChrome();
         AlbumTitle.SizeChanged += (_, _) => UpdateScrollChrome();

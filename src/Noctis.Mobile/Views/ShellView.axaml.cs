@@ -28,6 +28,7 @@ public partial class ShellView : UserControl
     public ShellView()
     {
         ScrollBarFade.Install();
+        PressOpacity.Install();
         InitializeComponent();
         // The TopLevel pads its main view by the safe area by default; the shell pads each
         // layer itself (SafeArea) so the overlays' backgrounds run under the system bars,
