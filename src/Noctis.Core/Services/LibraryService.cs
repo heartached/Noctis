@@ -1226,36 +1226,55 @@ public class LibraryService : ILibraryService
     // and two passes at once would just read the same files twice.
     private int _artworkBackfillActive;
 
+    // Set by every request. A pass walks the list of missing covers it took when it
+    // started, so a request arriving while it runs used to be dropped: Clear Artwork Cache
+    // during the startup heal deleted the covers that pass had already written and its own
+    // heal returned at the guard, leaving those albums bare until the next scan. The pass
+    // running now goes round once more instead, over a fresh list.
+    private int _artworkBackfillRequested;
+
     /// <inheritdoc />
     public async Task<int> BackfillMissingArtworkAsync(CancellationToken ct = default)
     {
-        if (Interlocked.CompareExchange(ref _artworkBackfillActive, 1, 0) != 0)
-            return 0;
-        try
+        Interlocked.Exchange(ref _artworkBackfillRequested, 1);
+        var total = 0;
+        // Re-checked after the guard is released: a request that found it held just before
+        // the release is otherwise answered by nobody.
+        while (Volatile.Read(ref _artworkBackfillRequested) == 1
+               && Interlocked.CompareExchange(ref _artworkBackfillActive, 1, 0) == 0)
         {
-            var tracks = _tracks;
-            if (tracks.Count == 0) return 0;
-
-            using var linked = CancellationTokenSource.CreateLinkedTokenSource(_shutdownCts.Token, ct);
-            var extracted = await ExtractArtworkProgressivelyAsync(tracks, linked.Token);
-            if (extracted > 0 && !linked.Token.IsCancellationRequested)
+            try
             {
-                // Persist the rebuilt indexes: the launch fast path restores each
-                // album's ArtworkPath straight from the index cache without checking
-                // disk, so an unpersisted heal would look lost again on next start.
-                await RebuildIndexesAsync(reuseUnchangedAlbums: true);
-                LibraryUpdated?.Invoke(this, EventArgs.Empty);
+                while (Interlocked.Exchange(ref _artworkBackfillRequested, 0) == 1)
+                {
+                    var tracks = _tracks;
+                    if (tracks.Count == 0) continue;
+
+                    using var linked = CancellationTokenSource.CreateLinkedTokenSource(_shutdownCts.Token, ct);
+                    var extracted = await ExtractArtworkProgressivelyAsync(tracks, linked.Token);
+                    total += extracted;
+                    if (extracted > 0 && !linked.Token.IsCancellationRequested)
+                    {
+                        // Persist the rebuilt indexes: the launch fast path restores each
+                        // album's ArtworkPath straight from the index cache without checking
+                        // disk, so an unpersisted heal would look lost again on next start.
+                        await RebuildIndexesAsync(reuseUnchangedAlbums: true);
+                        LibraryUpdated?.Invoke(this, EventArgs.Empty);
+                    }
+                    // Cancelled: a request still pending is left for the next caller.
+                    if (linked.Token.IsCancellationRequested) return total;
+                }
             }
-            return extracted;
+            catch (OperationCanceledException)
+            {
+                return total;
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _artworkBackfillActive, 0);
+            }
         }
-        catch (OperationCanceledException)
-        {
-            return 0;
-        }
-        finally
-        {
-            Interlocked.Exchange(ref _artworkBackfillActive, 0);
-        }
+        return total;
     }
 
     public async Task ImportFilesAsync(IEnumerable<string> filePaths, CancellationToken ct = default, IProgress<int>? progress = null)

@@ -199,6 +199,65 @@ public class EmbeddedArtworkBackfillTests : IDisposable
         }
     }
 
+    /// <summary>
+    /// Holds the second cover read of the session until released, so a test can act while a
+    /// pass is part-way through its list (one album written, the next one being read).
+    /// </summary>
+    private sealed class GatedArtMetadata : MetadataService, IMetadataService
+    {
+        public readonly ManualResetEventSlim SecondReadStarted = new();
+        public readonly ManualResetEventSlim Release = new();
+        private int _reads;
+
+        byte[]? IMetadataService.ExtractAlbumArt(string filePath)
+        {
+            if (Interlocked.Increment(ref _reads) == 2)
+            {
+                SecondReadStarted.Set();
+                Release.Wait(TimeSpan.FromSeconds(30));
+            }
+            return EmbeddedBytes;
+        }
+    }
+
+    [Fact]
+    public async Task ClearDuringTheStartupHeal_EveryAlbumGetsItsTagCoverBackWithoutARescan()
+    {
+        // 11-27: Clear Artwork Cache while the startup heal was running. The heal had already
+        // written the first album's cover; the clear deleted it and asked for a heal of its
+        // own, which returned at the single-flight guard. The running heal only walked the
+        // list it took at its start, so that album stayed bare until the next scan.
+        var a = MakeTrack(CreateWavWithEmbeddedArt("a.wav", "Album A"), "Album A");
+        var b = MakeTrack(CreateWavWithEmbeddedArt("b.wav", "Album B"), "Album B");
+        var persistence = new ArtworkTestPersistence { LibraryTracks = new List<Track> { a, b } };
+        var metadata = new GatedArtMetadata();
+        var library = new LibraryService(metadata, persistence,
+            new SqliteLibraryIndexService(persistence), new FakeAuditTrail());
+        using (persistence)
+        {
+            await library.LoadAsync();
+
+            // The startup heal: one album's cover written, the other one being read.
+            Assert.True(metadata.SecondReadStarted.Wait(TimeSpan.FromSeconds(30)), "the startup heal never read a second cover");
+            var artDir = Path.Combine(persistence.DataDirectory, "artwork");
+            for (var i = 0; i < 300 && Directory.GetFiles(artDir).Length == 0; i++)
+                await Task.Delay(10);
+            Assert.Single(Directory.GetFiles(artDir));
+
+            // Clear Artwork Cache: the folder is emptied, then a heal is asked for.
+            foreach (var f in Directory.GetFiles(artDir)) File.Delete(f);
+            await library.BackfillMissingArtworkAsync();
+
+            metadata.Release.Set();
+            await library.BackgroundInit;
+
+            Assert.True(File.Exists(persistence.GetArtworkPath(a.AlbumId)), "Album A's tag cover was not taken back");
+            Assert.True(File.Exists(persistence.GetArtworkPath(b.AlbumId)), "Album B's tag cover was not taken back");
+            Assert.All(library.Albums.Where(x => x.Id == a.AlbumId || x.Id == b.AlbumId),
+                album => Assert.NotNull(album.ArtworkPath));
+        }
+    }
+
     private sealed class ArtworkTestPersistence : IPersistenceService, IDisposable
     {
         public string DataDirectory { get; }
