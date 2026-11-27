@@ -258,4 +258,82 @@ public class ClearArtworkCacheLibraryTests : IDisposable
         Assert.False(File.Exists(plainArt));
         Assert.All(library.Tracks.Where(t => t.Album == "Plain Album"), t => Assert.Null(t.AlbumArtworkPath));
     }
+
+    /// <summary>Deezer stand-in: every artist search finds one account whose photo downloads.</summary>
+    private sealed class PortraitDeezer : HttpMessageHandler
+    {
+        public int PhotoDownloads;
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            var url = request.RequestUri!.ToString();
+            if (url.StartsWith("https://api.deezer.com/search/artist", StringComparison.Ordinal))
+                return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                {
+                    Content = new StringContent("""{ "data": [ { "id": 7, "name": "Nova", "nb_fan": 5, "picture_xl": "https://images.example/nova.jpg" } ] }""",
+                        System.Text.Encoding.UTF8, "application/json")
+                });
+            if (request.RequestUri.Host == "images.example")
+            {
+                Interlocked.Increment(ref PhotoDownloads);
+                return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                {
+                    Content = new ByteArrayContent(PortraitBytes) { Headers = { ContentType = new("image/jpeg") } }
+                });
+            }
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.NotFound));
+        }
+    }
+
+    // JPEG magic (the download's image check), and over the 5 KB placeholder purge.
+    private static readonly byte[] PortraitBytes =
+        new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 }.Concat(Enumerable.Repeat((byte)0x42, 8000)).ToArray();
+
+    private static void PumpUntil(Func<bool> done, double seconds = 10)
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        while (!done() && sw.Elapsed < TimeSpan.FromSeconds(seconds))
+        {
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Thread.Sleep(10);
+        }
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+    }
+
+    [AvaloniaFact]
+    public async Task Clear_WithAnArtistPageOpen_ThePageFetchesItsPortraitAgain()
+    {
+        // 11-27: Settings opens over the page. With an artist page behind it, Clear Artwork
+        // Cache left the hero on the placeholder until the page was closed and opened again:
+        // the page held the deleted file's path and nothing told it to look the photo up again.
+        var persistence = new PersistenceService(_root);
+        var handler = new PortraitDeezer();
+        var images = new ArtistImageService(new HttpClient(handler), persistence);
+        await images.PlaceholderPurge;
+        var portrait = images.GetCachedImagePath(LibraryService.ComputeArtistId("Nova"));
+        File.WriteAllBytes(portrait, PortraitBytes);
+
+        var lib = new FakeLibraryService();
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, new TestPersistenceService(), new FakeAnimatedCoverService());
+        var page = new ArtistDetailViewModel("Nova", lib, player, images: images);
+        Assert.Equal(portrait, page.ImagePath);
+
+        var shown = new List<string?>();
+        page.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ArtistDetailViewModel.ImagePath)) shown.Add(page.ImagePath);
+        };
+        var settings = new SettingsViewModel(persistence, lib, new NoOpPlayHistoryService()) { ArtistImagesForClear = images };
+        await settings.LoadAsync();
+        await settings.ClearArtworkCacheAsync();
+        Assert.False(File.Exists(portrait));
+
+        PumpUntil(() => File.Exists(portrait) && shown.LastOrDefault() == portrait);
+
+        Assert.True(File.Exists(portrait), "the open artist page never fetched its photo again");
+        Assert.Equal(1, handler.PhotoDownloads);
+        // Bounced through null: the image control reloads the same path only on a change.
+        Assert.Equal(new string?[] { null, portrait }, shown);
+        page.Dispose();
+    }
 }

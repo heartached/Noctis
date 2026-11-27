@@ -242,10 +242,11 @@ public partial class SettingsViewModel
     {
         var root = _persistence.DataDirectory;
         var artworkDir = Path.Combine(root, ArtworkCacheFolders[0]);
+        var artistImages = ArtistImagesForClear ?? App.Services?.GetService<ArtistImageService>();
 
         // The Artists tab's portrait sweep saves into artwork/artists as it goes; stopped, the
         // page's next refresh starts a new one over the emptied folder.
-        try { await (App.Services?.GetService<ArtistImageService>()?.StopFetchesAsync() ?? Task.CompletedTask); }
+        try { await (artistImages?.StopFetchesAsync() ?? Task.CompletedTask); }
         catch (Exception ex) { Debug.WriteLine($"[Settings] Clear artwork: failed to stop artist photos: {ex.Message}"); }
 
         try
@@ -269,6 +270,9 @@ public partial class SettingsViewModel
 
             // Memory: a cover saved again at the same path must not come back from before.
             ArtworkCache.ForgetFolder(artworkDir);
+            // An open artist page keeps its portrait path through the library update below:
+            // it fetches the photo (and its similar artists' photos) again on this.
+            artistImages?.NotifyCacheCleared();
 
             // Albums rebuilt now drop the covers that are gone (their pages refresh on
             // LibraryUpdated); the heal then takes back what the tags and folders hold.
@@ -276,6 +280,9 @@ public partial class SettingsViewModel
             _ = HealArtworkAsync();
         }
     }
+
+    /// <summary>Tests: the artist photo service the clear uses instead of App.Services.</summary>
+    internal ArtistImageService? ArtistImagesForClear { get; set; }
 
     private async Task HealArtworkAsync()
     {
