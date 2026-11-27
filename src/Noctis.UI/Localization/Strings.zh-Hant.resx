@@ -9444,10 +9444,14 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="GroupAlbums.Title" xml:space="preserve"><value>合併為一張專輯</value><comment>Dialog title</comment></data>
   <data name="GroupAlbums.AlbumName" xml:space="preserve"><value>專輯</value><comment>Field label</comment></data>
   <data name="GroupAlbums.AlbumArtist" xml:space="preserve"><value>專輯藝人</value><comment>Field label</comment></data>
-  <data name="GroupAlbums.Hint" xml:space="preserve"><value>{0} 張專輯，{1} 首歌曲。將儲存到檔案的「專輯」和「專輯藝人」標籤中。</value><comment>{0} album count, {1} song count</comment></data>
+  <data name="GroupAlbums.Hint" xml:space="preserve"><value>{0} 張專輯、{1} 首歌曲將合併為一張專輯。檔案的「專輯」和「專輯藝人」標籤會被修改。如需還原，請使用專輯選單中的「復原合併」。</value><comment>{0} album count, {1} song count</comment></data>
   <data name="GroupAlbums.Confirm" xml:space="preserve"><value>合併</value><comment>Confirm button</comment></data>
   <data name="GroupAlbums.SelectHint" xml:space="preserve"><value>沒有其他專輯使用此名稱。請在「專輯」格狀檢視中按住 Ctrl 點選屬於同一張專輯的各項，然後以滑鼠右鍵按一下其中一個。</value><comment>Shown when only one album is chosen</comment></data>
   <data name="GroupAlbums.NotWritten" xml:space="preserve"><value>已在 Noctis 中合併，但部分檔案（{0}）無法儲存（唯讀或在其他應用程式中開啟）。如果此類檔案發生變更，下次掃描時會回到原來的專輯。</value><comment>{0} file count; list of file names follows</comment></data>
+  <data name="GroupAlbums.Undo" xml:space="preserve"><value>復原合併</value><comment>Album menu row and dialog title: puts back what Group into One Album / Move to Album changed</comment></data>
+  <data name="GroupAlbums.UndoConfirm" xml:space="preserve"><value>{0} 首歌曲將回到合併前所在的專輯，檔案也會恢復原來的標籤：</value><comment>{0} song count; a list of 'Album — Album Artist' lines follows</comment></data>
+  <data name="GroupAlbums.UndoButton" xml:space="preserve"><value>復原</value><comment>Confirm button of the Undo Grouping dialog</comment></data>
+  <data name="GroupAlbums.UndoNotWritten" xml:space="preserve"><value>已在 Noctis 中復原，但部分檔案（{0}）無法儲存（唯讀或在其他應用程式中開啟）。Noctis 下次啟動時會再試一次。</value><comment>{0} file count; list of file names follows</comment></data>
   <!-- LyricShareDialog Lyrics Page -->
   <data name="LyricShare.LyricsPage" xml:space="preserve"><value>歌詞頁面</value><comment>Share style option</comment></data>
   <data name="LyricShare.LyricsPageTip" xml:space="preserve"><value>全螢幕動態歌詞，與歌詞頁面一樣</value></data>

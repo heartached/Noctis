@@ -4446,10 +4446,14 @@ Créer une playlist nommée « {0} » avec ces titres ?</value><comment>Drag-and
   <data name="GroupAlbums.Title" xml:space="preserve"><value>Regrouper en un seul album</value><comment>Dialog title</comment></data>
   <data name="GroupAlbums.AlbumName" xml:space="preserve"><value>Album</value><comment>Field label</comment></data>
   <data name="GroupAlbums.AlbumArtist" xml:space="preserve"><value>Artiste de l'album</value><comment>Field label</comment></data>
-  <data name="GroupAlbums.Hint" xml:space="preserve"><value>{0} albums, {1} titres. Enregistré dans les tags Album et Artiste de l'album des fichiers.</value><comment>{0} album count, {1} song count</comment></data>
+  <data name="GroupAlbums.Hint" xml:space="preserve"><value>{0} albums, {1} titres deviennent un seul album. Les tags Album et Artiste de l'album des fichiers sont modifiés. Pour revenir en arrière, utilisez « Annuler le regroupement » dans le menu de l'album.</value><comment>{0} album count, {1} song count</comment></data>
   <data name="GroupAlbums.Confirm" xml:space="preserve"><value>Regrouper</value><comment>Confirm button</comment></data>
   <data name="GroupAlbums.SelectHint" xml:space="preserve"><value>Aucun autre album ne porte ce nom. Faites Ctrl+clic sur les albums qui vont ensemble dans la grille Albums, puis faites un clic droit sur l'un d'eux.</value><comment>Shown when only one album is chosen</comment></data>
   <data name="GroupAlbums.NotWritten" xml:space="preserve"><value>Regroupés dans Noctis, mais certains fichiers ({0}) n'ont pas pu être enregistrés (en lecture seule ou ouverts dans une autre application). Si un tel fichier change, il retourne dans son ancien album à la prochaine analyse.</value><comment>{0} file count; list of file names follows</comment></data>
+  <data name="GroupAlbums.Undo" xml:space="preserve"><value>Annuler le regroupement</value><comment>Album menu row and dialog title: puts back what Group into One Album / Move to Album changed</comment></data>
+  <data name="GroupAlbums.UndoConfirm" xml:space="preserve"><value>{0} titres retournent dans les albums où ils étaient avant le regroupement, et leurs fichiers retrouvent leurs anciens tags :</value><comment>{0} song count; a list of 'Album — Album Artist' lines follows</comment></data>
+  <data name="GroupAlbums.UndoButton" xml:space="preserve"><value>Dégrouper</value><comment>Confirm button of the Undo Grouping dialog</comment></data>
+  <data name="GroupAlbums.UndoNotWritten" xml:space="preserve"><value>Annulé dans Noctis, mais certains fichiers ({0}) n'ont pas pu être enregistrés (en lecture seule ou ouverts dans une autre application). Noctis réessaiera à son prochain démarrage.</value><comment>{0} file count; list of file names follows</comment></data>
   <!-- LyricShareDialog Lyrics Page -->
   <data name="LyricShare.LyricsPage" xml:space="preserve"><value>Page des paroles</value><comment>Share style option</comment></data>
   <data name="LyricShare.LyricsPageTip" xml:space="preserve"><value>Paroles animées en plein écran, comme sur la page des paroles</value></data>

@@ -4455,11 +4455,15 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="GroupAlbums.Title" xml:space="preserve"><value>Group into One Album</value><comment>Dialog title</comment></data>
   <data name="GroupAlbums.AlbumName" xml:space="preserve"><value>Album</value><comment>Field label</comment></data>
   <data name="GroupAlbums.AlbumArtist" xml:space="preserve"><value>Album Artist</value><comment>Field label</comment></data>
-  <data name="GroupAlbums.Hint" xml:space="preserve"><value>{0} albums, {1} songs. Saved in the files' Album and Album Artist tags.</value><comment>{0} album count, {1} song count</comment></data>
+  <data name="GroupAlbums.Hint" xml:space="preserve"><value>{0} albums, {1} songs become one album. The files' Album and Album Artist tags are changed. To reverse it, use Undo Grouping in the album's menu.</value><comment>{0} album count, {1} song count</comment></data>
   <data name="GroupAlbums.Confirm" xml:space="preserve"><value>Group</value><comment>Confirm button</comment></data>
   <data name="GroupAlbums.SelectHint" xml:space="preserve"><value>No other album has this name. Ctrl-click the albums that belong together in the Albums grid, then right-click one of them.</value><comment>Shown when only one album is chosen</comment></data>
   <data name="GroupAlbums.SelectHintMac" xml:space="preserve"><value>No other album has this name. ⌘-click the albums that belong together in the Albums grid, then right-click one of them.</value><comment>GroupAlbums.SelectHint on macOS, where Ctrl-click is a right-click and ⌘-click adds to the selection</comment></data>
   <data name="GroupAlbums.NotWritten" xml:space="preserve"><value>Grouped in Noctis, but some files ({0}) could not be saved (read-only or open in another app). If such a file changes, it goes back to its old album on the next scan.</value><comment>{0} file count; list of file names follows</comment></data>
+  <data name="GroupAlbums.Undo" xml:space="preserve"><value>Undo Grouping</value><comment>Album menu row and dialog title: puts back what Group into One Album / Move to Album changed</comment></data>
+  <data name="GroupAlbums.UndoConfirm" xml:space="preserve"><value>{0} songs go back to the albums they were on before grouping, and their files get their old tags back:</value><comment>{0} song count; a list of 'Album — Album Artist' lines follows</comment></data>
+  <data name="GroupAlbums.UndoButton" xml:space="preserve"><value>Undo</value><comment>Confirm button of the Undo Grouping dialog</comment></data>
+  <data name="GroupAlbums.UndoNotWritten" xml:space="preserve"><value>Undone in Noctis, but some files ({0}) could not be saved (read-only or open in another app). Noctis tries again the next time it starts.</value><comment>{0} file count; list of file names follows</comment></data>
   <!-- LyricShareDialog Lyrics Page -->
   <data name="LyricShare.LyricsPage" xml:space="preserve"><value>Lyrics Page</value><comment>Share style option</comment></data>
   <data name="LyricShare.LyricsPageTip" xml:space="preserve"><value>Full-screen moving lyrics, like the lyrics page</value></data>

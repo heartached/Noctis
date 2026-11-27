@@ -9447,10 +9447,14 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="GroupAlbums.Title" xml:space="preserve"><value>하나의 앨범으로 묶기</value><comment>Dialog title</comment></data>
   <data name="GroupAlbums.AlbumName" xml:space="preserve"><value>앨범</value><comment>Field label</comment></data>
   <data name="GroupAlbums.AlbumArtist" xml:space="preserve"><value>앨범 아티스트</value><comment>Field label</comment></data>
-  <data name="GroupAlbums.Hint" xml:space="preserve"><value>앨범 {0}개, 노래 {1}곡. 파일의 앨범 및 앨범 아티스트 태그에 저장됩니다.</value><comment>{0} album count, {1} song count</comment></data>
+  <data name="GroupAlbums.Hint" xml:space="preserve"><value>앨범 {0}개, 노래 {1}곡이 하나의 앨범이 됩니다. 파일의 앨범 및 앨범 아티스트 태그가 변경됩니다. 되돌리려면 앨범 메뉴에서 '묶기 실행 취소'를 사용하세요.</value><comment>{0} album count, {1} song count</comment></data>
   <data name="GroupAlbums.Confirm" xml:space="preserve"><value>묶기</value><comment>Confirm button</comment></data>
   <data name="GroupAlbums.SelectHint" xml:space="preserve"><value>이 이름의 다른 앨범이 없습니다. 앨범 그리드에서 함께 묶을 앨범을 Ctrl+클릭한 다음, 그중 하나를 마우스 오른쪽 버튼으로 클릭하세요.</value><comment>Shown when only one album is chosen</comment></data>
   <data name="GroupAlbums.NotWritten" xml:space="preserve"><value>Noctis에서는 묶었지만 일부 파일({0}개)을 저장하지 못했습니다(읽기 전용이거나 다른 앱에서 열려 있음). 해당 파일이 변경되면 다음 스캔 때 원래 앨범으로 돌아갑니다.</value><comment>{0} file count; list of file names follows</comment></data>
+  <data name="GroupAlbums.Undo" xml:space="preserve"><value>묶기 실행 취소</value><comment>Album menu row and dialog title: puts back what Group into One Album / Move to Album changed</comment></data>
+  <data name="GroupAlbums.UndoConfirm" xml:space="preserve"><value>노래 {0}곡이 묶기 전의 앨범으로 돌아가고, 파일의 태그도 이전 값으로 돌아갑니다:</value><comment>{0} song count; a list of 'Album — Album Artist' lines follows</comment></data>
+  <data name="GroupAlbums.UndoButton" xml:space="preserve"><value>되돌리기</value><comment>Confirm button of the Undo Grouping dialog</comment></data>
+  <data name="GroupAlbums.UndoNotWritten" xml:space="preserve"><value>Noctis에서는 되돌렸지만 일부 파일({0}개)을 저장하지 못했습니다(읽기 전용이거나 다른 앱에서 열려 있음). 다음에 Noctis를 시작할 때 다시 시도합니다.</value><comment>{0} file count; list of file names follows</comment></data>
   <!-- LyricShareDialog Lyrics Page -->
   <data name="LyricShare.LyricsPage" xml:space="preserve"><value>가사 페이지</value><comment>Share style option</comment></data>
   <data name="LyricShare.LyricsPageTip" xml:space="preserve"><value>가사 페이지처럼 움직이는 전체 화면 가사</value></data>
