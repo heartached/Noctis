@@ -299,6 +299,8 @@ Yours Truly, heartached.
 
 MIT, see [LICENSE](LICENSE)
 
+Bundled font: [Vazirmatn](https://github.com/rastikerdar/vazirmatn) (Persian and Arabic text), SIL Open Font License 1.1, see [OFL.txt](src/Noctis.UI/Assets/Fonts/Vazirmatn/OFL.txt)
+
 ---
 
 > [!WARNING]

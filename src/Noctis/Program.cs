@@ -401,32 +401,17 @@ internal class Program
         // font manager automatically, but on macOS/Linux that lookup doesn't
         // reliably engage for embedded fonts, so Korean/Japanese/Chinese lyrics
         // rendered as "?" boxes. Provide an explicit fallback chain of each
-        // platform's stock CJK-capable fonts.
+        // platform's stock CJK-capable fonts. Arabic-script text (Persian, Arabic, Urdu) draws
+        // in the bundled Vazirmatn on every platform, ahead of the platform faces (#269).
         if (OperatingSystem.IsMacOS())
         {
-            builder = builder.With(new Avalonia.Media.FontManagerOptions
-            {
-                FontFallbacks = new[]
-                {
-                    new Avalonia.Media.FontFallback { FontFamily = new Avalonia.Media.FontFamily("PingFang SC") },
-                    new Avalonia.Media.FontFallback { FontFamily = new Avalonia.Media.FontFamily("Hiragino Sans") },
-                    new Avalonia.Media.FontFallback { FontFamily = new Avalonia.Media.FontFamily("Apple SD Gothic Neo") },
-                    new Avalonia.Media.FontFallback { FontFamily = new Avalonia.Media.FontFamily("Apple Color Emoji") },
-                }
-            });
+            builder = builder.With(ScriptFonts.Options(
+                "PingFang SC", "Hiragino Sans", "Apple SD Gothic Neo", "Apple Color Emoji"));
         }
         else if (OperatingSystem.IsLinux())
         {
-            builder = builder.With(new Avalonia.Media.FontManagerOptions
-            {
-                FontFallbacks = new[]
-                {
-                    new Avalonia.Media.FontFallback { FontFamily = new Avalonia.Media.FontFamily("Noto Sans CJK SC") },
-                    new Avalonia.Media.FontFallback { FontFamily = new Avalonia.Media.FontFamily("Noto Sans CJK KR") },
-                    new Avalonia.Media.FontFallback { FontFamily = new Avalonia.Media.FontFamily("Noto Sans CJK JP") },
-                    new Avalonia.Media.FontFallback { FontFamily = new Avalonia.Media.FontFamily("Noto Color Emoji") },
-                }
-            });
+            builder = builder.With(ScriptFonts.Options(
+                "Noto Sans CJK SC", "Noto Sans CJK KR", "Noto Sans CJK JP", "Noto Color Emoji"));
 
             // Escape hatch for GPU/driver rendering trouble on Linux (issue #26:
             // heavy stutter + windows flashing transparent on Arch/X11).
@@ -442,6 +427,11 @@ internal class Program
                     RenderingMode = new[] { X11RenderingMode.Software }
                 });
             }
+        }
+        else
+        {
+            // Windows finds CJK and emoji faces on its own; only the Arabic-script face is named.
+            builder = builder.With(ScriptFonts.Options());
         }
 
         return builder;
