@@ -68,10 +68,8 @@ public static class AlbumUndo
     /// <summary>
     /// Before a grouping changes <paramref name="t"/>: the record to finish once it has. The
     /// song's own when that still applies (its first "before" is kept), else one of its tags now.
-    /// <paramref name="identity"/> is the file's album identity tags when the grouping writes the
-    /// target album's over them (Move to Album), else null.
     /// </summary>
-    internal static AlbumGroupUndo Begin(Track t, AlbumIdentityTags? identity)
+    internal static AlbumGroupUndo Begin(Track t)
     {
         if (t.GroupUndo is { } kept && Applies(t, kept))
             return new AlbumGroupUndo
@@ -83,8 +81,7 @@ public static class AlbumUndo
                 AlbumFromFolder = kept.AlbumFromFolder,
                 UngroupedAlbumArtist = kept.UngroupedAlbumArtist,
                 UngroupedAlbum = kept.UngroupedAlbum,
-                // Group into One Album leaves these tags alone: the file's own are still the first.
-                Identity = kept.Identity ?? identity,
+                Raw = kept.Raw,
             };
         return new AlbumGroupUndo
         {
@@ -94,27 +91,36 @@ public static class AlbumUndo
             AlbumFromFolder = t.AlbumFromFolder,
             UngroupedAlbumArtist = t.UngroupedAlbumArtist,
             UngroupedAlbum = t.UngroupedAlbum,
-            Identity = identity,
         };
     }
 
     /// <summary>After the grouping changed <paramref name="t"/>: keeps the record, or none when
-    /// the song has its own tags again (grouped back where it was).</summary>
-    internal static void Finish(Track t, AlbumGroupUndo undo)
+    /// the song has its own tags again (grouped back where it was). <paramref name="replaced"/>
+    /// is what the write replaced in the file (null: the file was not written).</summary>
+    internal static void Finish(Track t, AlbumGroupUndo undo, RawTagSnapshot? replaced)
     {
         undo.After = Capture(t);
+        if (replaced != null) undo.Raw = Keep(undo.Raw, replaced);
         // A file without its own album artist / album tag got one written: putting that back
         // is still a change, even on the same album.
         var changed = undo.Before != undo.After || undo.AlbumArtistFromTag == false || undo.AlbumFromFolder;
         t.GroupUndo = changed ? undo : null;
     }
 
+    /// <summary>A later write's replaced values added to the record's: an entry an earlier
+    /// write replaced keeps its value from before that one.</summary>
+    internal static RawTagSnapshot Keep(RawTagSnapshot? earlier, RawTagSnapshot later)
+    {
+        if (earlier == null) return later;
+        earlier.AddNewer(later);
+        return earlier;
+    }
+
     /// <summary>
     /// Puts <paramref name="undo"/>'s tags back on <paramref name="t"/> (the library side of
-    /// Undo Grouping): album and album artist, and every other tag the grouping changed. Returns
-    /// what the file write must also take out (<see cref="IMetadataService.WriteAlbumUndo"/>).
+    /// Undo Grouping): album and album artist, and every other tag the grouping changed.
     /// </summary>
-    internal static AlbumUndoWrite RestoreTags(Track t, AlbumGroupUndo undo)
+    internal static void RestoreTags(Track t, AlbumGroupUndo undo)
     {
         var before = undo.Before;
         var after = undo.After;
@@ -131,19 +137,53 @@ public static class AlbumUndo
         if (!string.Equals(before.ReleaseDate, after.ReleaseDate, StringComparison.Ordinal)
             && string.Equals(t.ReleaseDate, after.ReleaseDate, StringComparison.Ordinal))
             t.ReleaseDate = before.ReleaseDate;
-        return new AlbumUndoWrite(
-            undo.Identity,
-            RemoveAlbumArtist: undo.AlbumArtistFromTag == false,
-            RemoveAlbum: undo.AlbumFromFolder,
-            // The writer treats year 0 as unknown and leaves the file's alone (MetadataService).
-            RemoveYear: before.Year == 0 && after.Year != 0);
     }
 
-    /// <summary>After the file write: the song's grouping state from before, and no record.</summary>
-    internal static void RestoreState(Track t, AlbumGroupUndo undo, bool written)
+    /// <summary>
+    /// The file write of Undo Grouping: the replaced entries back as they were
+    /// (<see cref="AlbumGroupUndo.Raw"/>, after any earlier Undo the file has not taken yet), and
+    /// for tag blocks kept by value only, the album tags from before. Null when no grouping
+    /// reached the file: there is nothing in it to put back.
+    /// </summary>
+    internal static AlbumFileWrite? FileWrite(AlbumGroupUndo undo, AlbumFileWrite? pending)
     {
-        // Written: the file has an album artist tag unless the write took it out again.
-        t.AlbumArtistFromTag = written ? undo.AlbumArtistFromTag != false : undo.AlbumArtistFromTag;
+        RawTagSnapshot? raw = null;
+        if (pending?.Restore is { } earlier)
+        {
+            raw = new RawTagSnapshot();
+            raw.AddNewer(earlier);
+        }
+        if (undo.Raw is { } own) raw = Keep(raw, own);
+        if (raw == null) return null;
+        var before = undo.Before;
+        var after = undo.After;
+        var fields = AlbumTagFields.Album | AlbumTagFields.AlbumArtist
+                     | (before.TrackNumber != after.TrackNumber || before.TrackCount != after.TrackCount
+                        || before.DiscNumber != after.DiscNumber || before.DiscCount != after.DiscCount ? AlbumTagFields.Numbering : 0)
+                     | (before.Year != after.Year ? AlbumTagFields.Year : 0);
+        return new AlbumFileWrite
+        {
+            Restore = raw,
+            RestoreValues = raw.OtherBlocks
+                ? new AlbumTagWrite
+                {
+                    Fields = fields,
+                    Album = undo.AlbumFromFolder ? null : before.Album,
+                    AlbumArtist = undo.AlbumArtistFromTag == false ? null : before.AlbumArtist,
+                    TrackNumber = before.TrackNumber,
+                    TrackCount = before.TrackCount,
+                    DiscNumber = before.DiscNumber,
+                    DiscCount = before.DiscCount,
+                    Year = before.Year,
+                }
+                : null,
+        };
+    }
+
+    /// <summary>After Undo: the song's grouping state from before, and no record.</summary>
+    internal static void RestoreState(Track t, AlbumGroupUndo undo)
+    {
+        t.AlbumArtistFromTag = undo.AlbumArtistFromTag;
         t.AlbumFromFolder = undo.AlbumFromFolder;
         t.UngroupedAlbumArtist = undo.UngroupedAlbumArtist;
         t.UngroupedAlbum = undo.UngroupedAlbum;
@@ -171,8 +211,3 @@ public static class AlbumUndo
         return dropped;
     }
 }
-
-/// <summary>What Undo Grouping writes into a file besides its tags (<see cref="IMetadataService.WriteAlbumUndo"/>):
-/// the album identity tags from before a Move to Album (null: left as they are), and the album
-/// artist, album and year tags the grouping wrote into a file that had none.</summary>
-public sealed record AlbumUndoWrite(AlbumIdentityTags? Identity, bool RemoveAlbumArtist, bool RemoveAlbum, bool RemoveYear);

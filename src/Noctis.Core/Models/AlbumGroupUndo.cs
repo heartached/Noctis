@@ -43,10 +43,11 @@ public sealed class AlbumGroupUndo
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? UngroupedAlbum { get; set; }
 
-    /// <summary>The file's album identity tags (sort names, MusicBrainz release ids) before a Move
-    /// to Album wrote the target album's; null when no move wrote them.</summary>
+    /// <summary>The file's tag entries the groupings replaced, as the file had them before the
+    /// first (<see cref="RawTagSnapshot"/>): Undo puts exactly these back. Null while no grouping
+    /// has reached the file (it could not be written yet), so there is nothing in it to undo.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public AlbumIdentityTags? Identity { get; set; }
+    public RawTagSnapshot? Raw { get; set; }
 }
 
 /// <summary>The album-level tags Group into One Album and Move to Album change on a song

@@ -315,4 +315,7 @@
          time a grid row was realized: an Albums tile carried nine (two of them 512px), so
          one row of five decoded 45 PNGs — a third of the UI thread's scroll time. -->
     <ImageBrush x:Key="IconMaskPlaylist" Source="avares://Noctis.UI/Assets/Icons/Playlist%20icon.png" Stretch="Uniform" />
+    <!-- Undo Grouping (menu line icon, see the section above): two overlapping squares, the
+         grouped albums, with an arrow turning back under them. -->
+    <StreamGeometry x:Key="MenuLineUngroup">M4.5 3.5h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-6a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1ZM11.5 8h3.5a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-6a1 1 0 0 1-1-1v-3.5M20.5 11v5.5a4 4 0 0 1-4 4H10M12.5 18l-2.5 2.5l2.5 2.5</StreamGeometry>
 </ResourceDictionary>

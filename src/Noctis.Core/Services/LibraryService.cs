@@ -3157,12 +3157,18 @@ public class LibraryService : ILibraryService
                 {
                     if (token.IsCancellationRequested) break;
                     var ok = false;
+                    var pending = t.PendingAlbumWrite;
+                    RawTagSnapshot? replaced = null;
                     if (t.HasFilesystemPath && !t.IsRemoteStream && t.SourceType is SourceType.Local or SourceType.Smb)
                     {
                         try
                         {
+                            // A grouping or Undo Grouping write the file has not taken: exactly
+                            // that write (its numbering, year, removed tags too), nothing else.
                             if (File.Exists(t.FilePath) && !File.GetAttributes(t.FilePath).HasFlag(FileAttributes.ReadOnly))
-                                ok = _metadata.WriteAlbumGrouping(t.FilePath, t.Album, t.AlbumArtist);
+                                ok = pending != null
+                                    ? _metadata.WriteAlbumTags(t.FilePath, pending, background: true, out replaced)
+                                    : _metadata.WriteAlbumGrouping(t.FilePath, t.Album, t.AlbumArtist);
                         }
                         catch (Exception ex)
                         {
@@ -3172,6 +3178,17 @@ public class LibraryService : ILibraryService
                     if (!ok)
                     {
                         unwritten.Add(t.HasFilesystemPath ? Path.GetFileName(t.FilePath) : t.Title);
+                        continue;
+                    }
+                    if (pending != null)
+                    {
+                        // What the grouping replaced, for Undo; the song's own state was set when
+                        // it was grouped (or undone) and stays.
+                        if (replaced != null && t.GroupUndo is { } undo && AlbumUndo.Applies(t, undo))
+                            undo.Raw = AlbumUndo.Keep(undo.Raw, replaced);
+                        t.PendingAlbumWrite = null;
+                        t.AlbumGroupingUnwritten = false;
+                        written.Add(t);
                         continue;
                     }
                     // The file names the album now: a real tag, never put back by Restore.
@@ -3242,7 +3259,7 @@ public class LibraryService : ILibraryService
                 t.AlbumArtist = albumArtist;
                 return true;
             },
-            write: t => _metadata.WriteTrackMetadata(t),
+            tagsFor: _ => AlbumTagWrite.Group(album, albumArtist),
             logLabel: "Group into album (#178)");
     }
 
@@ -3279,19 +3296,6 @@ public class LibraryService : ILibraryService
                 .FirstOrDefault(i => i != null), CancellationToken.None);
         }
 
-        // The moved files' own identity tags, which the write replaces: kept for Undo Grouping.
-        Dictionary<Guid, AlbumIdentityTags>? own = null;
-        if (identity != null)
-            own = await Task.Run(() =>
-            {
-                var read = new Dictionary<Guid, AlbumIdentityTags>();
-                foreach (var t in moving)
-                    if (t.HasFilesystemPath && !t.IsRemoteStream && File.Exists(t.FilePath)
-                        && _metadata.ReadAlbumIdentity(t.FilePath) is { } tags)
-                        read[t.Id] = tags;
-                return read;
-            }, CancellationToken.None);
-
         var plans = AlbumMove.PlanMove(moving, target, album, albumArtist).ToDictionary(p => p.Track);
         return await ReAlbumAsync(moving, album, albumArtist,
             apply: t =>
@@ -3299,24 +3303,22 @@ public class LibraryService : ILibraryService
                 AlbumMove.Apply(plans[t]);
                 return true;
             },
-            write: t => identity != null ? _metadata.WriteTrackMetadata(t, identity) : _metadata.WriteTrackMetadata(t),
-            logLabel: "Move to album (#239)",
-            identityOf: own);
+            tagsFor: t => AlbumTagWrite.Move(plans[t], identity),
+            logLabel: "Move to album (#239)");
     }
 
     /// <summary>
     /// The shared body of Group into One Album (#178) and Move to Album (#239): each of
     /// <paramref name="targets"/> that <paramref name="apply"/> changes (it sets the new values
-    /// on the track and returns true) is written by <paramref name="write"/> and re-keyed to the
-    /// album. A file that cannot be written still moves in the library, is listed in the result
-    /// and is tried again later (Album and Album Artist only). Cached covers follow, then the
-    /// library is rebuilt, saved and LibraryUpdated raised. Each changed song keeps what it had
-    /// before (<see cref="AlbumUndo"/>) for Undo Grouping; <paramref name="identityOf"/> gives a
-    /// song's file's album identity tags when <paramref name="write"/> replaces them.
+    /// on the track and returns true) gets the album tags <paramref name="tagsFor"/> gives written
+    /// into its file, those only (<see cref="IMetadataService.WriteAlbumTags"/>), and is re-keyed
+    /// to the album. A file that cannot be written still moves in the library, is listed in the
+    /// result and keeps the write (<see cref="Track.PendingAlbumWrite"/>) for the next pass.
+    /// Cached covers follow, then the library is rebuilt, saved and LibraryUpdated raised. Each
+    /// changed song keeps what it had before (<see cref="AlbumUndo"/>) for Undo Grouping.
     /// </summary>
     private async Task<AlbumGroupResult> ReAlbumAsync(List<Track> targets, string album, string albumArtist,
-        Func<Track, bool> apply, Func<Track, bool> write, string logLabel,
-        IReadOnlyDictionary<Guid, AlbumIdentityTags>? identityOf = null)
+        Func<Track, bool> apply, Func<Track, AlbumTagWrite> tagsFor, string logLabel)
     {
         var albumId = Track.ComputeAlbumId(albumArtist, album);
         var moves = new List<AlbumGrouping.Move>();
@@ -3327,29 +3329,45 @@ public class LibraryService : ILibraryService
         {
             foreach (var t in targets)
             {
-                var undo = AlbumUndo.Begin(t, identityOf?.GetValueOrDefault(t.Id));
+                var undo = AlbumUndo.Begin(t);
                 if (!apply(t)) continue;
                 grouped++;
-                // Through the metadata editor's writer, so every other tag is kept as the
-                // editor would. Streams and phone documents have no file to write here.
+                // Only the album tags: the song's other tags in the file stay as the file has
+                // them (the whole-song writer also wrote its artist with "feat." names merged,
+                // one composer of several, an analysed BPM and a Noctis-only rating). A write
+                // the file has not taken yet goes first. Streams and phone documents have no
+                // file to write here.
+                var pending = t.PendingAlbumWrite;
+                var file = new AlbumFileWrite
+                {
+                    Restore = pending?.Restore,
+                    RestoreValues = pending?.RestoreValues,
+                    Tags = pending?.Tags is { } earlier ? earlier.Then(tagsFor(t)) : tagsFor(t),
+                };
                 var written = false;
+                RawTagSnapshot? replaced = null;
                 if (t.HasFilesystemPath && !t.IsRemoteStream)
                 {
-                    try { written = write(t); }
+                    try { written = _metadata.WriteAlbumTags(t.FilePath, file, background: false, out replaced); }
                     catch (Exception ex) { DebugLog.Write("Library", $"{logLabel}: write failed for '{t.FilePath}': {ex.Message}"); }
                 }
                 if (!written)
                     unwritten.Add(t.HasFilesystemPath ? Path.GetFileName(t.FilePath) : t.Title);
                 // GitHub #201: a file that could be written later (read-only or held open now)
-                // is tried again by the next pass; streams and phone documents never can be.
-                t.AlbumGroupingUnwritten = !written && t.HasFilesystemPath && !t.IsRemoteStream
-                                           && t.SourceType is SourceType.Local or SourceType.Smb;
+                // is tried again by the next pass, with this same write; streams and phone
+                // documents never can be.
+                var retry = !written && t.HasFilesystemPath && !t.IsRemoteStream
+                            && t.SourceType is SourceType.Local or SourceType.Smb;
+                t.AlbumGroupingUnwritten = retry;
+                t.PendingAlbumWrite = retry ? file : null;
                 // The user's album artist: the grouping pass must not re-key it, written or not.
                 t.AlbumArtistFromTag = true;
+                // The album name is the file's own tag now, not its folder's.
+                if (written) t.AlbumFromFolder = false;
                 if (t.AlbumId != albumId)
                     moves.Add(new AlbumGrouping.Move(t.Id, t.AlbumId, albumId));
                 t.AlbumId = albumId;
-                AlbumUndo.Finish(t, undo);
+                AlbumUndo.Finish(t, undo, written ? replaced : null);
             }
         }, CancellationToken.None);
 
@@ -3384,23 +3402,27 @@ public class LibraryService : ILibraryService
             foreach (var t in targets)
             {
                 var undo = t.GroupUndo!;
-                var extra = AlbumUndo.RestoreTags(t, undo);
-                // Through the same writer as the grouping (ReAlbumAsync), so every other tag is
-                // kept as the editor would. Streams and phone documents have no file to write here.
-                var written = false;
-                if (t.HasFilesystemPath && !t.IsRemoteStream)
+                AlbumUndo.RestoreTags(t, undo);
+                // The file's entries the groupings replaced, put back exactly as they were. A
+                // grouping the file never took (still pending) is simply dropped: then there is
+                // nothing in the file to put back.
+                var file = AlbumUndo.FileWrite(undo, t.PendingAlbumWrite);
+                var written = file == null;
+                if (file != null && t.HasFilesystemPath && !t.IsRemoteStream)
                 {
-                    try { written = _metadata.WriteAlbumUndo(t, extra); }
+                    try { written = _metadata.WriteAlbumTags(t.FilePath, file, background: false, out _); }
                     catch (Exception ex) { DebugLog.Write("Library", $"Undo grouping: write failed for '{t.FilePath}': {ex.Message}"); }
                 }
                 if (!written)
                     unwritten.Add(t.HasFilesystemPath ? Path.GetFileName(t.FilePath) : t.Title);
-                // As a grouping (GitHub #201): a file that can be written later is tried again by
-                // the next pass (Album and Album Artist only).
-                t.AlbumGroupingUnwritten = !written && t.HasFilesystemPath && !t.IsRemoteStream
-                                           && t.SourceType is SourceType.Local or SourceType.Smb;
+                // As a grouping (GitHub #201): a file that can be written later gets this same
+                // write from the next pass, removed tags included.
+                var retry = !written && t.HasFilesystemPath && !t.IsRemoteStream
+                            && t.SourceType is SourceType.Local or SourceType.Smb;
+                t.AlbumGroupingUnwritten = retry;
+                t.PendingAlbumWrite = retry ? file : null;
                 var from = t.AlbumId;
-                AlbumUndo.RestoreState(t, undo, written);
+                AlbumUndo.RestoreState(t, undo);
                 if (from != t.AlbumId)
                     moves.Add(new AlbumGrouping.Move(t.Id, from, t.AlbumId));
             }
