@@ -68,7 +68,7 @@ public class LyricsStudioSelectionPerfTests : IDisposable
 
             // Scrolled to the end, the last line is there to edit.
             var scroller = panel.GetVisualDescendants().OfType<ItemsControl>()
-                .Single(c => ReferenceEquals(c.ItemsSource, vm.ReviewLines))
+                .Single(c => ReferenceEquals((c as Noctis.Controls.KeptRowsItemsControl)?.Rows ?? c.ItemsSource, vm.ReviewLines))
                 .FindAncestorOfType<ScrollViewer>()!;
             scroller.Offset = new Vector(0, scroller.Extent.Height);
             for (var i = 0; i < 5; i++) { win.UpdateLayout(); Dispatcher.UIThread.RunJobs(); }

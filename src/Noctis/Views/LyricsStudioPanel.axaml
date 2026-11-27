@@ -12,6 +12,79 @@
          Hosted two ways — inside LyricsStudioDialog (per-song right-click) and as the sidebar's
          Lyrics Studio page (LyricsStudioView), which hides the header and draws its own. -->
 
+    <UserControl.Resources>
+        <!-- The review row's text box (owner 11-26, scrolling stuttered): Fluent's TextBox look and
+             behaviour with a lighter template. The stock one wraps the text in a ScrollViewer (scroll
+             bars, a content presenter), a placeholder pair, side content slots and a validation
+             host: 22 controls a row, built and styled for every line coming into view. A row never
+             scrolls inside itself (it wraps and grows), shows no placeholder and is never
+             validated, so the border and the text are all it keeps. -->
+        <ControlTheme x:Key="StudioLineEditTheme" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Panel>
+                        <Border Name="PART_BorderElement"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{TemplateBinding CornerRadius}"
+                                MinWidth="{TemplateBinding MinWidth}"
+                                MinHeight="{TemplateBinding MinHeight}" />
+                        <TextPresenter Name="PART_TextPresenter" Cursor="IBeam"
+                                       Margin="{TemplateBinding Padding}"
+                                       Text="{TemplateBinding Text, Mode=TwoWay}"
+                                       CaretBlinkInterval="{TemplateBinding CaretBlinkInterval}"
+                                       CaretIndex="{TemplateBinding CaretIndex}"
+                                       SelectionStart="{TemplateBinding SelectionStart}"
+                                       SelectionEnd="{TemplateBinding SelectionEnd}"
+                                       TextAlignment="{TemplateBinding TextAlignment}"
+                                       TextWrapping="{TemplateBinding TextWrapping}"
+                                       LineHeight="{TemplateBinding LineHeight}"
+                                       LetterSpacing="{TemplateBinding LetterSpacing}"
+                                       PasswordChar="{TemplateBinding PasswordChar}"
+                                       RevealPassword="{TemplateBinding RevealPassword}"
+                                       SelectionBrush="{TemplateBinding SelectionBrush}"
+                                       SelectionForegroundBrush="{TemplateBinding SelectionForegroundBrush}"
+                                       CaretBrush="{TemplateBinding CaretBrush}"
+                                       HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                       VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                    </Panel>
+                </ControlTemplate>
+            </Setter>
+        </ControlTheme>
+        <!-- A row's word strip, built the first time the row is opened (a ContentPresenter inside the
+             shut fold is never measured, so its template never runs): it used to be built, hidden,
+             for every row that came into view. -->
+        <DataTemplate x:Key="ReviewWordStrip" x:DataType="vm:ReviewLine">
+            <StackPanel Spacing="6" Margin="2,6,0,4">
+                <ItemsControl ItemsSource="{Binding Words}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ReviewWord">
+                            <Button Classes="word-chip" Margin="0,0,4,4" AutomationProperties.Name="{Binding AccessibleName}"
+                                    Classes.selected="{Binding IsSelected}" Classes.target="{Binding IsTapTarget}" Classes.tapped="{Binding IsTapped}"
+                                    Command="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).SelectWordCommand}"
+                                    CommandParameter="{Binding}">
+                                <StackPanel Spacing="1">
+                                    <TextBlock Text="{Binding Text}" FontSize="12" />
+                                    <TextBlock Classes="chip-time" Text="{Binding TimeText}" FontSize="9.5" Opacity="0.55" FontFamily="Consolas,Menlo,monospace" />
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Button Classes="studio-btn pill-outline" Command="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).StartTapCommand}"
+                            CommandParameter="{Binding}" ToolTip.Tip="{loc:T LyricsStudio.TapTip}">
+                        <TextBlock Text="{loc:T LyricsStudio.TapWords}" />
+                    </Button>
+                </StackPanel>
+            </StackPanel>
+
+        </DataTemplate>
+    </UserControl.Resources>
     <UserControl.Styles>
         <!-- The pill pop-ups' field and card classes (pill-field, pill-well, pill-popover), so the
              Studio uses the same filled pills on the sidebar page as inside its pop-up. -->
@@ -1089,15 +1162,15 @@
                         </StackPanel>
 
                         <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,20,0">
-                            <ItemsControl ItemsSource="{Binding ReviewLines}">
+                            <controls:KeptRowsItemsControl Rows="{Binding ReviewLines}">
                                 <!-- Virtualized: only the lines in view exist. As a StackPanel every line of
                                      the song (a TextBox, buttons and a word strip each) was built and laid
                                      out when a song was picked in the list: ~0.8-1.5 s for 76 lines
                                      (LyricsStudioSelectionPerfTests), the "freeze" on every click. -->
-                                <ItemsControl.ItemsPanel>
+                                <controls:KeptRowsItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
+                                </controls:KeptRowsItemsControl.ItemsPanel>
+                                <controls:KeptRowsItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:ReviewLine">
                                         <Border Classes="review-line" Classes.low="{Binding IsLow}" Classes.edit-error="{Binding HasEditError}"
                                                 Classes.selected="{Binding IsSelected}" PointerPressed="OnReviewRowPointerPressed">
@@ -1125,45 +1198,20 @@
                                                     </StackPanel>
                                                 </Button>
                                                 <!-- ELRC: the line as saved, word tags included; Enter / focus loss reads it back, Esc undoes. -->
-                                                <TextBox Grid.Column="2" Classes="line-edit" Text="{Binding RowText}" VerticalAlignment="Center" TextWrapping="Wrap"
+                                                <TextBox Grid.Column="2" Classes="line-edit" Theme="{StaticResource StudioLineEditTheme}" Text="{Binding RowText}" VerticalAlignment="Center" TextWrapping="Wrap"
                                                          KeyDown="OnLineEditKeyDown" LostFocus="OnLineEditLostFocus" GotFocus="OnLineEditGotFocus" />
                                                 <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding EditError}" IsVisible="{Binding HasEditError}" FontSize="11" Foreground="#FF6B6B"
                                                            TextWrapping="Wrap" Margin="6,4,0,0" />
                                                 <!-- Word strip: one chip per word, click = select + hear it. Folds open and shut like
                                                      the Settings sub-blocks; shut, it is not measured, so its chips are never built. -->
                                                 <controls:CollapsibleContent Grid.Row="2" Grid.Column="2" IsOpen="{Binding IsExpanded}" Lift="6">
-                                                    <StackPanel Spacing="6" Margin="2,6,0,4">
-                                                        <ItemsControl ItemsSource="{Binding Words}">
-                                                            <ItemsControl.ItemsPanel>
-                                                                <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
-                                                            </ItemsControl.ItemsPanel>
-                                                            <ItemsControl.ItemTemplate>
-                                                                <DataTemplate x:DataType="vm:ReviewWord">
-                                                                    <Button Classes="word-chip" Margin="0,0,4,4" AutomationProperties.Name="{Binding AccessibleName}"
-                                                                            Classes.selected="{Binding IsSelected}" Classes.target="{Binding IsTapTarget}" Classes.tapped="{Binding IsTapped}"
-                                                                            Command="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).SelectWordCommand}"
-                                                                            CommandParameter="{Binding}">
-                                                                        <StackPanel Spacing="1">
-                                                                            <TextBlock Text="{Binding Text}" FontSize="12" />
-                                                                            <TextBlock Classes="chip-time" Text="{Binding TimeText}" FontSize="9.5" Opacity="0.55" FontFamily="Consolas,Menlo,monospace" />
-                                                                        </StackPanel>
-                                                                    </Button>
-                                                                </DataTemplate>
-                                                            </ItemsControl.ItemTemplate>
-                                                        </ItemsControl>
-                                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                                            <Button Classes="studio-btn pill-outline" Command="{Binding $parent[views:LyricsStudioPanel].((vm:LyricsStudioViewModel)DataContext).StartTapCommand}"
-                                                                    CommandParameter="{Binding}" ToolTip.Tip="{loc:T LyricsStudio.TapTip}">
-                                                                <TextBlock Text="{loc:T LyricsStudio.TapWords}" />
-                                                            </Button>
-                                                        </StackPanel>
-                                                    </StackPanel>
+                                                    <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource ReviewWordStrip}" />
                                                 </controls:CollapsibleContent>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                                </controls:KeptRowsItemsControl.ItemTemplate>
+                            </controls:KeptRowsItemsControl>
                         </ScrollViewer>
                     </DockPanel>
                 </Panel>
