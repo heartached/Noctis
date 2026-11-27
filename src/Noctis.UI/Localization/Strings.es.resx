@@ -3432,7 +3432,7 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Settings.AnimArtAutoFetch" xml:space="preserve"><value>Buscar portadas animadas automáticamente</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtAutoFetchDesc" xml:space="preserve"><value>Busca la portada animada de un álbum al abrirlo.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtCacheSize" xml:space="preserve"><value>Tamaño de la caché</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve"><value>Cuando se llena, se eliminan las portadas más antiguas.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve"><value>Para portadas animadas y vídeos de artistas. Cuando se llena, se eliminan los más antiguos.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtCacheUsedOf" xml:space="preserve"><value>{0} de {1} usados</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtQuality" xml:space="preserve"><value>Calidad de las portadas animadas</value><comment>Settings › Appearance › Artwork: quality fetched loops are downloaded at (GitHub #185)</comment></data>
   <data name="Settings.AnimArtQualityDesc" xml:space="preserve"><value>2160p se ve más nítido pero ocupa unas 3 veces más espacio. Las portadas sin 2160p usan 1080p.</value><comment>Settings › Appearance › Artwork › Animated Artwork Quality hint</comment></data>

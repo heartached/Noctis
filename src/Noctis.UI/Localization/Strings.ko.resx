@@ -8431,7 +8431,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve">
-    <value>가득 차면 오래된 커버부터 삭제됩니다.</value>
+    <value>애니메이션 커버와 아티스트 동영상용. 가득 차면 오래된 것부터 삭제됩니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AnimArtCacheUsedOf" xml:space="preserve">
