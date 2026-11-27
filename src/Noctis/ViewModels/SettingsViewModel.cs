@@ -2109,16 +2109,32 @@ public partial class SettingsViewModel : ViewModelBase
 
     private void RefreshServerUsers(bool phonesInBackground = false)
     {
-        try
-        {
-            ServerUsersList.Clear();
-            foreach (var u in ServerUsers.List()) ServerUsersList.Add(u);
-            RaiseAccountDerivedProperties();
-        }
+        try { ReadServerUsersList(); }
         catch (Exception ex) { ShowServerUserError(ex.Message); }
         // Deleting an account or changing its password signs its devices out.
         if (phonesInBackground) RefreshPhoneDevicesInBackground();
         else RefreshPhoneDevices();
+    }
+
+    private void ReadServerUsersList()
+    {
+        ServerUsersList.Clear();
+        foreach (var u in ServerUsers.List()) ServerUsersList.Add(u);
+        RaiseAccountDerivedProperties();
+    }
+
+    /// <summary>
+    /// At settings load: the accounts, so the Account card knows which half to show before its
+    /// page is first built. They used to be read only when the phone server started or the tab
+    /// opened; with the phone app off, a page the warm-up had built while Settings sat open came
+    /// up with the create form, and the tab's open then glided it away (owner 11-26). One local
+    /// read; no users.db yet means no account, and none is created here.
+    /// </summary>
+    private void LoadServerUsersAtStartup()
+    {
+        if (ServerUsersList.Count > 0 || !File.Exists(Path.Combine(ServerDataDirectory, "users.db"))) return;
+        try { ReadServerUsersList(); }
+        catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.State, "Account.LoadFailed", ex.Message); }
     }
 
     /// <summary>Account errors ("Use a password of at least 8 characters.") leave on their own like
@@ -3954,6 +3970,7 @@ public partial class SettingsViewModel : ViewModelBase
             LocalApiEnabled = _settings.LocalApiEnabled;
             NoctisServerPort = _settings.NoctisServerPort;
             NoctisServerEnabled = AccountFeatures.Enabled && _settings.NoctisServerEnabled;
+            LoadServerUsersAtStartup();
             ShowArtworkColumn = _settings.ShowArtworkColumn;
             ShowGenreColumn = _settings.ShowGenreColumn;
             ShowRatingColumn = _settings.ShowRatingColumn;
@@ -7445,7 +7462,7 @@ public partial class SettingsViewModel : ViewModelBase
                 // Loon first so the artwork URL resolves for the republish below.
                 await ConnectLoonAsync();
                 // Republish current playback state so the track appears immediately.
-                await RepublishDiscordPresenceAsync();
+                await RepublishDiscordPresenceAsync(clearWhenIdle: true);
             }
         }
         else
@@ -7494,18 +7511,21 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Pushes the current playback state to Discord after a reconnect,
-    /// so the user doesn't have to wait for the next track/state event.
+    /// Pushes the current playback state to Discord after a reconnect (<paramref name="clearWhenIdle"/>)
+    /// or an option change, so the user doesn't have to wait for the next track/state event.
+    /// Only a playing song is shown: a pause or stop clears the presence (MainWindowViewModel's
+    /// state handler), so an option changed then sends nothing. It used to send the paused song,
+    /// which put the card back on Discord while nothing played.
     /// </summary>
-    private async Task RepublishDiscordPresenceAsync()
+    private async Task RepublishDiscordPresenceAsync(bool clearWhenIdle = false)
     {
         if (_discord == null || !_discord.IsConnected || _player == null)
             return;
 
         var track = _player.CurrentTrack;
-        if (track == null || _player.State == PlaybackState.Stopped)
+        if (track == null || _player.State != PlaybackState.Playing)
         {
-            await _discord.ClearAsync();
+            if (clearWhenIdle) await _discord.ClearAsync();
             return;
         }
 
@@ -7518,8 +7538,10 @@ public partial class SettingsViewModel : ViewModelBase
             ShowAlbum: DiscordShowAlbum,
             StatusDisplay: DiscordPresenceOptions.ParseStatusDisplay(DiscordStatusDisplay));
 
-        var isPlaying = _player.State == PlaybackState.Playing;
-        await _discord.UpdateAsync(dto, _player.Position, _player.Duration, isPlaying);
+        // The length the window's own publish uses (MainWindowViewModel.UpdateDiscordPresenceAsync),
+        // so the re-sent bar ends where the shown one does.
+        var duration = _player.IsPlayingMusicVideoAudio ? _player.Duration : track.Duration;
+        await _discord.UpdateAsync(dto, _player.Position, duration, isPlaying: true);
     }
 
     partial void OnDiscordShowAlbumChanged(bool value)

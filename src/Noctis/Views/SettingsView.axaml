@@ -1237,6 +1237,18 @@
             <Setter Property="Height" Value="1"/>
             <Setter Property="Background" Value="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
         </Style>
+        <!-- Scrobbling (11-26): one option row inside a service's inset group, and the
+             signed-in account chip beside Logout (pill height, sub-card fill). -->
+        <Style Selector="Grid.scrobble-option">
+            <Setter Property="Margin" Value="0,12"/>
+            <Setter Property="MinHeight" Value="34"/>
+        </Style>
+        <Style Selector="Border.scrobble-account">
+            <Setter Property="Background" Value="#14808080"/>
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Padding" Value="12,0"/>
+            <Setter Property="Height" Value="34"/>
+        </Style>
         <Style Selector="Grid.sub-setting:disabled, StackPanel.sub-setting:disabled">
             <Setter Property="Opacity" Value="0.4"/>
         </Style>
@@ -8463,13 +8475,16 @@
             </Border>
 
             <TextBlock Classes="section-title" Text="{loc:T Settings.Section.Scrobbling}" Margin="0,16,0,8"/>
+            <!-- 11-26: each service is one row of the card: a header (logo, title + one line, the
+                 connect state on the right: account chip + Logout, or Connect), and while signed in
+                 its options in an inset group under it, one hairline between rows, every control
+                 on the same right edge. Both services share the same order and anatomy. -->
             <Border Classes="setting-card group-card">
             <StackPanel>
             <Border Classes="setting-row">
-                <StackPanel Spacing="8">
-                    <StackPanel>
-                    <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
-                        <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="2"
+                <StackPanel>
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Border Grid.Column="0"
                                 Width="40" Height="40" CornerRadius="10"
                                 Background="#D51007"
                                 Margin="0,0,14,0"
@@ -8483,117 +8498,114 @@
                             </Viewbox>
                         </Border>
 
-                        <StackPanel Grid.Column="1" Grid.Row="0" Grid.RowSpan="2"
-                                    VerticalAlignment="Center" Spacing="2" Margin="0,0,12,0">
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2" Margin="0,0,12,0">
                             <TextBlock Text="{loc:T Settings.LastFmScrobbling}" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Left"/>
-                            <StackPanel>
                             <StackPanel>
                             <TextBlock Text="{loc:T Settings.SendPlaysLastFm}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap" MaxWidth="560"
-                                       HorizontalAlignment="Left"
-                                       Margin="-2,0,0,0"/>
-                            <!-- ACCOUNT line sits inline with title/description so it pulls up tight
-                                 against the description instead of dropping into its own grid row. -->
-                            <controls:CollapsibleContent IsOpen="{Binding LastFmUsername, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
-                            <StackPanel Orientation="Horizontal" Spacing="6"
-                                        Margin="-2,4,0,0">
-                                <TextBlock Text="{loc:T Settings.ACCOUNT}" FontSize="12" Opacity="0.45" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding LastFmUsername}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"/>
-                            </StackPanel>
-                            </controls:CollapsibleContent>
-                            </StackPanel>
+                                       HorizontalAlignment="Left"/>
                             <!-- GitHub #197: signed in on another computer only, and plays waiting to be sent. -->
                             <controls:CollapsibleContent IsOpen="{Binding LastFmQueueNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
                             <TextBlock Text="{Binding LastFmQueueNote}"
                                        FontSize="12" Opacity="0.6" TextWrapping="Wrap" MaxWidth="560"
-                                       HorizontalAlignment="Left" Margin="-2,4,0,0"/>
+                                       HorizontalAlignment="Left" Margin="0,4,0,0"/>
                             </controls:CollapsibleContent>
                             <!-- Connect could not start a sign-in (no sign-in page, no browser), red as ListenBrainz's. -->
                             <controls:CollapsibleContent IsOpen="{Binding LastFmError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
                             <TextBlock x:Name="LastFmErrorText" Text="{Binding LastFmError}"
                                        Foreground="#E74856" FontSize="11" TextWrapping="Wrap" MaxWidth="560"
-                                       HorizontalAlignment="Left" Margin="-2,4,0,0"/>
+                                       HorizontalAlignment="Left" Margin="0,4,0,0"/>
                             </controls:CollapsibleContent>
                             </StackPanel>
                         </StackPanel>
 
-                        <!-- Not connected state -->
-                        <Button Grid.Column="2" Grid.Row="0"
-                                IsVisible="{Binding !IsLastFmConnected}"
-                                Content="{loc:T Settings.Connect}"
-                                Classes="pill-action accent-btn"
-                                Command="{Binding LoginLastFmCommand}"
-                                Padding="14,8"
-                                CornerRadius="999"
-                                Cursor="Hand"
-                                VerticalAlignment="Center"
-                                Margin="0,0,0,4">
-                            <Button.Template>
-                                <ControlTemplate>
-                                    <ContentPresenter Background="{DynamicResource AccentColorBrush}"
-                                                      Foreground="{DynamicResource AccentForegroundBrush}"
-                                                      CornerRadius="16"
-                                                      Padding="14,8"
-                                                      FontSize="13"
-                                                      FontWeight="SemiBold"
-                                                      Content="{TemplateBinding Content}"/>
-                                </ControlTemplate>
-                            </Button.Template>
-                        </Button>
+                        <!-- Connect state on the right: account chip + Logout, or Connect. -->
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top" Margin="0,3,0,0">
+                            <controls:CollapsibleContent IsOpen="{Binding LastFmUsername, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide"
+                                                         VerticalAlignment="Center">
+                            <Border Classes="scrobble-account" ToolTip.Tip="{loc:T Settings.ACCOUNT}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <PathIcon Data="{StaticResource RailPersonIcon}" Width="14" Height="14" Opacity="0.6" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding LastFmUsername}" FontSize="13" FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis" MaxWidth="180" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            </controls:CollapsibleContent>
 
-                        <!-- Logout button (top-right, when connected) -->
-                        <Button Grid.Column="2" Grid.Row="0"
-                                AutomationProperties.Name="{loc:T Settings.Logout}"
-                                IsVisible="{Binding IsLastFmConnected}"
-                                Command="{Binding LogoutLastFmCommand}"
-                                Classes="pill-action"
-                                Padding="14,8"
-                                CornerRadius="999"
-                                Cursor="Hand"
-                                VerticalAlignment="Center">
-                            <TextBlock Text="{loc:T Settings.Logout}" FontSize="13"
-                                       VerticalAlignment="Center"/>
-                        </Button>
+                            <!-- Not connected state -->
+                            <Button IsVisible="{Binding !IsLastFmConnected}"
+                                    Content="{loc:T Settings.Connect}"
+                                    Classes="pill-action accent-btn"
+                                    Command="{Binding LoginLastFmCommand}"
+                                    Padding="14,8"
+                                    CornerRadius="999"
+                                    Cursor="Hand"
+                                    VerticalAlignment="Center">
+                                <Button.Template>
+                                    <ControlTemplate>
+                                        <ContentPresenter Background="{DynamicResource AccentColorBrush}"
+                                                          Foreground="{DynamicResource AccentForegroundBrush}"
+                                                          CornerRadius="16"
+                                                          Padding="14,8"
+                                                          FontSize="13"
+                                                          FontWeight="SemiBold"
+                                                          Content="{TemplateBinding Content}"/>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+
+                            <Button AutomationProperties.Name="{loc:T Settings.Logout}"
+                                    IsVisible="{Binding IsLastFmConnected}"
+                                    Command="{Binding LogoutLastFmCommand}"
+                                    Classes="pill-action"
+                                    Padding="14,8"
+                                    CornerRadius="999"
+                                    Cursor="Hand"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="{loc:T Settings.Logout}" FontSize="13"
+                                           VerticalAlignment="Center"/>
+                            </Button>
+                        </StackPanel>
                     </Grid>
 
-                    <!-- Enable Scrobbling (when connected) -->
+                    <!-- Options (when connected) -->
                     <controls:CollapsibleContent IsOpen="{Binding IsLastFmConnected}" Lift="10" Motion="Glide">
-                    <StackPanel Margin="0,8,0,0" Spacing="8">
-                    <Grid ColumnDefinitions="*,Auto" Margin="54,0,0,0">
+                    <Border Classes="sub-card" Margin="0,14,0,2">
+                    <StackPanel>
+                    <Grid ColumnDefinitions="*,Auto" Classes="scrobble-option">
                         <TextBlock Grid.Column="0"
                                    Text="{loc:T Settings.EnableScrobbling}"
-                                   FontSize="13"
+                                   FontSize="14" FontWeight="SemiBold"
                                    VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
                                               AutomationProperties.Name="{loc:T Settings.EnableScrobbling}"
                                               IsChecked="{Binding LastFmScrobblingEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <Border Classes="sub-divider"/>
                     <!-- GitHub #177: Home's "From your Last.fm" mixes and Discover (read-only). -->
-                    <Grid ColumnDefinitions="*,Auto" Margin="54,4,0,0">
-                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,12,0">
-                            <TextBlock Text="{loc:T Settings.LastFmTaste.Title}" FontSize="13"/>
+                    <Grid ColumnDefinitions="*,Auto" Classes="scrobble-option">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Text="{loc:T Settings.LastFmTaste.Title}" FontSize="14" FontWeight="SemiBold"/>
                             <TextBlock Text="{loc:T Settings.LastFmTaste.Line}"
-                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap" MaxWidth="460"
-                                       HorizontalAlignment="Left"/>
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
                                               AutomationProperties.Name="{loc:T Settings.LastFmTaste.Title}"
                                               IsChecked="{Binding LastFmTasteEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <Border Classes="sub-divider"/>
                     <!-- GitHub #160: one-way play count import from LastFm (SettingsViewModel.PlayCountImport.cs). -->
-                    <Grid ColumnDefinitions="*,Auto,Auto" Margin="54,4,0,0">
-                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,12,0">
-                            <TextBlock Text="{loc:T Settings.PlayCountImport.Title}" FontSize="13"/>
+                    <Grid ColumnDefinitions="*,Auto,Auto" Classes="scrobble-option">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Text="{loc:T Settings.PlayCountImport.Title}" FontSize="14" FontWeight="SemiBold"/>
                             <StackPanel>
                             <TextBlock Text="{loc:T Settings.PlayCountImport.Line}"
-                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap" MaxWidth="460"
-                                       HorizontalAlignment="Left"/>
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                             <controls:CollapsibleContent IsOpen="{Binding LastFmImportStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
-                            <TextBlock Margin="0,2,0,0" Text="{Binding LastFmImportStatus}"
-                                       FontSize="11" Opacity="0.85" TextWrapping="Wrap" MaxWidth="460"
-                                       HorizontalAlignment="Left"/>
+                            <TextBlock Margin="0,4,0,0" Text="{Binding LastFmImportStatus}"
+                                       FontSize="12" Opacity="0.85" TextWrapping="Wrap"/>
                             </controls:CollapsibleContent>
                             </StackPanel>
                         </StackPanel>
@@ -8603,7 +8615,7 @@
                                   ItemsSource="{Binding PlayCountImportModeOptions}"
                                   SelectedItem="{Binding SelectedPlayCountImportModeOption}"
                                   IsEnabled="{Binding !IsPlayCountImportRunning}"
-                                  MinWidth="160"
+                                  MinWidth="196"
                                   VerticalAlignment="Center"
                                   CornerRadius="999"
                                   Padding="14,8"
@@ -8613,6 +8625,8 @@
                                 IsVisible="{Binding !IsLastFmImportRunning}"
                                 Command="{Binding ImportLastFmPlayCountsCommand}"
                                 Classes="pill-action"
+                                MinWidth="88"
+                                HorizontalContentAlignment="Center"
                                 Padding="14,8"
                                 CornerRadius="999"
                                 Cursor="Hand"
@@ -8624,6 +8638,8 @@
                                 IsVisible="{Binding IsLastFmImportRunning}"
                                 Command="{Binding CancelPlayCountImportCommand}"
                                 Classes="pill-action"
+                                MinWidth="88"
+                                HorizontalContentAlignment="Center"
                                 Padding="14,8"
                                 CornerRadius="999"
                                 Cursor="Hand"
@@ -8631,13 +8647,13 @@
                             <TextBlock Text="{loc:T Settings.PlayCountImport.Cancel}" FontSize="13" VerticalAlignment="Center"/>
                         </Button>
                     </Grid>
+                    <Border Classes="sub-divider"/>
                     <!-- GitHub #160: background play count sync (SettingsViewModel.PlayCountImport.cs). -->
-                    <Grid ColumnDefinitions="*,Auto" Margin="54,4,0,0">
-                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,12,0">
-                            <TextBlock Text="{loc:T Settings.PlayCountImport.Sync.Title}" FontSize="13"/>
+                    <Grid ColumnDefinitions="*,Auto" Classes="scrobble-option">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Text="{loc:T Settings.PlayCountImport.Sync.Title}" FontSize="14" FontWeight="SemiBold"/>
                             <TextBlock Text="{loc:T Settings.PlayCountImport.Sync.Line}"
-                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap" MaxWidth="460"
-                                       HorizontalAlignment="Left"/>
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
                                               AutomationProperties.Name="{loc:T Settings.PlayCountImport.Sync.Title}"
@@ -8645,78 +8661,58 @@
                                               VerticalAlignment="Center"/>
                     </Grid>
                     </StackPanel>
+                    </Border>
                     </controls:CollapsibleContent>
-                    </StackPanel>
                 </StackPanel>
             </Border>
             <Border Classes="setting-row">
-                <StackPanel Spacing="8">
-                    <StackPanel>
-                    <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+                <StackPanel>
+                    <Grid ColumnDefinitions="Auto,*,Auto">
                         <!-- Official multi-colour ListenBrainz logo (transparent PNG). It's the
                              hexagonal brand mark, so it stands on its own at the same 40×40 footprint
                              as the Discord / Last.fm tiles rather than sitting on a colour fill. -->
-                        <Image Grid.Column="0" Grid.Row="0" Grid.RowSpan="2"
+                        <Image Grid.Column="0"
                                Width="40" Height="40"
                                Margin="0,0,14,0"
                                VerticalAlignment="Top"
                                Source="avares://Noctis.UI/Assets/Icons/ListenBrainz ICON.png"
                                RenderOptions.BitmapInterpolationMode="HighQuality"/>
 
-                        <StackPanel Grid.Column="1" Grid.Row="0" Grid.RowSpan="2"
-                                    VerticalAlignment="Center" Spacing="2" Margin="0,0,12,0">
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2" Margin="0,0,12,0">
                             <TextBlock Text="{loc:T Settings.ListenBrainzScrobbling}" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Left"/>
-                            <StackPanel>
-                            <StackPanel>
-                            <StackPanel>
                             <StackPanel>
                             <TextBlock Text="{loc:T Settings.SendPlaysListenBrainz}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap" MaxWidth="560"
-                                       HorizontalAlignment="Left"
-                                       Margin="-2,0,0,0"/>
-
-                            <!-- ACCOUNT line sits inline with the title/description block so it pulls
-                                 up tight against the description instead of dropping into its own grid row. -->
-                            <controls:CollapsibleContent IsOpen="{Binding ListenBrainzUsername, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
-                            <StackPanel Orientation="Horizontal" Spacing="6"
-                                        Margin="-2,4,0,0">
-                                <TextBlock Text="{loc:T Settings.ACCOUNT}" FontSize="12" Opacity="0.45" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding ListenBrainzUsername}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"/>
-                            </StackPanel>
-                            </controls:CollapsibleContent>
-                            </StackPanel>
+                                       HorizontalAlignment="Left"/>
                             <!-- Self-hosted server in use (Koito, Maloja, …); hidden for the official one. -->
                             <controls:CollapsibleContent IsOpen="{Binding ListenBrainzServerDisplay, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
                             <StackPanel Orientation="Horizontal" Spacing="6"
-                                        Margin="-2,2,0,0">
+                                        Margin="0,4,0,0">
                                 <TextBlock Text="{loc:T Settings.ListenBrainzServer}" FontSize="12" Opacity="0.45" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 <TextBlock Text="{Binding ListenBrainzServerDisplay}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"
                                            TextTrimming="CharacterEllipsis" MaxWidth="420"/>
                             </StackPanel>
                             </controls:CollapsibleContent>
-                            </StackPanel>
                             <!-- GitHub #197: signed in on another computer only, and plays waiting to be sent. -->
                             <controls:CollapsibleContent IsOpen="{Binding ListenBrainzQueueNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
                             <TextBlock Text="{Binding ListenBrainzQueueNote}"
                                        FontSize="12" Opacity="0.6" TextWrapping="Wrap" MaxWidth="560"
-                                       HorizontalAlignment="Left" Margin="-2,4,0,0"/>
+                                       HorizontalAlignment="Left" Margin="0,4,0,0"/>
                             </controls:CollapsibleContent>
-                            </StackPanel>
 
-                            <!-- Token row lives inside the same StackPanel as the title so it sits
-                                 right under the description instead of leaving a gap. The Connect
-                                 button is hoisted to column 2 (top-right) to match the Last.fm card. -->
-                            <controls:CollapsibleContent IsOpen="{Binding !IsListenBrainzConnected}" Lift="10" Margin="-2,0,0,0" Motion="Glide">
+                            <!-- Token form (not connected) sits right under the description; Connect
+                                 stays top-right as on Last.fm. -->
+                            <controls:CollapsibleContent IsOpen="{Binding !IsListenBrainzConnected}" Lift="10" Motion="Glide">
                             <StackPanel
-                                        Margin="0,8,0,0"
-                                        Spacing="4">
+                                        Margin="0,10,0,0"
+                                        Spacing="6">
                                 <TextBox x:Name="ListenBrainzTokenBox"
                                          AutomationProperties.Name="{loc:T Settings.ListenBrainzUserToken}"
                                          Classes="metadata-info-field"
                                          Text="{Binding ListenBrainzToken}"
                                          PasswordChar="•"
                                          Watermark="{loc:T Settings.ListenBrainzUserToken}"
-                                         Width="280"
+                                         Width="300"
                                          HorizontalAlignment="Left"/>
                                 <!-- GitHub #118: optional ListenBrainz-compatible server (blank = listenbrainz.org). -->
                                 <TextBox x:Name="ListenBrainzApiUrlBox"
@@ -8724,19 +8720,18 @@
                                          Classes="metadata-info-field"
                                          Text="{Binding ListenBrainzApiUrl}"
                                          Watermark="{loc:T Settings.ListenBrainzApiUrl}"
-                                         Width="280"
+                                         Width="300"
                                          HorizontalAlignment="Left"/>
                                 <StackPanel>
                                 <TextBlock Text="{loc:T Settings.ListenBrainzApiUrlHint}"
-                                           FontSize="11" Opacity="0.5" TextWrapping="Wrap" MaxWidth="420"
-                                           HorizontalAlignment="Left"
-                                           Margin="8,0,0,0"/>
+                                           FontSize="12" Opacity="0.5" TextWrapping="Wrap" MaxWidth="420"
+                                           HorizontalAlignment="Left"/>
                                 <!-- Inline validation error (e.g. "Token required"), semantically red. -->
                                 <controls:CollapsibleContent IsOpen="{Binding ListenBrainzError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
                                 <TextBlock Text="{Binding ListenBrainzError}"
                                            Foreground="#E74856"
                                            FontSize="11"
-                                           Margin="8,4,0,0"/>
+                                           Margin="0,4,0,0"/>
                                 </controls:CollapsibleContent>
                                 </StackPanel>
                             </StackPanel>
@@ -8744,69 +8739,79 @@
                             </StackPanel>
                         </StackPanel>
 
-                        <!-- Not connected state (top-right, mirrors the Last.fm Connect button) -->
-                        <Button Grid.Column="2" Grid.Row="0"
-                                IsVisible="{Binding !IsListenBrainzConnected}"
-                                Content="{loc:T Settings.Connect}"
-                                Classes="pill-action accent-btn"
-                                Command="{Binding TestListenBrainzCommand}"
-                                Padding="14,8"
-                                CornerRadius="999"
-                                Cursor="Hand"
-                                VerticalAlignment="Center"
-                                Margin="0,0,0,4">
-                            <Button.Template>
-                                <ControlTemplate>
-                                    <ContentPresenter Background="{DynamicResource AccentColorBrush}"
-                                                      Foreground="{DynamicResource AccentForegroundBrush}"
-                                                      CornerRadius="16"
-                                                      Padding="14,8"
-                                                      FontSize="13"
-                                                      FontWeight="SemiBold"
-                                                      Content="{TemplateBinding Content}"/>
-                                </ControlTemplate>
-                            </Button.Template>
-                        </Button>
+                        <!-- Connect state on the right: account chip + Logout, or Connect. -->
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top" Margin="0,3,0,0">
+                            <controls:CollapsibleContent IsOpen="{Binding ListenBrainzUsername, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide"
+                                                         VerticalAlignment="Center">
+                            <Border Classes="scrobble-account" ToolTip.Tip="{loc:T Settings.ACCOUNT}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <PathIcon Data="{StaticResource RailPersonIcon}" Width="14" Height="14" Opacity="0.6" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding ListenBrainzUsername}" FontSize="13" FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis" MaxWidth="180" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            </controls:CollapsibleContent>
 
-                        <!-- Logout button (top-right, when connected) -->
-                        <Button Grid.Column="2" Grid.Row="0"
-                                AutomationProperties.Name="{loc:T Settings.Logout}"
-                                IsVisible="{Binding IsListenBrainzConnected}"
-                                Command="{Binding LogoutListenBrainzCommand}"
-                                Classes="pill-action"
-                                Padding="14,8"
-                                CornerRadius="999"
-                                Cursor="Hand"
-                                VerticalAlignment="Center">
-                            <TextBlock Text="{loc:T Settings.Logout}" FontSize="13" VerticalAlignment="Center"/>
-                        </Button>
+                            <!-- Not connected state (mirrors the Last.fm Connect button) -->
+                            <Button IsVisible="{Binding !IsListenBrainzConnected}"
+                                    Content="{loc:T Settings.Connect}"
+                                    Classes="pill-action accent-btn"
+                                    Command="{Binding TestListenBrainzCommand}"
+                                    Padding="14,8"
+                                    CornerRadius="999"
+                                    Cursor="Hand"
+                                    VerticalAlignment="Center">
+                                <Button.Template>
+                                    <ControlTemplate>
+                                        <ContentPresenter Background="{DynamicResource AccentColorBrush}"
+                                                          Foreground="{DynamicResource AccentForegroundBrush}"
+                                                          CornerRadius="16"
+                                                          Padding="14,8"
+                                                          FontSize="13"
+                                                          FontWeight="SemiBold"
+                                                          Content="{TemplateBinding Content}"/>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+
+                            <Button AutomationProperties.Name="{loc:T Settings.Logout}"
+                                    IsVisible="{Binding IsListenBrainzConnected}"
+                                    Command="{Binding LogoutListenBrainzCommand}"
+                                    Classes="pill-action"
+                                    Padding="14,8"
+                                    CornerRadius="999"
+                                    Cursor="Hand"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="{loc:T Settings.Logout}" FontSize="13" VerticalAlignment="Center"/>
+                            </Button>
+                        </StackPanel>
                     </Grid>
 
-                    <!-- Enable Scrobbling (when connected) -->
+                    <!-- Options (when connected), same anatomy as Last.fm's -->
                     <controls:CollapsibleContent IsOpen="{Binding IsListenBrainzConnected}" Lift="10" Motion="Glide">
-                    <StackPanel Margin="0,8,0,0" Spacing="8">
-                    <Grid ColumnDefinitions="*,Auto" Margin="54,0,0,0">
+                    <Border Classes="sub-card" Margin="0,14,0,2">
+                    <StackPanel>
+                    <Grid ColumnDefinitions="*,Auto" Classes="scrobble-option">
                         <TextBlock Grid.Column="0"
                                    Text="{loc:T Settings.EnableScrobbling}"
-                                   FontSize="13"
+                                   FontSize="14" FontWeight="SemiBold"
                                    VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
                                               AutomationProperties.Name="{loc:T Settings.EnableScrobbling}"
                                               IsChecked="{Binding ListenBrainzScrobblingEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <Border Classes="sub-divider"/>
                     <!-- GitHub #160: one-way play count import from ListenBrainz (SettingsViewModel.PlayCountImport.cs). -->
-                    <Grid ColumnDefinitions="*,Auto,Auto" Margin="54,4,0,0">
-                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,12,0">
-                            <TextBlock Text="{loc:T Settings.PlayCountImport.Title}" FontSize="13"/>
+                    <Grid ColumnDefinitions="*,Auto,Auto" Classes="scrobble-option">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Text="{loc:T Settings.PlayCountImport.Title}" FontSize="14" FontWeight="SemiBold"/>
                             <StackPanel>
                             <TextBlock Text="{loc:T Settings.PlayCountImport.Line}"
-                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap" MaxWidth="460"
-                                       HorizontalAlignment="Left"/>
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                             <controls:CollapsibleContent IsOpen="{Binding ListenBrainzImportStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
-                            <TextBlock Margin="0,2,0,0" Text="{Binding ListenBrainzImportStatus}"
-                                       FontSize="11" Opacity="0.85" TextWrapping="Wrap" MaxWidth="460"
-                                       HorizontalAlignment="Left"/>
+                            <TextBlock Margin="0,4,0,0" Text="{Binding ListenBrainzImportStatus}"
+                                       FontSize="12" Opacity="0.85" TextWrapping="Wrap"/>
                             </controls:CollapsibleContent>
                             </StackPanel>
                         </StackPanel>
@@ -8816,7 +8821,7 @@
                                   ItemsSource="{Binding PlayCountImportModeOptions}"
                                   SelectedItem="{Binding SelectedPlayCountImportModeOption}"
                                   IsEnabled="{Binding !IsPlayCountImportRunning}"
-                                  MinWidth="160"
+                                  MinWidth="196"
                                   VerticalAlignment="Center"
                                   CornerRadius="999"
                                   Padding="14,8"
@@ -8826,6 +8831,8 @@
                                 IsVisible="{Binding !IsListenBrainzImportRunning}"
                                 Command="{Binding ImportListenBrainzPlayCountsCommand}"
                                 Classes="pill-action"
+                                MinWidth="88"
+                                HorizontalContentAlignment="Center"
                                 Padding="14,8"
                                 CornerRadius="999"
                                 Cursor="Hand"
@@ -8837,6 +8844,8 @@
                                 IsVisible="{Binding IsListenBrainzImportRunning}"
                                 Command="{Binding CancelPlayCountImportCommand}"
                                 Classes="pill-action"
+                                MinWidth="88"
+                                HorizontalContentAlignment="Center"
                                 Padding="14,8"
                                 CornerRadius="999"
                                 Cursor="Hand"
@@ -8844,13 +8853,13 @@
                             <TextBlock Text="{loc:T Settings.PlayCountImport.Cancel}" FontSize="13" VerticalAlignment="Center"/>
                         </Button>
                     </Grid>
+                    <Border Classes="sub-divider"/>
                     <!-- GitHub #160: background play count sync (SettingsViewModel.PlayCountImport.cs). -->
-                    <Grid ColumnDefinitions="*,Auto" Margin="54,4,0,0">
-                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,12,0">
-                            <TextBlock Text="{loc:T Settings.PlayCountImport.Sync.Title}" FontSize="13"/>
+                    <Grid ColumnDefinitions="*,Auto" Classes="scrobble-option">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Text="{loc:T Settings.PlayCountImport.Sync.Title}" FontSize="14" FontWeight="SemiBold"/>
                             <TextBlock Text="{loc:T Settings.PlayCountImport.Sync.Line}"
-                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap" MaxWidth="460"
-                                       HorizontalAlignment="Left"/>
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
                                               AutomationProperties.Name="{loc:T Settings.PlayCountImport.Sync.Title}"
@@ -8858,8 +8867,8 @@
                                               VerticalAlignment="Center"/>
                     </Grid>
                     </StackPanel>
+                    </Border>
                     </controls:CollapsibleContent>
-                    </StackPanel>
                 </StackPanel>
             </Border>
             </StackPanel>
