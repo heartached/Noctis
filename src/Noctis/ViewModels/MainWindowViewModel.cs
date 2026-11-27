@@ -3801,12 +3801,15 @@ public partial class MainWindowViewModel : ViewModelBase
     private void OnPlayerSeekedForIntegrations(object? sender, TimeSpan newPosition)
     {
         if (!_discord.IsConnected || Player.CurrentTrack == null) return;
+        // A pause cleared the card; a seek while paused must not put it back. Resuming sends
+        // the presence again from the new position.
+        if (Player.State != PlaybackState.Playing) return;
 
         var now = DateTime.UtcNow;
         if (now - _lastDiscordSeekUpdate < DiscordSeekThrottle) return;
         _lastDiscordSeekUpdate = now;
 
-        _ = UpdateDiscordPresenceAsync(Player.CurrentTrack, newPosition, Player.State == PlaybackState.Playing);
+        _ = UpdateDiscordPresenceAsync(Player.CurrentTrack, newPosition, true);
     }
 
     private void OnLoonDisconnected() => _discord.InvalidateArtworkCache();
@@ -3821,10 +3824,12 @@ public partial class MainWindowViewModel : ViewModelBase
         // require Playing, so a relay reconnect while paused — and the relay's very first
         // connect, which also raises this — left the presence pinned to an unreachable URL
         // for the rest of the track with no other path back to the real cover.
+        // Only a playing song has a card up: a pause clears it, and resuming sends a fresh one
+        // (with the new artwork URL), so there is nothing to refresh while paused.
         var track = Player.CurrentTrack;
-        if (track == null || Player.State == PlaybackState.Stopped) return;
+        if (track == null || Player.State != PlaybackState.Playing) return;
 
-        _ = UpdateDiscordPresenceAsync(track, Player.Position, Player.State == PlaybackState.Playing);
+        _ = UpdateDiscordPresenceAsync(track, Player.Position, true);
     }
 
     private async Task UpdateDiscordPresenceAsync(Track track, TimeSpan position, bool isPlaying)
