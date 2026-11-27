@@ -45,7 +45,7 @@ public class ResetEverythingTests : IDisposable
     {
         "indexes.json", "crash.log", "crashlog-20261101-120000.log", "play_history.recent.json",
         "wrap_archive.json", "favorite_artists.json", "phone_handoff.json", "queue-position.json",
-        "animated_artwork_bulk_ledger.json", "lyrics_bulk_ledger.json", "mp3_decoder_fallback.txt",
+        "animated_artwork_bulk_ledger.json", "lyrics_bulk_ledger.json", "mp3_decoder_fallback.txt", "whats_new_cache.json",
         "animated_artwork_no_autofetch.json", "animated_artwork_autofetch_ledger.json",
         "artist_video_no_autofetch.json", "artist_video_autofetch_ledger.json", "artist_video_index.json",
         "musixmatch_token", "computers.json", "replaygain-backfill.progress", "label-backfill.progress",

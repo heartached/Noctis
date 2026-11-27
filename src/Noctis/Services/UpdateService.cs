@@ -7,7 +7,7 @@ using System.Text.Json.Serialization;
 
 namespace Noctis.Services;
 
-public sealed class UpdateService
+public sealed class UpdateService : IReleaseNotesSource
 {
     // Fetch the recent releases list (instead of /releases/latest) so pre-releases are included.
     // GitHub excludes pre-releases from /releases/latest, which would hide prerelease builds from
@@ -318,6 +318,29 @@ public sealed class UpdateService
         _releaseListCache = response.Headers.ETag is { } etag ? new ReleaseListCache(etag, items) : null;
         return new List<ReleaseListItem>(items);
     }
+
+    /// <summary>
+    /// One release's notes by tag (Settings › About › What's new). Null when GitHub has no
+    /// release with that tag (404: a dev build whose version isn't released yet); any other
+    /// failure (offline, rate limit) throws, as the update check does.
+    /// </summary>
+    public async Task<ReleaseNotesDocument?> GetReleaseNotesAsync(string tag, CancellationToken ct = default)
+    {
+        if (!AutoUpdatePolicy.IsSafeTag(tag)) return null;
+        using var request = new HttpRequestMessage(HttpMethod.Get,
+            $"https://api.github.com/repos/heartached/Noctis/releases/tags/{Uri.EscapeDataString(tag)}");
+        request.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
+
+        using var response = await _http.SendAsync(request, ct);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        response.EnsureSuccessStatusCode();
+
+        var release = await HttpSafety.ReadJsonBoundedAsync<GitHubRelease>(response.Content, ct: ct);
+        if (release is null || release.Draft || string.IsNullOrEmpty(release.TagName)) return null;
+        return new ReleaseNotesDocument(release.TagName, release.PublishedAt, release.Body ?? "");
+    }
+
+    Task<ReleaseNotesDocument?> IReleaseNotesSource.FetchAsync(string tag, CancellationToken ct) => GetReleaseNotesAsync(tag, ct);
 
     private sealed record ReleaseListCache(System.Net.Http.Headers.EntityTagHeaderValue ETag, List<ReleaseListItem> Items);
     private volatile ReleaseListCache? _releaseListCache;

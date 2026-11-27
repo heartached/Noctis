@@ -213,6 +213,15 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.AutoDownloadUpdatesCaption" xml:space="preserve"><value>Lädt neue Versionen im Hintergrund. Klicke auf Installieren &amp; Neustarten, sobald du bereit bist.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Postpone" xml:space="preserve"><value>Später</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WhatsNew" xml:space="preserve"><value>Neuigkeiten</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="WhatsNew.Title" xml:space="preserve"><value>Neu in {0}</value></data>
+  <data name="WhatsNew.Released" xml:space="preserve"><value>Veröffentlicht am {0:D}</value></data>
+  <data name="WhatsNew.Added" xml:space="preserve"><value>Neu</value></data>
+  <data name="WhatsNew.Improved" xml:space="preserve"><value>Verbessert</value></data>
+  <data name="WhatsNew.Fixed" xml:space="preserve"><value>Behoben</value></data>
+  <data name="WhatsNew.Other" xml:space="preserve"><value>Sonstiges</value></data>
+  <data name="WhatsNew.Unavailable" xml:space="preserve"><value>Die Versionshinweise für diese Version sind noch nicht verfügbar.</value></data>
+  <data name="WhatsNew.OpenOnGitHub" xml:space="preserve"><value>Auf GitHub öffnen</value></data>
+  <data name="WhatsNew.IssueTip" xml:space="preserve"><value>{0} auf GitHub öffnen</value></data>
   <data name="Settings.ShowRecentReleasesOnly" xml:space="preserve"><value>Aktuelle Versionen ansehen</value><comment>Advanced: collapses the release history</comment></data>
   <data name="Settings.LyricsBackgroundPerSongHint" xml:space="preserve"><value>Klicke mit rechts auf einen Song oder ein Album, um ihm ein eigenes Video zu geben.</value><comment>Appearance: under Lyrics Background Video</comment></data>
   <data name="Settings.PauseVideoWithPlayback" xml:space="preserve"><value>Video mit Wiedergabe pausieren</value><comment>Appearance toggle title</comment></data>

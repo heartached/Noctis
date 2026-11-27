@@ -208,6 +208,15 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
   <data name="Settings.AutoDownloadUpdatesCaption" xml:space="preserve"><value>Güncellemeleri arka planda indirir. Hazır olduğunda Kur ve Yeniden Başlat'a tıkla.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Postpone" xml:space="preserve"><value>Ertele</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WhatsNew" xml:space="preserve"><value>Yenilikler</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="WhatsNew.Title" xml:space="preserve"><value>{0} Yenilikleri</value></data>
+  <data name="WhatsNew.Released" xml:space="preserve"><value>{0:D} tarihinde yayımlandı</value></data>
+  <data name="WhatsNew.Added" xml:space="preserve"><value>Eklenenler</value></data>
+  <data name="WhatsNew.Improved" xml:space="preserve"><value>İyileştirmeler</value></data>
+  <data name="WhatsNew.Fixed" xml:space="preserve"><value>Düzeltmeler</value></data>
+  <data name="WhatsNew.Other" xml:space="preserve"><value>Diğer</value></data>
+  <data name="WhatsNew.Unavailable" xml:space="preserve"><value>Bu sürümün sürüm notları henüz hazır değil.</value></data>
+  <data name="WhatsNew.OpenOnGitHub" xml:space="preserve"><value>GitHub'da aç</value></data>
+  <data name="WhatsNew.IssueTip" xml:space="preserve"><value>{0} kaydını GitHub'da aç</value></data>
   <data name="Settings.ShowRecentReleasesOnly" xml:space="preserve"><value>Son yayınları gör</value><comment>Advanced: collapses the release history</comment></data>
   <data name="Settings.LyricsBackgroundPerSongHint" xml:space="preserve"><value>Bir şarkıya veya albüme kendi videosunu vermek için sağ tıkla.</value><comment>Appearance: under Lyrics Background Video</comment></data>
   <data name="Settings.PauseVideoWithPlayback" xml:space="preserve"><value>Videoyu Oynatmayla Birlikte Duraklat</value><comment>Appearance toggle title</comment></data>

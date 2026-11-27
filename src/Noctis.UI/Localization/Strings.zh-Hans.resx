@@ -471,6 +471,15 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Settings.AutoDownloadUpdatesCaption" xml:space="preserve"><value>在后台下载更新。准备好后点击“安装并重启”。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Postpone" xml:space="preserve"><value>稍后</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WhatsNew" xml:space="preserve"><value>新功能</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="WhatsNew.Title" xml:space="preserve"><value>{0} 新功能</value></data>
+  <data name="WhatsNew.Released" xml:space="preserve"><value>发布于 {0:D}</value></data>
+  <data name="WhatsNew.Added" xml:space="preserve"><value>新增</value></data>
+  <data name="WhatsNew.Improved" xml:space="preserve"><value>改进</value></data>
+  <data name="WhatsNew.Fixed" xml:space="preserve"><value>修复</value></data>
+  <data name="WhatsNew.Other" xml:space="preserve"><value>其他</value></data>
+  <data name="WhatsNew.Unavailable" xml:space="preserve"><value>此版本的更新说明暂不可用。</value></data>
+  <data name="WhatsNew.OpenOnGitHub" xml:space="preserve"><value>在 GitHub 上打开</value></data>
+  <data name="WhatsNew.IssueTip" xml:space="preserve"><value>在 GitHub 上打开 {0}</value></data>
   <data name="Settings.ShowRecentReleasesOnly" xml:space="preserve">
     <value>查看最近的版本</value>
     <comment>Advanced: collapses the release history</comment>
