@@ -394,6 +394,7 @@
                                 CaseStyle="{Binding CarouselStyle}"
                                 CenterAlbum="{Binding CarouselCenterAlbum}"
                                 OpenCommand="{Binding OpenAlbumCommand}"
+                                ArtistCommand="{Binding ViewArtistCommand}"
                                 BleedToWindowEdges="True"
                                 Margin="0,4,10,110" />
 

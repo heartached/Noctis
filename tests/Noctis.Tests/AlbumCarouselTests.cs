@@ -180,6 +180,41 @@ public class AlbumCarouselTests
         w.Close();
     }
 
+    // Owner 11-27: the artist under the carousel was plain text, and hovering the quality badge
+    // said nothing (the album page explains it in a pop-up).
+    [AvaloniaFact]
+    public void Caption_ArtistNamesOpenTheArtist_AndTheQualityBadgeExplainsItself()
+    {
+        var albums = Many(5);
+        var (c, w) = Show(albums);
+        string? opened = null;
+        c.ArtistCommand = new RelayCommand<string>(a => opened = a);
+        Settle(c);
+
+        var artist = c.CaptionArtist;
+        Assert.Equal(albums[0].ArtistDisplay, artist.Text);
+        Assert.Equal(albums[0].ArtistDisplay, Noctis.Helpers.CaptionCreditLink.GetCredit(artist));
+        Assert.Same(c.ArtistCommand, Noctis.Helpers.CaptionCreditLink.GetCommand(artist));
+        Assert.True(artist.IsEffectivelyVisible);
+        // The pointer reaches the names: the caption is no longer shut to it.
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        var at = artist.TranslatePoint(new Point(artist.Bounds.Width / 2, artist.Bounds.Height / 2), c)!.Value;
+        Assert.Same(artist, c.InputHitTest(at));
+        var hit = Noctis.Helpers.CaptionCreditLink.NameAt(artist, new Point(artist.Bounds.Width / 2, artist.Bounds.Height / 2));
+        Assert.NotNull(hit);
+        c.ArtistCommand.Execute(hit!.Value.Name);
+        Assert.Equal(hit.Value.Name, opened);
+
+        // The next album's credit follows the caption.
+        Key(c, Avalonia.Input.Key.Right);
+        Settle(c);
+        Assert.Equal(albums[1].ArtistDisplay, Noctis.Helpers.CaptionCreditLink.GetCredit(artist));
+
+        Assert.IsType<StackPanel>(ToolTip.GetTip(c.CaptionQuality));
+        w.Close();
+    }
+
     [AvaloniaFact]
     public void Keys_BrowseOneAlbumAtATime_AndEnterOpensTheCentredAlbum()
     {
