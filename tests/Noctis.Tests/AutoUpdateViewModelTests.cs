@@ -302,6 +302,106 @@ public class AutoUpdateViewModelTests : IDisposable
         Assert.Contains("installs the next time", vm.UpdateStatusText);
     }
 
+    /// <summary>Discord 11-26: turned off while the startup re-check of a queued installer was still
+    /// hashing, the finished re-check put the queue back on screen ("installs the next time you open
+    /// Noctis", Postpone) although the switch was off and the queue already discarded.</summary>
+    [AvaloniaFact]
+    public async Task TurnedOffWhileTheStartupRecheckRuns_TheDiscardedQueueDoesNotComeBack()
+    {
+        var vm = await CreateAsync(new FakeGitHub("v99.0.0"), autoOn: true);
+        var file = Path.Combine(Path.GetTempPath(), $"Noctis-Update-{Guid.NewGuid().ToString("N")[..8]}-Setup.exe");
+        File.WriteAllBytes(file, Payload);
+        Store.Save(new AutoUpdateState
+        {
+            Tag = "v99.0.0",
+            Pending = new PendingInstall
+            {
+                Tag = "v99.0.0", FromVersion = "1.0.0", ToVersion = "99.0.0", InstallerPath = file,
+                Sha256 = Convert.ToHexString(SHA256.HashData(Payload)).ToLowerInvariant()
+            }
+        });
+
+        // Held open so the discard can't delete it: the re-check reads it whichever runs first.
+        using (new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            vm.RestoreAutoUpdateState(); // starts the background hash; its result waits for the UI thread
+            vm.AutoInstallUpdates = false;
+            for (var i = 0; i < 60; i++) { Dispatcher.UIThread.RunJobs(); await Task.Delay(10); }
+        }
+
+        Assert.Null(Store.Load()!.Pending);
+        Assert.False(vm.IsAutoInstallPending);
+        Assert.False(vm.ShowPostponeButton);
+        Assert.DoesNotContain("installs the next time", vm.UpdateStatusText ?? "");
+    }
+
+    /// <summary>Discord 11-26: turning it off could not drop the queue when auto-update.json was not
+    /// writable (read-only, held by antivirus or a sync client; the error was only logged), so the
+    /// queue outlived the switch and the next launch installed it. The launch now honours the saved
+    /// switch.</summary>
+    [AvaloniaFact]
+    public async Task TurnedOffButTheQueueCouldNotBeWritten_TheNextLaunchStillDoesNotInstall()
+    {
+        var vm = await CreateAsync(new FakeGitHub("v99.0.0"), autoOn: true);
+        await QueueAsync(vm);
+        var file = Store.Load()!.Pending!.InstallerPath;
+
+        File.SetAttributes(Store.FilePath, FileAttributes.ReadOnly);
+        try
+        {
+            vm.AutoInstallUpdates = false;
+            await PumpUntil(() => !PersistenceService.ReadBoolSettingAtLaunch(_root, nameof(AppSettings.AutoInstallUpdates)));
+            Assert.NotNull(Store.Load()!.Pending); // the discard failed: the queue is still on disk
+        }
+        finally
+        {
+            File.SetAttributes(Store.FilePath, FileAttributes.Normal);
+        }
+
+        // Changed bytes: if the launch went on to the install step, the SHA-256 re-check would stop it
+        // there (and block the tag) instead of running anything.
+        File.WriteAllText(file, "changed");
+        Assert.False(new UpdateService(new HttpClient(new FakeGitHub("v99.0.0")))
+            .TryInstallPendingUpdateAtLaunch(false, Store, AutoUpdateMode.InstallAtLaunch));
+
+        var s = Store.Load()!;
+        Assert.Null(s.Pending);
+        Assert.False(s.Blocked);
+    }
+
+    /// <summary>Turned off while an automatic download runs: it stops and nothing is queued.</summary>
+    [AvaloniaFact]
+    public async Task TurnedOffDuringAnAutomaticDownload_QueuesNothing()
+    {
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var api = new FakeGitHub("v99.0.0") { Gate = gate };
+        var vm = await CreateAsync(api, autoOn: true);
+
+        await vm.CheckForUpdateSilentAsync();
+        await PumpUntil(() => api.InstallerRequests == 1 && vm.IsDownloadingUpdate);
+        vm.AutoInstallUpdates = false;
+        gate.TrySetResult();
+        await PumpUntil(() => !vm.IsDownloadingUpdate);
+
+        Assert.Null(Store.Load()?.Pending);
+        Assert.False(vm.IsAutoInstallPending);
+    }
+
+    /// <summary>With the switch off, the Update pill's download waits for Install &amp; Restart; it is
+    /// never queued for the next launch.</summary>
+    [AvaloniaFact]
+    public async Task SettingOff_UpdatePillDownload_IsNotQueuedForTheNextLaunch()
+    {
+        var vm = await CreateAsync(new FakeGitHub("v99.0.0"), autoOn: false);
+
+        await vm.DownloadUpdateCommand.ExecuteAsync(null);
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.True(vm.IsReadyToInstall);
+        Assert.False(vm.IsAutoInstallPending);
+        Assert.Null(Store.Load()?.Pending);
+    }
+
     /// <summary>While a download runs, the "Check for updates" pill must not come back: it was shown
     /// next to the progress (IsUpdateAvailable drops when the download starts) and a click on it
     /// cancelled the download through the shared token.</summary>

@@ -220,8 +220,11 @@ internal static class AutoUpdatePolicy
         return state;
     }
 
+    /// <param name="autoInstallOn">The user's "Update automatically" switch as saved in settings.json
+    /// (missing or unreadable = off). Off never installs: a queue left behind while it was off is
+    /// discarded, as turning it off does.</param>
     public static LaunchAction DecideLaunchAction(
-        PendingInstall? p, Version current, AutoUpdateMode mode,
+        PendingInstall? p, Version current, AutoUpdateMode mode, bool autoInstallOn,
         bool hasFilesToOpen, bool fileOk, DateTimeOffset now, out string reason)
     {
         if (p is null) { reason = "nothing queued"; return LaunchAction.None; }
@@ -233,6 +236,7 @@ internal static class AutoUpdatePolicy
         if (target < running) { reason = "older than this build"; return LaunchAction.Discard; }
 
         if (mode == AutoUpdateMode.Off) { reason = "automatic updates are off for this copy"; return LaunchAction.Discard; }
+        if (!autoInstallOn) { reason = "Update automatically is off"; return LaunchAction.Discard; }
         // Before the file check: the Linux AppImage swap moves the file away while it runs.
         if (p.LastLaunchUtc is { } started && now >= started && now - started < InstallRunningWindow)
         {

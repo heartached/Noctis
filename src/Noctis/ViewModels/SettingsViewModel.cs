@@ -10069,7 +10069,7 @@ public partial class SettingsViewModel : ViewModelBase
 
         var owned = UpdateService.IsOwnedInstallerFile(pending.InstallerPath);
         var action = AutoUpdatePolicy.DecideLaunchAction(pending, UpdateService.CurrentVersion,
-            UpdateService.AutoMode, hasFilesToOpen: false, owned, DateTimeOffset.UtcNow, out var reason);
+            UpdateService.AutoMode, AutoUpdateActive, hasFilesToOpen: false, owned, DateTimeOffset.UtcNow, out var reason);
         if (action == LaunchAction.Completed) return; // settled by the next launch's Program.Main
         if (action == LaunchAction.Discard)
         {
@@ -10114,8 +10114,10 @@ public partial class SettingsViewModel : ViewModelBase
                     return;
                 }
 
-                // A check or download may have started meanwhile; leave its state alone.
+                // A check or download may have started meanwhile; leave its state alone. Nor may a
+                // queue discarded meanwhile (switch or pre-releases turned off) come back on screen.
                 if (IsDownloadingUpdate || IsReadyToInstall) return;
+                if (!AutoUpdateActive || AutoStore.Load()?.Pending?.InstallerPath != pending.InstallerPath) return;
 
                 _downloadedInstallerPath = pending.InstallerPath;
                 LatestVersionTag = pending.Tag;

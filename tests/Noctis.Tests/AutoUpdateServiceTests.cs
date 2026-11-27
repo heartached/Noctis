@@ -132,7 +132,20 @@ public class AutoUpdateLaunchInstallTests : IDisposable
     private readonly string _dir = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
     private readonly List<string> _tempFiles = new();
 
-    public AutoUpdateLaunchInstallTests() => Directory.CreateDirectory(_dir);
+    public AutoUpdateLaunchInstallTests()
+    {
+        Directory.CreateDirectory(_dir);
+        // The launch install reads "Update automatically" from settings.json next to the queue;
+        // the cases below are about the queue itself, so the switch is on unless a test says otherwise.
+        WriteSettings("""{ "autoInstallUpdates": true }""");
+    }
+
+    private void WriteSettings(string? json)
+    {
+        var path = Path.Combine(_dir, "settings.json");
+        if (json is null) File.Delete(path);
+        else File.WriteAllText(path, json);
+    }
 
     public void Dispose()
     {
@@ -301,6 +314,32 @@ public class AutoUpdateLaunchInstallTests : IDisposable
         var s = store.Load()!;
         Assert.Null(s.Pending);
         Assert.False(s.Blocked);
+        Assert.False(File.Exists(file));
+    }
+
+    /// <summary>Discord 11-26 ("i made it off and its still auto updating"): Program.Main installed a
+    /// queued update without looking at the switch, so a queue left behind while it was off (a discard
+    /// that could not write auto-update.json, settings.json lost or damaged) installed anyway. The
+    /// switch off, missing or unreadable now discards the queue like turning it off does, and the
+    /// install step (here: the SHA-256 re-check, which blocks the tag) is never reached.</summary>
+    [Theory]
+    [InlineData("""{ "autoInstallUpdates": false }""")]
+    [InlineData("""{ "theme": "Dark" }""")]        // key missing: the default, off
+    [InlineData(null)]                                // settings.json missing
+    [InlineData("""{ "autoInstallUpdates": tru""")]  // damaged
+    public void SwitchOffInSettings_NeverInstalls_AndDiscardsTheQueue(string? settingsJson)
+    {
+        WriteSettings(settingsJson);
+        var file = OwnedTempFile();
+        var store = new AutoUpdateStore(_dir);
+        store.Save(new AutoUpdateState { Tag = "v99.0.0", Pending = Pending(file, "99.0.0") });
+
+        Assert.False(Service().TryInstallPendingUpdateAtLaunch(false, store, AutoUpdateMode.InstallAtLaunch));
+
+        var s = store.Load()!;
+        Assert.Null(s.Pending);
+        Assert.False(s.Blocked);   // true would mean it went on to the install step
+        Assert.Equal(0, s.Failures); // not a failed download either
         Assert.False(File.Exists(file));
     }
 
