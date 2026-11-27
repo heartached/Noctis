@@ -89,14 +89,57 @@ public class MobileNowPlayingPageTests : IDisposable
         shell.ShowOutputCommand.Execute(null);
         Assert.Equal(1, outputs.Shown);
 
-        // The artist line pops Go to Album / Go to Artist (Apple's); Go to Artist opens the artist.
-        shell.OpenCurrentLinksCommand.Execute(null);
-        Assert.True(shell.IsNowPlayingOpen);
-        Assert.Same(t, Assert.IsType<TrackLinksMenuViewModel>(shell.PopMenu).Track);
-        shell.LinksMenu!.GoToArtistCommand.Execute(null);
+        // Beta 6: the artist line opens the artist at once (one artist: no bubble).
+        shell.GoToCurrentArtistCommand.Execute(null);
         Assert.False(shell.IsNowPlayingOpen);
         Assert.False(shell.IsMenuOpen);
         Assert.Equal("Band", shell.CurrentPage!.Title);
+    }
+
+    /// <summary>Beta 6 (#mobile-beta, two testers): on Now Playing the song's title opens its album
+    /// and the artist opens the artist, no Go to Album / Go to Artist bubble. A song credited to
+    /// several artists asks which on the bubble (one row each); a song with no album has no link
+    /// on its title.</summary>
+    [Fact]
+    public void TitleOpensTheAlbum_ArtistOpensTheArtist_SeveralArtistsAskWhich()
+    {
+        var solo = MobileFixtures.Song("Tone", artist: "Band");
+        var duet = MobileFixtures.Song("Pair", artist: "Bruno Mars, Anderson .Paak");
+        var album = MobileFixtures.MakeAlbum("Record", "Band", solo, duet);
+        var loose = MobileFixtures.Song("Loose", artist: "Band");
+        loose.Album = "Unknown Album";
+        using var rig = MobileFixtures.MakeRig(new[] { solo, duet, loose }, new[] { album });
+        var shell = rig.Shell;
+
+        // The title: the album, the player closed.
+        shell.Player.PlayTracks(new[] { solo, duet, loose }, 0);
+        shell.OpenNowPlayingCommand.Execute(null);
+        Assert.True(shell.Player.HasAlbum);
+        shell.GoToCurrentAlbumCommand.Execute(null);
+        Assert.False(shell.IsNowPlayingOpen);
+        Assert.False(shell.IsMenuOpen);
+        Assert.Equal(album.Id, Assert.IsType<AlbumPageViewModel>(shell.CurrentPage).AlbumId);
+
+        // Two artists: a bubble with one row each; a row opens that artist.
+        shell.Player.NextCommand.Execute(null);
+        shell.OpenNowPlayingCommand.Execute(null);
+        shell.GoToCurrentArtistCommand.Execute(null);
+        Assert.True(shell.IsNowPlayingOpen);
+        var links = Assert.IsType<TrackLinksMenuViewModel>(shell.PopMenu);
+        Assert.Equal(new[] { "Bruno Mars", "Anderson .Paak" }, links.Artists);
+        links.GoToArtistCommand.Execute("Anderson .Paak");
+        Assert.False(shell.IsMenuOpen);
+        Assert.False(shell.IsNowPlayingOpen);
+        Assert.Equal("Anderson .Paak", Assert.IsType<ArtistPageViewModel>(shell.CurrentPage).Title);
+
+        // No album: the title is no link, and a tap there leaves the player up.
+        shell.Player.NextCommand.Execute(null);
+        shell.OpenNowPlayingCommand.Execute(null);
+        var page = shell.CurrentPage;
+        Assert.False(shell.Player.HasAlbum);
+        shell.GoToCurrentAlbumCommand.Execute(null);
+        Assert.True(shell.IsNowPlayingOpen);
+        Assert.Same(page, shell.CurrentPage);
     }
 
     [AvaloniaFact]

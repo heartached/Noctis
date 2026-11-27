@@ -449,7 +449,7 @@ public class MobileLyricsPageTests
         Assert.False(page.IsHeldForMenu);
         Assert.Null(scroll.CacheMode);
 
-        shell.OpenCurrentLinksCommand.Execute(null);                 // a ⋯-style pop-up over the page
+        shell.OpenNowPlayingMenuCommand.Execute(null);                 // a ⋯-style pop-up over the page
         Assert.True(shell.IsMenuOpen);
         Assert.True(page.IsHeldForMenu);
         var cache = Assert.IsType<Avalonia.Media.BitmapCache>(scroll.CacheMode);
@@ -469,10 +469,10 @@ public class MobileLyricsPageTests
         Assert.Null(scroll.CacheMode);
         Assert.InRange(waited.ElapsedMilliseconds, 0, 1000);
 
-        shell.OpenCurrentLinksCommand.Execute(null);                 // a menu that opens again first
+        shell.OpenNowPlayingMenuCommand.Execute(null);                 // a menu that opens again first
         Assert.True(page.IsHeldForMenu);
         shell.CloseSheet();
-        shell.OpenCurrentLinksCommand.Execute(null);
+        shell.OpenNowPlayingMenuCommand.Execute(null);
         Thread.Sleep((int)LyricsPage.HoldReleaseDelay.TotalMilliseconds + 100);
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
         Assert.True(page.IsHeldForMenu);
