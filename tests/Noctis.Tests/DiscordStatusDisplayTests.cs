@@ -213,6 +213,37 @@ public class DiscordStatusDisplayTests : IDisposable
         throw new TimeoutException("No SET_ACTIVITY reached the pipe");
     }
 
+    /// <summary>
+    /// Discord opened after Noctis: nothing published the playing song until the next play, pause
+    /// or track change. The service now says when a connection is made (once per connection, and
+    /// after its gate is free so the handler can publish straight away).
+    /// </summary>
+    [Fact]
+    public async Task Connecting_RaisesConnectedOnce_AndTheHandlerCanPublishAtOnce()
+    {
+        var pipe = new FakeDiscordPipe();
+        var service = new DiscordPresenceService(() => new DiscordRpcClient("1470224696976085096", client: pipe));
+        var raised = 0;
+        Task? publish = null;
+        service.Connected += () =>
+        {
+            raised++;
+            publish = service.UpdateAsync(new DiscordPresenceTrack("Song", "Artist", "Album"), TimeSpan.FromSeconds(5), TimeSpan.FromMinutes(3), true);
+        };
+
+        Assert.True(await service.ConnectAsync());
+        Assert.Equal(1, raised);
+        Assert.NotNull(publish);
+        await publish!.WaitAsync(TimeSpan.FromSeconds(10));
+        var activity = await NextActivityAsync(pipe);
+        Assert.Equal("Song", (string?)activity["details"]);
+
+        // Already connected: no second signal.
+        Assert.True(await service.ConnectAsync());
+        Assert.Equal(1, raised);
+        service.Dispose();
+    }
+
     private static async Task<DiscordPresenceService> ConnectedServiceAsync(FakeDiscordPipe pipe)
     {
         var service = new DiscordPresenceService(() => new DiscordRpcClient("1470224696976085096", client: pipe));

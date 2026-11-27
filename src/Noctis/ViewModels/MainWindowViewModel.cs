@@ -1035,6 +1035,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // A loon reconnect rotates the clientId and invalidates the artwork URL Discord
         // is currently holding, so re-publish the presence with a fresh, valid URL.
         _loon.Reconnected += OnLoonReconnected;
+        _discord.Connected += OnDiscordConnected;
 
         // And on the way down, drop the cached key: it belongs to a clientId that is gone,
         // so re-publishing it would point Discord at a URL that now 404s.
@@ -3813,6 +3814,16 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     private void OnLoonDisconnected() => _discord.InvalidateArtworkCache();
+
+    /// <summary>Discord was opened after Noctis (or Rich Presence was just switched on): show the
+    /// song that is playing now. Every other publish waits for a play, pause, seek or track
+    /// change, so the card stayed empty until then.</summary>
+    private void OnDiscordConnected() =>
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (!_discord.IsConnected || Player.State != PlaybackState.Playing || Player.CurrentTrack is not { } track) return;
+            _ = UpdateDiscordPresenceAsync(track, Player.Position, true);
+        });
 
     private void OnLoonReconnected()
     {

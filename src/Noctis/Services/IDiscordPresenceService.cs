@@ -20,6 +20,11 @@ public interface IDiscordPresenceService : IDisposable
     /// <summary>Initializes and connects the Discord RPC client.</summary>
     Task<bool> ConnectAsync(CancellationToken ct = default);
 
+    /// <summary>Raised (on any thread) each time a connection to Discord is established: at
+    /// startup, and later when Discord was opened after Noctis. The owner sends the song that
+    /// is playing, as nothing else would until the next play, pause or track change.</summary>
+    event Action? Connected { add { } remove { } }
+
     /// <summary>Disconnects and tears down the Discord RPC client.</summary>
     Task DisconnectAsync();
 
