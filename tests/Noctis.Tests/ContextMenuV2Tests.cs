@@ -235,6 +235,66 @@ public class ContextMenuV2Tests
         Assert.Equal(icons.Count, icons.Distinct().Count());
     }
 
+    /// <summary>
+    /// Discord 11-27 (Halil, "lots of cd icons"): View Album keeps the record; Other Versions,
+    /// Move to Album, Group into One Album and Carousel Style each have their own glyph, the
+    /// same one in the song menu, the album menu and the playback bar's "…" menu.
+    /// </summary>
+    [AvaloniaFact]
+    public void AlbumCommands_EachHaveTheirOwnIcon_InEveryMenu()
+    {
+        var track = Build(v2: true);
+        var album = new AlbumContextMenuBuilder();
+        album.Build("Remove from Library", new Border(), v2: true);
+        var host = new Border();
+        Geometry? G(string key) => MenuV2.FindGeometry(host, key);
+
+        var expected = new (MenuItem Row, string Key)[]
+        {
+            (track.ViewAlbum, "MenuLineAlbum"),
+            (track.OtherVersions, "MenuLineVersions"),
+            (track.MoveToAlbum, "MenuLineMoveToAlbum"),
+            (album.GroupAlbums, "MenuLineGroupAlbums"),
+            (album.CarouselStyle, "MenuLineCarousel"),
+        };
+        foreach (var (row, key) in expected)
+        {
+            Assert.NotNull(G(key));
+            Assert.Same(G(key), MenuV2.IconPath(row.Icon)?.Data);
+        }
+        Assert.Equal(expected.Length, expected.Select(e => e.Key).Distinct().Count());
+
+        // The playback bar's menu shows the same glyph for the same command.
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "Noctis.sln"))) dir = dir.Parent;
+        var bar = File.ReadAllText(Path.Combine(dir!.FullName, "src", "Noctis", "Views", "PlaybackBarView.axaml"));
+        string IconAfter(string marker)
+        {
+            var at = bar.IndexOf(marker, StringComparison.Ordinal);
+            Assert.True(at >= 0, marker);
+            var m = System.Text.RegularExpressions.Regex.Match(bar[at..], @"StaticResource (MenuLine\w+)");
+            return m.Groups[1].Value;
+        }
+        Assert.Equal("MenuLineAlbum", IconAfter("Header=\"{loc:T PlaybackBar.ViewAlbumTip}\""));
+        Assert.Equal("MenuLineVersions", IconAfter("Header=\"{loc:T Menu.OtherVersions}\""));
+        Assert.Equal("MenuLineMoveToAlbum", IconAfter("Header=\"{loc:T MoveToAlbum.Menu}\""));
+    }
+
+    /// <summary>The new glyphs stay on the 24-unit grid like the rest (stroke room at the edges).</summary>
+    [AvaloniaTheory]
+    [InlineData("MenuLineGroupAlbums")]
+    [InlineData("MenuLineCarousel")]
+    [InlineData("MenuLineMoveToAlbum")]
+    public void AlbumCommandIcons_SitOnTheGrid(string key)
+    {
+        EnsureAppStyles();
+        var bounds = MenuV2.FindGeometry(new Border(), key)!.Bounds;
+        Assert.InRange(bounds.Left, 2, 12);
+        Assert.InRange(bounds.Top, 2, 12);
+        Assert.InRange(bounds.Right, 12, 22);
+        Assert.InRange(bounds.Bottom, 12, 22);
+    }
+
     [AvaloniaFact]
     public void TrackV2_FavoriteToggle_ShowsOneRow_FilledHeartWhenFavorited()
     {
@@ -603,7 +663,8 @@ public class ContextMenuV2Tests
 
             var sheet = new WrapPanel { Width = 300, Margin = new Thickness(10) };
             foreach (var key in new[] { "MenuLinePlay", "MenuLineShuffle", "MenuLinePlayNext", "MenuLineQueue", "MenuLinePlaylistAdd",
-                         "MenuLineHeart", "MenuLineStar", "MenuLineAlbum", "MenuLineArtist", "MenuLineRadio", "MenuLineSnooze",
+                         "MenuLineHeart", "MenuLineStar", "MenuLineAlbum", "MenuLineVersions", "MenuLineMoveToAlbum", "MenuLineGroupAlbums", "MenuLineCarousel",
+                         "MenuLineArtist", "MenuLineRadio", "MenuLineSnooze",
                          "MenuLineEdit", "MenuLineLyrics", "MenuLineVideo", "MenuLineFolder", "MenuLineTools", "MenuLineConvert",
                          "MenuLineReplayGain", "MenuLineSpectrogram", "MenuLineSendToFolder", "MenuLineOpenWith",
                          "MenuLineScrobbleOff", "MenuLineBadge", "MenuLineTrash", "MenuLineClose" })

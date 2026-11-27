@@ -1476,7 +1476,7 @@
                                           Header="{loc:T Menu.OtherVersions}"
                                           IsVisible="False">
                                     <MenuItem.Icon>
-                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineAlbum}"/>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineVersions}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator />
@@ -1490,7 +1490,7 @@
                                 <MenuItem Header="{loc:T MoveToAlbum.Menu}"
                                           Command="{Binding MoveCurrentTrackToAlbumCommand}">
                                     <MenuItem.Icon>
-                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineAlbum}"/>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineMoveToAlbum}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="{loc:T Tab.Lyrics}">

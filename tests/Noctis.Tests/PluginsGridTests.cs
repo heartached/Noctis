@@ -1348,4 +1348,66 @@ public class PluginsGridTests : IDisposable
         }
         finally { window.Close(); }
     }
+
+    /// <summary>
+    /// Discord 11-27: on a narrow 3-column grid the corner pill ("Not installed") was laid over the
+    /// card body and the top of the centred icon ran into it. The pill now has its own row: at
+    /// every width, with the longest status of any language, it stays clear of the icon and
+    /// inside its card, on official and community cards alike, and a row's cards stay one height.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData(1300)]
+    [InlineData(700)]
+    [InlineData(640)]
+    [InlineData(580)]
+    [InlineData(420)]
+    public async Task Chip_NeverTouchesTheIcon_AtAnyWidth(double windowWidth)
+    {
+        using var m = Mount();
+        Publish(m, File.ReadAllBytes(Zip("official.zip", OfficialId, "1.0.0", "Noctis")));
+        _box.WriteFolder("dev.test.hand", PluginSandbox.Manifest(id: "dev.test.hand", name: "Hand Made", author: "Someone"), ("Test.Plugin.dll", new byte[] { 1 }));
+        m.Host.LoadAll();
+        await m.Vm.LoadOfficialPluginsAsync();
+        m.Vm.SelectedSettingsTab = SettingsViewModel.TabPlugins;
+        var view = new SettingsView { DataContext = m.Vm };
+        var window = new Window { Width = windowWidth, Height = 900, Content = view };
+        try
+        {
+            window.Show();
+            Settle(window);
+            var cards = view.FindControl<StackPanel>("PluginsListPage")!.GetVisualDescendants().OfType<Button>()
+                .Where(b => b.Classes.Contains("plugin-card")).ToList();
+            Assert.Contains(cards, c => ((PluginCardItem)c.DataContext!).IsOfficial);
+            Assert.Contains(cards, c => !((PluginCardItem)c.DataContext!).IsOfficial);
+
+            // As shown, then with the longest pill text in any language (tr / es "Not for this OS").
+            foreach (var longest in new[] { (string?)null, "Bu işletim sistemi için değil", "No disponible en este sistema" })
+            {
+                foreach (var card in cards)
+                {
+                    var chip = card.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("plugin-chip"));
+                    Assert.True(chip.IsEffectivelyVisible);
+                    if (longest != null) ((TextBlock)chip.Child!).Text = longest;
+                }
+                window.UpdateLayout();
+
+                foreach (var card in cards)
+                {
+                    var item = (PluginCardItem)card.DataContext!;
+                    var chip = card.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("plugin-chip"));
+                    var icon = card.GetVisualDescendants().OfType<Panel>().Single(p => p.Width == 60 && p.Height == 60);
+                    Rect In(Control c) => new(c.TranslatePoint(new Point(0, 0), card)!.Value, c.Bounds.Size);
+                    var chipRect = In(chip);
+                    var iconRect = In(icon);
+                    var label = $"{windowWidth} '{((TextBlock)chip.Child!).Text}' on {item.Id}: chip {chipRect}, icon {iconRect}, card {card.Bounds.Size}";
+                    Assert.True(chipRect.Bottom + 4 <= iconRect.Top, label);
+                    Assert.True(chipRect.Left >= 0 && chipRect.Right <= card.Bounds.Width && chipRect.Top >= 0, label);
+                }
+                // One height per row (the grid's cells are uniform; the pill row is on every card).
+                foreach (var row in cards.GroupBy(c => Math.Round(c.TranslatePoint(new Point(0, 0), view)!.Value.Y)))
+                    Assert.Single(row.Select(c => Math.Round(c.Bounds.Height)).Distinct());
+            }
+        }
+        finally { window.Close(); }
+    }
 }

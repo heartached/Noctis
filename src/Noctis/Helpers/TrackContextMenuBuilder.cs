@@ -392,7 +392,7 @@ public sealed class TrackContextMenuBuilder
         items.Add(new Separator());
         Metadata = MenuV2.Row(host, Loc.T("LibraryAlbums.Metadata"), "MenuLineEdit");
         items.Add(Metadata);
-        MoveToAlbum = MenuV2.Row(host, Loc.T("MoveToAlbum.Menu"), "MenuLineAlbum", visible: false);
+        MoveToAlbum = MenuV2.Row(host, Loc.T("MoveToAlbum.Menu"), "MenuLineMoveToAlbum", visible: false);
         items.Add(MoveToAlbum);
         Lyrics = MenuV2.Row(host, Loc.T("Tab.Lyrics"), "MenuLineLyrics");
         SearchLyrics = new MenuItem { Header = Loc.T("Lyrics.SearchLyrics") };

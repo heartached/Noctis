@@ -632,7 +632,22 @@ public sealed class AlbumCarousel : Panel
         _glow.IsVisible = true;
         // Fully lit on an album, half way down between two (no glow on side albums).
         _glow.Opacity = 1 - 0.5 * Math.Sin(Math.PI * t);
-        _glow.Set(rect, color);
+        // The strip clips to its own height (and width, or the window's with #244's reach):
+        // an ellipse reaching past that ended on a hard line along the clip (Discord: a cut
+        // above the centred cover on the artist page). Squeezed to fit, it fades out to
+        // nothing on every side; the centre stays on the card.
+        var visible = new Rect(-_reachLeft, 0, size.Width + _reachLeft + _reachRight, size.Height + CaptionHeight);
+        _glow.Set(FitGlow(rect, visible), color);
+    }
+
+    /// <summary><paramref name="glow"/> shrunk about its centre (each axis on its own) until it
+    /// lies inside <paramref name="visible"/>.</summary>
+    internal static Rect FitGlow(Rect glow, Rect visible)
+    {
+        var c = glow.Center;
+        var rx = Math.Max(0, Math.Min(glow.Width / 2, Math.Min(c.X - visible.Left, visible.Right - c.X)));
+        var ry = Math.Max(0, Math.Min(glow.Height / 2, Math.Min(c.Y - visible.Top, visible.Bottom - c.Y)));
+        return new Rect(c.X - rx, c.Y - ry, rx * 2, ry * 2);
     }
 
     /// <summary>The centred cover's colour for the glow: the vibrant colour "Accent follows

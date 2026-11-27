@@ -228,7 +228,7 @@ public sealed class AlbumContextMenuBuilder
         items.Add(new Separator());
         Metadata = MenuV2.Row(host, Loc.T("LibraryAlbums.Metadata"), "MenuLineEdit");
         items.Add(Metadata);
-        GroupAlbums = MenuV2.Row(host, Loc.T("GroupAlbums.Menu"), "MenuLineAlbum", visible: false);
+        GroupAlbums = MenuV2.Row(host, Loc.T("GroupAlbums.Menu"), "MenuLineGroupAlbums", visible: false);
         items.Add(GroupAlbums);
         UndoGroupAlbums = MenuV2.Row(host, Loc.T("GroupAlbums.Undo"), "MenuLineHistory", visible: false);
         items.Add(UndoGroupAlbums);
@@ -402,7 +402,7 @@ public sealed class AlbumContextMenuBuilder
 
     private MenuItem BuildCarouselStyle(Control host)
     {
-        CarouselStyle = MenuV2.Row(host, Loc.T("Menu.CarouselStyle"), "MenuLineAlbum", visible: false);
+        CarouselStyle = MenuV2.Row(host, Loc.T("Menu.CarouselStyle"), "MenuLineCarousel", visible: false);
         var rows = new List<MenuItem> { new() { Header = Loc.T("Menu.CarouselStyleDefault"), Command = AlbumCarouselStyleOverrides.SetCommand } };
         foreach (var style in Enum.GetValues<AlbumCarouselStyle>())
             rows.Add(new MenuItem { Header = Loc.T(StyleKey(style)), Command = AlbumCarouselStyleOverrides.SetCommand });

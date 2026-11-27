@@ -571,6 +571,44 @@ public class AlbumCarouselTests
     }
 
     [AvaloniaFact]
+    public void Glow_StaysInsideTheStrip_SoItNeverEndsOnAClipLine()
+    {
+        // Discord (Halil): on the artist page (a 440 px strip) the glow ran past the strip's
+        // top and ended on a hard line where the strip clips. Every style, alone and mixed.
+        foreach (var global in Enum.GetValues<AlbumCarouselStyle>())
+            foreach (var own in Enum.GetValues<AlbumCarouselStyle>())
+                foreach (var (width, height) in new[] { (1200.0, 440.0), (700.0, 440.0), (1600.0, 900.0), (500.0, 300.0) })
+                {
+                    var albums = Many(5);
+                    var (c, w) = Show(albums, width, height);
+                    c.CaseStyle = global;
+                    c.StyleOverrides = new Dictionary<Guid, AlbumCarouselStyle> { [albums[2].Id] = own };
+                    c.SnapTo(2);
+                    w.UpdateLayout();
+                    var strip = new Rect(c.Bounds.Size);
+                    var glow = c.GlowRect;
+                    var label = $"{global}/{own} {width}x{height}: glow {glow} strip {strip}";
+                    Assert.True(glow.Width > 0 && glow.Height > 0, label);
+                    Assert.True(strip.Contains(glow.TopLeft) && strip.Contains(glow.BottomRight), label);
+                    // Still centred on the card and reaching past it sideways.
+                    var centre = c.RealizedCards[2];
+                    var card = new Rect(Canvas.GetLeft(centre), Canvas.GetTop(centre), centre.CardSize.Width, centre.CardSize.Height);
+                    Assert.Equal(card.Center.Y, glow.Center.Y, 1);
+                    Assert.True(glow.Width > card.Width, label);
+                    w.Close();
+                }
+    }
+
+    [Fact]
+    public void FitGlow_ShrinksEachAxisAboutTheCentre()
+    {
+        var fit = AlbumCarousel.FitGlow(new Rect(100, -20, 300, 200), new Rect(0, 0, 1000, 400));
+        Assert.Equal(new Rect(100, 0, 300, 160), fit);
+        // Already inside: unchanged.
+        Assert.Equal(new Rect(10, 10, 50, 50), AlbumCarousel.FitGlow(new Rect(10, 10, 50, 50), new Rect(0, 0, 100, 100)));
+    }
+
+    [AvaloniaFact]
     public void Glow_MovesOnlyWhatItMust_WhileGliding()
     {
         var (c, w) = Show(Many(30));

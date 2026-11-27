@@ -230,8 +230,15 @@
          reads apart from Search Lyrics' single bubble in the same album menu (owner 11-08). -->
     <StreamGeometry x:Key="MenuLineLyricsBulk">M8 4.5h11A1.5 1.5 0 0 1 20.5 6v7.5M4.5 8h11A1.5 1.5 0 0 1 17 9.5v7a1.5 1.5 0 0 1-1.5 1.5H10l-3.5 2.8V18h-2A1.5 1.5 0 0 1 3 16.5v-7A1.5 1.5 0 0 1 4.5 8ZM7 11.5h7M7 14.5h4</StreamGeometry>
     <!-- Other Versions (Discord, Cosmo 11-08): stacked layers, one per recording. Was the record,
-         the same as View Album / Group into One Album (owner 11-08). -->
+         the same as View Album (owner 11-08). Only View Album keeps the record: Discord 11-27
+         (Halil, "lots of cd icons"), each album command below has its own glyph, in every menu. -->
     <StreamGeometry x:Key="MenuLineVersions">M12 3.8l8.5 4.4L12 12.6L3.5 8.2ZM3.5 12.2L12 16.6l8.5-4.4M3.5 16.2L12 20.6l8.5-4.4</StreamGeometry>
+    <!-- Group into One Album: two album squares overlapping, the back one behind the front -->
+    <StreamGeometry x:Key="MenuLineGroupAlbums">M9 15H5a1.5 1.5 0 0 1-1.5-1.5V5A1.5 1.5 0 0 1 5 3.5h8.5A1.5 1.5 0 0 1 15 5v4M10.5 9h8.5a1.5 1.5 0 0 1 1.5 1.5V19a1.5 1.5 0 0 1-1.5 1.5h-8.5A1.5 1.5 0 0 1 9 19v-8.5A1.5 1.5 0 0 1 10.5 9Z</StreamGeometry>
+    <!-- Carousel Style: the centred card with smaller cards peeking out on both sides -->
+    <StreamGeometry x:Key="MenuLineCarousel">M9.5 4.5h5A1.5 1.5 0 0 1 16 6v12a1.5 1.5 0 0 1-1.5 1.5h-5A1.5 1.5 0 0 1 8 18V6A1.5 1.5 0 0 1 9.5 4.5ZM8 7.5H5A1.5 1.5 0 0 0 3.5 9v6A1.5 1.5 0 0 0 5 16.5h3M16 7.5h3A1.5 1.5 0 0 1 20.5 9v6a1.5 1.5 0 0 1-1.5 1.5h-3</StreamGeometry>
+    <!-- Move to Album: an arrow going into an album square through its left side -->
+    <StreamGeometry x:Key="MenuLineMoveToAlbum">M8.5 8.5v-1A1.5 1.5 0 0 1 10 6h9a1.5 1.5 0 0 1 1.5 1.5v9A1.5 1.5 0 0 1 19 18h-9a1.5 1.5 0 0 1-1.5-1.5v-1M3.5 12H15M11.5 8.5L15 12l-3.5 3.5</StreamGeometry>
     <!-- Lyrics Background Video: camera -->
     <StreamGeometry x:Key="MenuLineVideo">M4.5 6h10A1.5 1.5 0 0 1 16 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 3 16.5v-9A1.5 1.5 0 0 1 4.5 6ZM16 10.5l4.2-2.6a.5.5 0 0 1 .8.4v7.4a.5.5 0 0 1-.8.4L16 13.5</StreamGeometry>
     <!-- Show in Folder -->
