@@ -82,6 +82,34 @@ public class ArtistSimilarPickTests
         Assert.Equal(2, handler.Searches);
     }
 
+    /// <summary>Settings › Clear Artwork Cache empties artwork/similar, but the list cached under
+    /// artist_info/ still pointed at the deleted photos for 30 days: empty circles.</summary>
+    [Fact]
+    public async Task GetAsync_CachedListWhosePhotoWasDeleted_IsFetchedAgain()
+    {
+        using var persistence = new TestPersistenceService();
+        var handler = new DeezerFake();
+        var service = new SimilarArtistsService(new HttpClient(handler), persistence);
+        var id = Guid.NewGuid();
+        var photo = Path.Combine(persistence.DataDirectory, "artwork", "similar", "101.jpg");
+        Directory.CreateDirectory(Path.GetDirectoryName(photo)!);
+        File.WriteAllText(photo, "x");
+        var cache = new SimilarArtistsCache
+        {
+            Artists = { new SimilarArtist { DeezerId = 101, Name = "Pop Star A", PictureUrl = "https://example.invalid/101.jpg", ImagePath = photo } },
+            FetchedAtUtc = DateTime.UtcNow, Picker = SimilarArtistsService.PickerVersion,
+        };
+        File.WriteAllText(Path.Combine(persistence.DataDirectory, "artist_info", $"{id}.similar.json"),
+            System.Text.Json.JsonSerializer.Serialize(cache));
+
+        await service.GetAsync(id, "Nova");
+        Assert.Equal(0, handler.Searches); // photo there: served from the cache
+
+        File.Delete(photo);
+        await service.GetAsync(id, "Nova");
+        Assert.Equal(1, handler.Searches);
+    }
+
     [AvaloniaFact]
     public void Pick_ReplacesTheShownSimilarArtists_AndResetBringsTheAutomaticOnesBack()
     {
