@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
@@ -503,6 +504,33 @@ public class ABLoopPluginTests
             .First(b => Avalonia.Automation.AutomationProperties.GetName(b) == name)
             .RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
 
+    /// <summary>The saved-loops list scrolled sideways (the app's ScrollViewer default): a long loop
+    /// name pushed "Loop it" and the delete button out of the window.</summary>
+    [AvaloniaFact]
+    public void SavedLoops_ALongName_KeepsLoopItAndDeleteInTheWindow()
+    {
+        AddToPlaylistDialogTests.EnsureAppStyles();
+        var sim = new SimPlayer { Duration = S(227) };
+        sim.Start(S(52.4));
+        using var session = new LoopSession(sim, () => sim.Now, useTimer: false);
+        session.Engine.SetPart(S(41.3), S(63.8));
+        session.SaveCurrent("A rather long loop name for the second chorus and the bridge after it");
+        var view = new ABLoopView(session);
+        var window = new Window { Content = view, Width = ABLoopView.MinWindowWidth, Height = 500 };
+        window.Show();
+        view.Refresh();
+        window.UpdateLayout();
+        Assert.Equal(Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled, view.SavedScroller.HorizontalScrollBarVisibility);
+        foreach (var name in new[] { "Loop " + session.Saved[0].Name, "Delete " + session.Saved[0].Name })
+        {
+            var button = Avalonia.LogicalTree.LogicalExtensions.GetLogicalDescendants(view).OfType<Button>()
+                .First(b => Avalonia.Automation.AutomationProperties.GetName(b) == name);
+            var right = button.TranslatePoint(new Point(button.Bounds.Width, 0), view)!.Value.X;
+            Assert.True(right <= view.Bounds.Width, $"{name} ends at {right}, the view is {view.Bounds.Width} wide");
+        }
+        window.Close();
+    }
+
     [AvaloniaFact]
     public void Preview_TheWindowAt125Percent()
     {
@@ -559,7 +587,7 @@ public class ABLoopPluginTests
     [AvaloniaFact]
     public void ReleaseZip_InstallsFromFile_AndRuns()
     {
-        var zip = PluginSandbox.RepoFile("plugins/Noctis.Plugins.ABLoop/bin/Release/Noctis.Plugins.ABLoop-1.0.0.zip");
+        var zip = PluginSandbox.RepoFile("plugins/Noctis.Plugins.ABLoop/bin/Release/Noctis.Plugins.ABLoop-1.0.1.zip");
         if (!File.Exists(zip)) Assert.Skip("build it first: dotnet build plugins/Noctis.Plugins.ABLoop -c Release");
 
         using (var archive = ZipFile.OpenRead(zip))
@@ -576,7 +604,7 @@ public class ABLoopPluginTests
         var result = host.InstallPackage(zip, allowUpdate: false);
         Assert.Equal(PluginInstallOutcome.Installed, result.Outcome);
         var plugin = result.Plugin!;
-        Assert.Equal(("A-B Loop", "1.0.0", "Noctis"), (plugin.Name, plugin.Version, plugin.Manifest?.Author));
+        Assert.Equal(("A-B Loop", "1.0.1", "Noctis"), (plugin.Name, plugin.Version, plugin.Manifest?.Author));
         Assert.Empty(plugin.Manifest!.Warnings);
         Assert.Equal(new[] { "playback.control", "menu.commands" }, plugin.Manifest.Permissions);
         Assert.Equal(new[] { "gap", "keepLoops", "nudge" }, plugin.Manifest.Settings.Select(s => s.Key));

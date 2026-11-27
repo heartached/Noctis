@@ -13,7 +13,7 @@ namespace Noctis.Plugins.ABLoop;
 public sealed class ABLoopPlugin : INoctisPlugin, IPluginViewProvider
 {
     public const string Id = "dev.noctis.plugins.abloop";
-    public const string Version = "1.0.0";
+    public const string Version = "1.0.1";
     public const string About = "Loop any part of a song and save your loops.";
     public const string LoopAPartLabel = "Loop a part";
     // A looping arrow (24x24 box) for the menu entry.
