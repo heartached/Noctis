@@ -1,6 +1,261 @@
 {
   "releases": [
     {
+      "tag": "v1.7.3",
+      "version": "1.7.3",
+      "name": "v1.7.3",
+      "label": "1.7.3",
+      "publishedAt": "2026-11-27T10:56:42Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.7.3",
+      "prerelease": false,
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added sidebar resizing by dragging its edge.",
+            "Added Ctrl+B to toggle sidebar size.",
+            "Added shuffle and play by disc on multi-disc albums. (#264)",
+            "Added Genius as a source for plain lyrics. (#265)",
+            "Added Get Genres from Discogs with a review step before saving. (#267)",
+            "Added support for several music servers at once. (#268)",
+            "Added Ampache as a server type. (#268)",
+            "Added server albums to Album Roulette and Album of the Day. (#268)",
+            "Added YouTube music videos with streaming or download.",
+            "Added automatic music video finding, with a Wrong video option.",
+            "Added browser sign-in for YouTube bot checks.",
+            "Added a lossless check with a verdict in the spectrogram window.",
+            "Added Apple Music artist videos behind artist pages.",
+            "Added an in-app What's New dialog.",
+            "Added artist artwork search in Choose Artwork.",
+            "Added playlist cover sync between computers.",
+            "Added the explicit tag next to the track title in the spectrogram.",
+            "Added closing the album and playlist description boxes by clicking outside.",
+            "Added artist name links in the album carousel.",
+            "Added a format details pop-up on the quality badge in the album carousel."
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved Lyrics Studio so it opens in seconds instead of close to a minute.",
+            "Improved Lyrics Studio save speed.",
+            "Improved Edit Info date formats to follow the app language.",
+            "Improved seeking with streamed video.",
+            "Improved the server section so it fills in as each server answers. (#268)",
+            "Improved server failure messages with a Retry button. (#268)",
+            "Improved Album Roulette play counts from Navidrome and Jellyfin. (#268)",
+            "Improved yt-dlp error messages.",
+            "Improved translations for all new text.",
+            "Improved the album hover glow so white titles stay readable.",
+            "Improved selected albums so they stay inside their outline.",
+            "Improved sidebar motion for hover, hide and pin.",
+            "Improved the Lyrics Studio layout.",
+            "Improved Settings layout and descriptions in all 11 languages.",
+            "Improved the artist page tabs with pill buttons.",
+            "Improved the icons on X and arrow buttons.",
+            "Improved Vinyl, Cassette and CD Jewel Case artwork.",
+            "Improved star color so stars are gold everywhere.",
+            "Improved Clear Artwork Cache text in all 11 languages."
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed Other Versions not recognizing \"Ver.\" titles and style names like \"-Japanese Ver.\" (#263)",
+            "Fixed Edit Info not saving several fields on some file types.",
+            "Fixed Edit Info losing changes made in a second edit.",
+            "Fixed custom tags disappearing after reopening Edit Info.",
+            "Fixed Edit Info overwriting plays, ratings or lyrics added while the dialog was open.",
+            "Fixed typos in Edit Info number boxes clearing the year or track number.",
+            "Fixed stray spaces in Title, Artist, Album and Composer fields.",
+            "Fixed search on album pages ignoring what you typed.",
+            "Fixed search on Statistics, Queue and Audio CD pages.",
+            "Fixed the album footer showing 0 min for short albums.",
+            "Fixed Edit Info labels staying in English in every language.",
+            "Fixed hidden video layers on the lyrics page still running.",
+            "Fixed the Albums page losing its selection after visiting several other pages.",
+            "Fixed Album Roulette counting every server album as never played. (#268)",
+            "Fixed plays of server songs not counting in Album Roulette. (#268)",
+            "Fixed one play being counted for two albums with the same artist and title.",
+            "Fixed YouTube streams not recovering after a break.",
+            "Fixed a slow YouTube start being treated as stalled.",
+            "Fixed YouTube bot checks being retried on every song.",
+            "Fixed the hover effect on edge albums only working once.",
+            "Fixed top row album covers growing over their titles.",
+            "Fixed no audio in the dev app.",
+            "Fixed synced ratings reverting to an older value.",
+            "Fixed auto-update ignoring the Update automatically switch.",
+            "Fixed Lyrics Studio freezing on save.",
+            "Fixed Lyrics Studio scroll stutter.",
+            "Fixed Lyrics Studio stability issues with failed tag writes and stopping syncs.",
+            "Fixed the Plugins page listing three plugins twice.",
+            "Fixed a grey band behind album rows after right-click.",
+            "Fixed album covers blinking on click.",
+            "Fixed Get Genres option rows only responding on the circle.",
+            "Fixed the Noctis Wrap share card flickering when switching periods.",
+            "Fixed the Liquid Glass switch flickering.",
+            "Fixed Account and Devices flashing the create account form.",
+            "Fixed Discord showing the card while paused.",
+            "Fixed Discord missing the current song when opened after Noctis.",
+            "Fixed the color picker hash sign being cut off.",
+            "Fixed paused artist videos still running in the background.",
+            "Fixed the artist page portrait flashing before a cached video starts.",
+            "Fixed a hard cut across the artist page with Liquid Glass on.",
+            "Fixed the artist hero stopping at the scroll bar.",
+            "Fixed the close X not being centered at 125 percent scale.",
+            "Fixed artist favorite badges not updating without a restart.",
+            "Fixed Clear Artwork Cache leaving covers in memory.",
+            "Fixed empty similar artist circles after a cache clear.",
+            "Fixed Reset Settings not clearing per-song music video choices.",
+            "Fixed small cover copies failing to save after a reset.",
+            "Fixed files held open making resets give up.",
+            "Fixed long A-B Loop names pushing buttons off screen.",
+            "Fixed Chords layout at the smallest window size.",
+            "Fixed the Album Roulette reel covering the filter chips.",
+            "Fixed True Shuffle failing after a damaged save file.",
+            "Fixed Add from YouTube layout and duplicate downloads.",
+            "Fixed an error in Album Town on older Noctis versions.",
+            "Fixed What's New stuttering when it opens."
+          ]
+        }
+      ],
+      "summary": null
+    },
+    {
+      "tag": "plugin-youtubeimport-v1.0.3",
+      "version": "plugin-youtubeimport-v1.0.3",
+      "name": "Add from YouTube plugin 1.0.3",
+      "label": "Add from YouTube",
+      "publishedAt": "2026-11-27T10:53:44Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/plugin-youtubeimport-v1.0.3",
+      "prerelease": true,
+      "sections": [
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved a video you downloaded before: it now says it is in the library, with a Show button, instead of downloading again."
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed the same video downloading twice at once.",
+            "Fixed a stopped import leaving its half-made file behind.",
+            "Fixed the smallest window size cutting off the view.",
+            "Fixed long recent titles not trimming.",
+            "Fixed placeholder text not showing in the light theme."
+          ]
+        }
+      ],
+      "summary": null
+    },
+    {
+      "tag": "plugin-trueshuffle-v1.0.1",
+      "version": "plugin-trueshuffle-v1.0.1",
+      "name": "True Shuffle plugin 1.0.1",
+      "label": "True Shuffle",
+      "publishedAt": "2026-11-27T10:53:40Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/plugin-trueshuffle-v1.0.1",
+      "prerelease": true,
+      "sections": [
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed Shuffle and Forget heard songs failing after a damaged save file.",
+            "Fixed the view scrolling sideways."
+          ]
+        }
+      ],
+      "summary": null
+    },
+    {
+      "tag": "plugin-chords-v1.0.1",
+      "version": "plugin-chords-v1.0.1",
+      "name": "Chords plugin 1.0.1",
+      "label": "Chords",
+      "publishedAt": "2026-11-27T10:53:36Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/plugin-chords-v1.0.1",
+      "prerelease": true,
+      "sections": [
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed the layout at the smallest window size.",
+            "Fixed the missing gap between the chord lane and Analyze again."
+          ]
+        }
+      ],
+      "summary": null
+    },
+    {
+      "tag": "plugin-albumtown-v1.0.3",
+      "version": "plugin-albumtown-v1.0.3",
+      "name": "Album Town plugin 1.0.3",
+      "label": "Album Town",
+      "publishedAt": "2026-11-27T10:53:32Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/plugin-albumtown-v1.0.3",
+      "prerelease": true,
+      "sections": [
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed an error on older Noctis versions that have no lyric lines for plugins."
+          ]
+        }
+      ],
+      "summary": null
+    },
+    {
+      "tag": "plugin-albumroulette-v1.0.4",
+      "version": "plugin-albumroulette-v1.0.4",
+      "name": "Album Roulette plugin 1.0.4",
+      "label": "Album Roulette",
+      "publishedAt": "2026-11-27T10:53:27Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/plugin-albumroulette-v1.0.4",
+      "prerelease": true,
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added albums from your music servers to the reel and Album of the Day (needs Noctis 1.7.3). (#268)"
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved play counts for server albums, using the counts from Navidrome and Jellyfin. (#268)"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed the reel covering the filter chips at the smallest window size.",
+            "Fixed album mode and Album of the Day picking albums whose songs are all not liked, skipped or snoozed."
+          ]
+        }
+      ],
+      "summary": null
+    },
+    {
+      "tag": "plugin-abloop-v1.0.1",
+      "version": "plugin-abloop-v1.0.1",
+      "name": "A-B Loop plugin 1.0.1",
+      "label": "A-B Loop",
+      "publishedAt": "2026-11-27T10:53:23Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/plugin-abloop-v1.0.1",
+      "prerelease": true,
+      "sections": [
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed long saved loop names pushing Loop it and delete out of the window.",
+            "Fixed playback staying stopped when the plugin was switched off in the pause before a repeat."
+          ]
+        }
+      ],
+      "summary": null
+    },
+    {
       "tag": "v1.7.2",
       "version": "1.7.2",
       "name": "v1.7.2",
@@ -4689,6 +4944,6 @@
       "summary": "Initial Release"
     }
   ],
-  "updatedAt": "2026-11-25T05:01:20.616Z",
+  "updatedAt": "2026-11-27T10:57:05.628Z",
   "degraded": false
 }
