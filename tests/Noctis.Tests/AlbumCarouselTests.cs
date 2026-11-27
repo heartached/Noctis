@@ -291,6 +291,16 @@ public class AlbumCarouselTests
         }
     }
 
+    [Fact]
+    public void Vinyl_LabelEdgeShowsPastTheSleeve()
+    {
+        // The label (the cover printed small) must peek out past the sleeve's right edge
+        // (x = 1 cover edge), not hide behind it, and the record must fit its card.
+        var labelRight = 0.5 + AlbumCarouselCard.VinylDiscOffset + AlbumCarouselCard.VinylDiscRadius * AlbumCarouselCard.VinylLabelRadius;
+        Assert.True(labelRight > 1.05, $"label ends at {labelRight:0.000}");
+        Assert.Equal(AlbumCarouselCard.VinylWidth, 0.5 + AlbumCarouselCard.VinylDiscOffset + AlbumCarouselCard.VinylDiscRadius, 6);
+    }
+
     // ── View models ───────────────────────────────────────────────────────────
 
     private static (LibraryAlbumsViewModel Vm, SettingsViewModel Settings) AlbumsVm(params Album[] libraryAlbums)
@@ -707,5 +717,31 @@ public class AlbumCarouselTests
         Shot("Mixed", AlbumCarouselStyle.JewelCase, c => c.StyleOverrides = mixed);
         Shot("Mixed-CentreCassette", AlbumCarouselStyle.JewelCase, c => { c.StyleOverrides = mixed; c.SnapTo(8); });
         Shot("Mixed-Narrow", AlbumCarouselStyle.Cassette, c => c.StyleOverrides = mixed, width: 820);
+
+        // Close-ups: one card per case at a large cover size, on a dark and a light page,
+        // the second card dimmed the way a side card is.
+        foreach (var style in new[] { AlbumCarouselStyle.JewelCase, AlbumCarouselStyle.Vinyl, AlbumCarouselStyle.Cassette })
+            foreach (var light in new[] { false, true })
+            {
+                var row = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 60, Margin = new Thickness(40) };
+                row.Children.Add(new AlbumCarouselCard { Album = albums[1], CaseStyle = style, CoverSize = 360, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top });
+                row.Children.Add(new AlbumCarouselCard { Album = albums[4], CaseStyle = style, CoverSize = 200, Dim = 0.35, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top });
+                var window = new Window
+                {
+                    Width = 1000, Height = 560, Content = row,
+                    Background = new SolidColorBrush(Color.Parse(light ? "#F2F2F4" : "#141414")),
+                    RequestedThemeVariant = light ? Avalonia.Styling.ThemeVariant.Light : Avalonia.Styling.ThemeVariant.Dark,
+                };
+                window.Show();
+                var sw = Stopwatch.StartNew();
+                while (sw.ElapsedMilliseconds < 700)
+                {
+                    Dispatcher.UIThread.RunJobs();
+                    AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                    Thread.Sleep(10);
+                }
+                window.CaptureRenderedFrame()!.Save(Path.Combine(dir, $"case-{style}-{(light ? "light" : "dark")}.png"));
+                window.Close();
+            }
     }
 }
