@@ -1373,10 +1373,6 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value>
     <value>Tam spektrum</value>
     <comment>Text in SettingsView.axaml (GitHub #205)</comment>
   </data>
-  <data name="Settings.FullSpectrumHint" xml:space="preserve">
-    <value>Çubukları bir stüdyo analizörü gibi ağırlıklandır, böylece 20 kHz'e kadar sessiz tizler görünür kalır.</value>
-    <comment>Text in SettingsView.axaml (GitHub #205)</comment>
-  </data>
   <data name="Settings.FrequencyBarsRisingFromTip" xml:space="preserve">
     <value>Alttan yükselen frekans çubukları</value>
     <comment>ToolTip.Tip in SettingsView.axaml</comment>
@@ -1621,24 +1617,12 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value>
     <value>Tam Ekranda Oynatıcı Adasını Gizle</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsFullScreenHideIslandHint" xml:space="preserve">
-    <value>Tam ekranda söz sayfası şarkının altında yalnızca ilerleme çubuğunu gösterir. Oynatma klavye kısayollarıyla kontrol edilmeye devam eder.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.LyricsMinLineOpacity" xml:space="preserve">
     <value>En Düşük Satır Opaklığı</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsMinLineOpacityHint" xml:space="preserve">
-    <value>Her satırı hafifçe görünür tutar, böylece herhangi birine tıklayabilirsin. %0 uzak satırları gizler.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.JoinSplitWords" xml:space="preserve">
     <value>Bölünmüş Kelimeleri Birleştir</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.KeepWordsWholeWhen" xml:space="preserve">
-    <value>TTML sözleri kelimeleri hecelere böldüğünde kelimeleri bütün tut.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsGlowAndLift" xml:space="preserve">
@@ -1653,20 +1637,12 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value>
     <value>Söz Oluşturucu</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsRendererHint" xml:space="preserve">
-    <value>Söz satırlarını bir eklentiyle çiz. Kaydırma, zamanlama ve tıklayarak atlama Noctis'te kalır.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.LyricsRendererOff" xml:space="preserve">
     <value>{0} (eklenti kapalı)</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsCenterWhenNoLyrics" xml:space="preserve">
     <value>Sözü Olmayan Şarkıda Oynatıcıyı Ortala</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve">
-    <value>Şarkının sözü yoksa kapağı ve kontrolleri ortaya taşır.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsBackgroundBehindSidebar" xml:space="preserve">
@@ -1681,32 +1657,16 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value>
     <value>Dalga Formlu İlerleme Çubuğu</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsWaveformSeekBarHint" xml:space="preserve">
-    <value>Şarkının dalga formunu söz sayfasının ilerleme çubuğunda gösterir.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.ShowTranslations" xml:space="preserve">
     <value>Çevirileri Göster</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.ShowTranslationsHint" xml:space="preserve">
-    <value>Bir TTML söz dosyasındaki çeviriyi her satırın altında göster.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ShowRomanization" xml:space="preserve">
     <value>Latin Harfli Okunuşu Göster</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.ShowRomanizationHint" xml:space="preserve">
-    <value>Dosyada varsa Latin harfli sözleri (romaji, pinyin) her satırın altında gösterir.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.ShowBackgroundVocals" xml:space="preserve">
     <value>Arka Vokalleri Göster</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.ShowBackgroundVocalsHint" xml:space="preserve">
-    <value>Arka vokalleri ve doğaçlamaları satırın altında daha küçük bir satırda göster.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.PlayerBarOpacity" xml:space="preserve">
@@ -2397,10 +2357,6 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value>
     <value>Geniş senkronize söz kataloğu</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.MusixmatchHint" xml:space="preserve">
-    <value>Kelime senkronlu sözler · captcha istediğinde duraklayabilir</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.KugouHint" xml:space="preserve">
     <value>Kelime senkronlu söz kataloğu</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -2412,10 +2368,6 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value>
   <data name="Settings.UnisonHint" xml:space="preserve">
     <value>Better Lyrics topluluk sözleri · Lyrics from Unison (unison.boidu.dev)</value>
     <comment>Text in SettingsView.axaml; keep "Lyrics from Unison (unison.boidu.dev)": the attribution Unison's ODbL licence asks for</comment>
-  </data>
-  <data name="Settings.LrcMuxHint" xml:space="preserve">
-    <value>lrcmux.dev üzerinden Deezer, KuGou, YouTube Music ve Musixmatch sözleri, en son sorulur</value>
-    <comment>Text in SettingsView.axaml (GitHub #219)</comment>
   </data>
   <data name="Settings.YouTubeMusicLyricsHint" xml:space="preserve">
     <value>Senkronize sözler · daha yavaş arama</value>
@@ -2699,14 +2651,6 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value>
   </data>
   <data name="Settings.ClearArtworkCache" xml:space="preserve">
     <value>Kapak Önbelleğini Temizle</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.DeleteCachedArtworkWill" xml:space="preserve">
-    <value>Önbelleğe alınmış kapakları sil. Bir sonraki taramada yeniden oluşturulur.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.NoteRemovesAllArtwork" xml:space="preserve">
-    <value>Not: Bu, kitaplığındaki tüm kapakları kaldırır.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ClearCache" xml:space="preserve">
@@ -6437,20 +6381,12 @@ Kaydetmek bunları ekrandaki sözlerle değiştirir. Noctis'in yazmadığı bir 
     <value>Dosya</value>
     <comment>Header in MetadataWindow.axaml</comment>
   </data>
-  <data name="Metadata.Format" xml:space="preserve">
-    <value>Biçim</value>
-    <comment>Text in MetadataWindow.axaml</comment>
-  </data>
   <data name="Metadata.Duration" xml:space="preserve">
     <value>süre</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.Size" xml:space="preserve">
     <value>boyut</value>
-    <comment>Text in MetadataWindow.axaml</comment>
-  </data>
-  <data name="Metadata.Bitrate" xml:space="preserve">
-    <value>Bit hızı</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.BitDepth" xml:space="preserve">
@@ -6463,10 +6399,6 @@ Kaydetmek bunları ekrandaki sözlerle değiştirir. Noctis'in yazmadığı bir 
   </data>
   <data name="Metadata.Channels" xml:space="preserve">
     <value>kanallar</value>
-    <comment>Text in MetadataWindow.axaml</comment>
-  </data>
-  <data name="Metadata.Codec" xml:space="preserve">
-    <value>Kodek</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.Quality" xml:space="preserve">
@@ -9214,9 +9146,6 @@ Yıllar: year:1990-1999, year:&gt;2000</value>
   <data name="Plugins.Card.Off" xml:space="preserve">
     <value>Kapalı</value>
   </data>
-  <data name="Plugins.Card.Verified" xml:space="preserve">
-    <value>Resmi Noctis Eklentisi</value>
-  </data>
   <data name="Plugins.Card.A11yOfficial" xml:space="preserve">
     <value>{0}, Noctis'in resmi eklentisi</value>
   </data>
@@ -10347,10 +10276,6 @@ Yıllar: year:1990-1999, year:&gt;2000</value>
     <value>{0} şarkı</value>
     <comment>Choose songs: tag on an album row ({0} = local songs on it)</comment>
   </data>
-  <data name="LyricsStudio.Queue" xml:space="preserve">
-    <value>ŞARKILAR</value>
-    <comment>Queue column header</comment>
-  </data>
   <data name="LyricsStudio.ReviewEmptyTitle" xml:space="preserve">
     <value>Henüz incelenecek bir şey yok</value>
     <comment>Review pane empty state</comment>
@@ -11059,40 +10984,20 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
     <value>Sözleri otomatik indir</value>
     <comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsAutoDownloadHint" xml:space="preserve">
-    <value>Sözü olmayan şarkılar için söz bulur ve kaydeder. Mevcut sözler asla değiştirilmez.</value>
-    <comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment>
-  </data>
   <data name="Settings.LyricsPreferredType" xml:space="preserve">
     <value>Tercih edilen söz türü</value>
-    <comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.LyricsPreferredTypeHint" xml:space="preserve">
-    <value>Noctis çevrimiçi sözleri kendisi seçtiğinde neyi tuttuğu.</value>
     <comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsUpgradePlain" xml:space="preserve">
     <value>Düz sözleri yükselt</value>
     <comment>Settings ▸ Lyrics (GitHub #194), SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsUpgradePlainHint" xml:space="preserve">
-    <value>Bir şarkının yalnızca düz sözleri varsa tercih ettiğin senkronize türü arar. Bulunamazsa düz sözler kalır.</value>
-    <comment>Settings ▸ Lyrics (GitHub #194), SettingsView.axaml</comment>
-  </data>
   <data name="Settings.LyricsAutoFindNew" xml:space="preserve">
     <value>Yeni şarkılar için söz bul</value>
     <comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsAutoFindNewHint" xml:space="preserve">
-    <value>Kitaplığına eklenen şarkılar için arka planda söz arar. Senkronize sözleri olan şarkılara dokunulmaz.</value>
-    <comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment>
-  </data>
   <data name="Settings.LyricsAutoFindLibrary" xml:space="preserve">
     <value>Tüm kitaplık için söz bul</value>
-    <comment>Settings ▸ Lyrics (GitHub #219), SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.LyricsAutoFindLibraryHint" xml:space="preserve">
-    <value>Henüz senkronize sözleri olmayan şarkılar için arka planda söz bulur.</value>
     <comment>Settings ▸ Lyrics (GitHub #219), SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsPreferredType.WordSynced" xml:space="preserve">
@@ -12233,10 +12138,6 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   </data>
   <data name="Settings.AnimArtCacheSize" xml:space="preserve">
     <value>Önbellek Boyutu</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve">
-    <value>Dolduğunda en eski kapaklar silinir.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AnimArtCacheUsedOf" xml:space="preserve">
@@ -14989,10 +14890,6 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value>
     <value>Kenar çubuğunu üzerine gelene kadar gizle</value>
     <comment>Settings &gt; General &gt; Sidebar toggle (GitHub #233)</comment>
   </data>
-  <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve">
-    <value>Kenar çubuğunu tamamen gizler, sayfalar tam genişliği kullanır. Göstermek için işaretçiyi pencerenin sol kenarına götür.</value>
-    <comment>Description under Hide sidebar until hover</comment>
-  </data>
   <data name="Count.Tracks" xml:space="preserve">
     <value>{0:N0} parça|{0:N0} parça</value>
     <comment>Count with plural forms (one|other; see Loc.Plural)</comment>
@@ -15902,10 +15799,6 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value>
   </data>
   <data name="Settings.LyricsPageHideLyrics" xml:space="preserve">
     <value>Söz Sayfasında Sözleri Gizle</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.LyricsPageHideLyricsHint" xml:space="preserve">
-    <value>Şarkının sözleri olsa bile bunun yerine ortalanmış oynatıcıyı gösterir.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="LyricShare.Watermark" xml:space="preserve">
