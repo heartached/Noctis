@@ -750,7 +750,38 @@ and the card offers **Replace with official** (downloads the listed zip and puts
 data and settings are kept). Such a copy is a community plugin: it only runs while *Community
 plugins* is on. A copy installed before this check existed shows the same way until replaced
 or updated once. The result is kept per plugin id in settings.json (`VerifiedOfficialPlugins`:
-version and zip SHA-256) and dropped when the plugin is removed or replaced by another zip.
+version, zip SHA-256 and the payload hash below) and dropped when the plugin is removed or
+replaced by another zip.
+
+**The installed files are checked too.** Right after a verified install (or update, or
+*Replace with official*), Noctis hashes the plugin folder it just extracted and keeps that
+**payload hash** in the record; every load hashes the folder again and compares. A build copied
+over a verified plugin by hand, even with the same version in its plugin.json, is therefore a
+local copy (off while *Community plugins* is off; *Replace with official* offered).
+
+- **What is hashed**: every file under the plugin folder, at any depth (the entry DLL, its
+  .deps.json and every managed or native file it names, and anything else the plugin ships
+  next to it). Left out: the `.noctis-uninstalled` marker Noctis writes itself, the files a
+  file manager writes when the folder is opened (`.DS_Store`, `Thumbs.db`, `desktop.ini`),
+  and, for a plugin built for API 1.0 only, its top-level `data` folder (that was its data
+  folder; it is moved out on first load).
+- **How**: SHA-256 over the files sorted by relative path (`/`-separated, ordinal); for each,
+  the UTF-8 path's length (4 bytes, little-endian), the path, the file's length (8 bytes,
+  little-endian) and its bytes. The same function runs over a zip's entries.
+- **Data stays out of it**: a plugin's data folder is `<data>/plugin-data/<id>/`, outside the
+  plugin folder, so a plugin writing its data or cache never changes the hash.
+- **Cost**: every load (each launch, *Reload plugins*, an install) hashes each verified
+  official plugin afresh: a few ms for all of them. The checks in between (switching a plugin,
+  the cards, the Community switch) reuse that result while every file's size, write time and
+  creation time are unchanged, and hash again when any differs. Nothing is cached across
+  launches, so a copy that kept the old timestamps is still read.
+- **Records from 1.7.3 and older** have no payload hash, and the zip they were checked against
+  was deleted after the install, so there is nothing to re-check the folder against at first.
+  The first load with this version takes the folder it finds as the installed one (**trust on
+  first use**, once, logged) and marks the record *pinned*. The next time the Plugins page has
+  the list, Noctis downloads that version's listed zip (size and SHA-256 checked as for an
+  install) and settles it: a folder that matches stays verified, one that does not becomes a
+  local copy. Offline, the record stays pinned and the next page open tries again.
 
 Every start checks that record again, against the list built into the app (so it holds
 offline), and again once the Plugins page has loaded the live list: when the list has the

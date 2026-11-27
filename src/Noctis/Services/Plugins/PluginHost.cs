@@ -1151,6 +1151,11 @@ public sealed class PluginHost
             dirty = true;
         }
 
+        if (PinLegacyRecords(found)) dirty = true;
+        // Each load reads the official copies' files afresh; the checks until the next load reuse it.
+        foreach (var plugin in found.Where(p => !p.IsContentPack && RecordOf(p.Id) is not null))
+            PayloadOf(plugin, fresh: true);
+
         if (settings.CommunityPluginsEnabled is null)
         {
             // Plugins already installed ran before this switch existed: keep them running and
@@ -1793,7 +1798,7 @@ public sealed class PluginHost
             return new PluginInstallResult(PluginInstallOutcome.Failed, "Could not move the plugin into place: " + moveError);
         }
 
-        RecordOfficialInstall(zipPath, manifest, officialListing);
+        RecordOfficialInstall(zipPath, manifest, officialListing, target);
         var plugin = LoadFrom(target);
         DebugLogger.Info(DebugLogger.Category.State, "Plugins", $"{(existing is null ? "installed" : "updated")} {manifest.Id} {manifest.Version}");
         return existing is null
@@ -1805,9 +1810,11 @@ public sealed class PluginHost
     /// Writes (or drops) the verified-official record for the copy just installed: only a zip
     /// whose SHA-256 is the official listing's, for that listing's id and version, with Noctis
     /// credited in both the listing and the zip's plugin.json. Every other install clears it, so
-    /// a later hand-installed zip of the same id loses the mark.
+    /// a later hand-installed zip of the same id loses the mark. The record is
+    /// "version|zip SHA-256|payload hash": the last is <see cref="PluginPayloadHash"/> of the folder
+    /// just extracted, checked again at every load.
     /// </summary>
-    private void RecordOfficialInstall(string zipPath, PluginManifest manifest, PluginCatalogEntry? listing)
+    private void RecordOfficialInstall(string zipPath, PluginManifest manifest, PluginCatalogEntry? listing, string installedDirectory)
     {
         var settings = _settings();
         settings.VerifiedOfficialPlugins ??= new();
@@ -1825,9 +1832,116 @@ public sealed class PluginHost
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { sha = ""; }
             if (sha.Length > 0 && string.Equals(sha, listing.Sha256, StringComparison.Ordinal))
-                settings.VerifiedOfficialPlugins[manifest.Id] = manifest.Version + "|" + sha;
+            {
+                string? payload;
+                try { payload = PluginPayloadHash.OfFolder(installedDirectory, PluginPayloadHash.KeepsDataInFolder(manifest, isLegacy: false), fresh: true); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { payload = null; }
+                if (payload is not null)
+                    settings.VerifiedOfficialPlugins[manifest.Id] = manifest.Version + "|" + sha + "|" + payload;
+            }
         }
         _saveSettings();
+    }
+
+    /// <summary>The parts of a <see cref="AppSettings.VerifiedOfficialPlugins"/> record: version, zip
+    /// SHA-256, payload hash (empty in a record written by 1.7.3 or older) and whether that payload
+    /// hash was only taken from the folder found at first load (<see cref="PinLegacyRecords"/>).</summary>
+    private static (string Version, string ZipSha, string Payload, bool Pinned)? ParseRecord(string? record)
+    {
+        if (record is null) return null;
+        var parts = record.Split('|');
+        if (parts.Length < 2 || parts[0].Length == 0) return null;
+        return (parts[0], parts[1], parts.Length > 2 ? parts[2] : "", parts.Length > 3 && parts[3] == PinnedMark);
+    }
+
+    private const string PinnedMark = "pinned";
+
+    private string? RecordOf(string id)
+        => (_settings().VerifiedOfficialPlugins ?? new()).FirstOrDefault(kv => SameId(kv.Key, id)).Value;
+
+    private void WriteRecord(string id, string version, string zipSha, string payload, bool pinned)
+    {
+        var settings = _settings();
+        settings.VerifiedOfficialPlugins ??= new();
+        foreach (var key in settings.VerifiedOfficialPlugins.Keys.Where(k => SameId(k, id)).ToList())
+            settings.VerifiedOfficialPlugins.Remove(key);
+        settings.VerifiedOfficialPlugins[id] = version + "|" + zipSha + "|" + payload + (pinned ? "|" + PinnedMark : "");
+    }
+
+    private static string PayloadOf(LoadedPlugin plugin, bool fresh = false)
+    {
+        try { return PluginPayloadHash.OfFolder(plugin.Directory, PluginPayloadHash.KeepsDataInFolder(plugin.Manifest, plugin.IsLegacy), fresh); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            DebugLogger.Error(DebugLogger.Category.State, "Plugins", $"hash {plugin.Id}: {ex.Message}");
+            return "";
+        }
+    }
+
+    /// <summary>
+    /// Records from before the payload hash (1.7.3 and older) say which zip was installed, not what
+    /// the folder holds now, and nothing kept from that install can tell (the zip was deleted
+    /// after it). So the folder found at the first load with this version is taken as the
+    /// installed one and marked pinned: trust on first use, once. <see cref="ConfirmPinnedInstall"/>
+    /// then checks it against the listed zip when the Plugins page can download it. Only a record
+    /// for the installed version is pinned; any other was not this copy's and stays unverified.
+    /// </summary>
+    private bool PinLegacyRecords(IReadOnlyCollection<LoadedPlugin> found)
+    {
+        var dirty = false;
+        foreach (var plugin in found)
+        {
+            if (plugin.IsContentPack || !PluginTrust.IsOfficialAuthor(plugin.Author)) continue;
+            if (ParseRecord(RecordOf(plugin.Id)) is not { Payload.Length: 0 } record) continue;
+            if (PluginVersion.Compare(record.Version, plugin.Version) != 0) continue;
+            var payload = PayloadOf(plugin, fresh: true);
+            if (payload.Length == 0) continue;
+            WriteRecord(plugin.Id, record.Version, record.ZipSha, payload, pinned: true);
+            dirty = true;
+            DebugLogger.Info(DebugLogger.Category.State, "Plugins",
+                $"{plugin.Id} {plugin.Version}: install record had no folder hash, pinned the folder found now (trust on first use)");
+        }
+        return dirty;
+    }
+
+    /// <summary>
+    /// The copy's record was pinned at first load (<see cref="PinLegacyRecords"/>) and
+    /// <paramref name="listing"/> lists the same version and zip, so downloading that zip can
+    /// settle whether the folder is what it installed.
+    /// </summary>
+    public bool NeedsPinnedConfirmation(LoadedPlugin plugin, PluginCatalogEntry listing)
+        => listing.IsOfficial && SameId(plugin.Id, listing.Id)
+           && ParseRecord(RecordOf(plugin.Id)) is { Pinned: true } record
+           && PluginVersion.Compare(record.Version, listing.Version) == 0
+           && string.Equals(record.ZipSha, listing.Sha256, StringComparison.Ordinal);
+
+    /// <summary>
+    /// Settles a pinned record with the listed zip (downloaded and checked against the list by the
+    /// caller): the zip's payload hash replaces the pinned one. A folder that matches it stays
+    /// verified, no longer pinned; one that does not is a local copy from now on and, with
+    /// Community plugins off, stops.
+    /// </summary>
+    public void ConfirmPinnedInstall(LoadedPlugin plugin, string verifiedZipPath)
+    {
+        if (ParseRecord(RecordOf(plugin.Id)) is not { Pinned: true } record) return;
+        var wasTrusted = IsTrustedOfficial(plugin);
+        string expected;
+        try { expected = PluginPayloadHash.OfZip(verifiedZipPath); }
+        catch (Exception ex) when (ex is PluginInstallException or IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            DebugLogger.Error(DebugLogger.Category.State, "Plugins", $"confirm {plugin.Id}: {ex.Message}");
+            return;
+        }
+        WriteRecord(plugin.Id, record.Version, record.ZipSha, expected, pinned: false);
+        _saveSettings();
+        var matches = string.Equals(expected, record.Payload, StringComparison.Ordinal);
+        DebugLogger.Info(DebugLogger.Category.State, "Plugins",
+            $"{plugin.Id} {record.Version}: pinned folder {(matches ? "matches" : "does not match")} the listed zip");
+        if (wasTrusted == IsTrustedOfficial(plugin) || CommunityPluginsEnabled || !Plugins.Contains(plugin)) return;
+        Stop(plugin);
+        Activate(plugin);
+        RebuildContent();
+        VisualLayersChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>
@@ -1848,16 +1962,14 @@ public sealed class PluginHost
     private bool IsVerifiedOfficialCore(LoadedPlugin plugin, PluginCatalogEntry? listing)
     {
         if (listing is { IsOfficial: false } || !PluginTrust.IsOfficialAuthor(plugin.Author)) return false;
-        var record = (_settings().VerifiedOfficialPlugins ?? new()).FirstOrDefault(kv => SameId(kv.Key, plugin.Id)).Value;
-        if (record is null) return false;
-        var bar = record.IndexOf('|');
-        if (bar <= 0) return false;
-        var version = record[..bar];
-        var sha = record[(bar + 1)..];
-        if (PluginVersion.Compare(version, plugin.Version) != 0) return false;
+        if (ParseRecord(RecordOf(plugin.Id)) is not { } record) return false;
+        if (PluginVersion.Compare(record.Version, plugin.Version) != 0) return false;
         // Same version as the list: the hash must be the list's too (a corrected listing wins).
-        return listing is null || PluginVersion.Compare(version, listing.Version) != 0
-               || string.Equals(sha, listing.Sha256, StringComparison.Ordinal);
+        if (listing is not null && PluginVersion.Compare(record.Version, listing.Version) == 0
+            && !string.Equals(record.ZipSha, listing.Sha256, StringComparison.Ordinal)) return false;
+        // The folder must still be what was installed: a build copied over it, even at the same
+        // version, is a local copy. A record without a payload hash was not pinned (yet).
+        return record.Payload.Length > 0 && string.Equals(PayloadOf(plugin), record.Payload, StringComparison.Ordinal);
     }
 
     /// <summary>
