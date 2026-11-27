@@ -988,6 +988,13 @@
                 </Grid>
             </Grid>
 
+            <!-- See-through page (Liquid Glass, Smoke): the hero ends in the opaque page colour;
+                 this takes that colour back out over the first rows below it, behind the tabs
+                 (code-behind, HeroAfterFadeBrush; no brush on an opaque page). Takes no room. -->
+            <Panel Height="0">
+                <Border x:Name="HeroAfterFade" Height="180" VerticalAlignment="Top" IsHitTestVisible="False" />
+            </Panel>
+
             <!-- ── Tabs ─────────────────────────────────────────────── -->
             <StackPanel Margin="32,2,32,0">
                 <StackPanel Orientation="Horizontal" Spacing="6">

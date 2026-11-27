@@ -309,10 +309,19 @@ public class ArtistVideoPerfTests : IDisposable
         var opaque = Assert.IsType<LinearGradientBrush>(ArtistDetailView.HeroFadeBrush(new SolidColorBrush(Color.Parse("#252525"))));
         Assert.Equal(new byte[] { 0, 0xB0, 0xFF }, opaque.GradientStops.Select(s => s.Color.A));
         Assert.All(opaque.GradientStops, s => Assert.Equal(Color.FromRgb(0x25, 0x25, 0x25), Color.FromRgb(s.Color.R, s.Color.G, s.Color.B)));
-        // Smoke's #99 page and the tint's 35% brush keep their own alpha and opacity.
-        var smoke = Assert.IsType<LinearGradientBrush>(ArtistDetailView.HeroFadeBrush(new SolidColorBrush(Color.Parse("#992A2D38"), 0.35)));
-        Assert.Equal(new byte[] { 0, (byte)Math.Round(0x99 * (0xB0 / 255.0)), 0x99 }, smoke.GradientStops.Select(s => s.Color.A));
-        Assert.Equal(0.35, smoke.Opacity);
+        Assert.Null(ArtistDetailView.HeroAfterFadeBrush(new SolidColorBrush(Color.Parse("#252525"))));
+        // A see-through page (Smoke's #99, Liquid Glass's 35% brush): the hero still ends in the
+        // opaque colour (owner 11-27: its bottom edge cut across the page under Liquid Glass),
+        // and the strip under the hero takes that colour back out.
+        foreach (var page in new[] { new SolidColorBrush(Color.Parse("#992A2D38")), new SolidColorBrush(Color.Parse("#252525"), 0.35) })
+        {
+            var fade = Assert.IsType<LinearGradientBrush>(ArtistDetailView.HeroFadeBrush(page));
+            Assert.Equal(new byte[] { 0, 0xB0, 0xFF }, fade.GradientStops.Select(s => s.Color.A));
+            Assert.Equal(1, fade.Opacity);
+            var after = Assert.IsType<LinearGradientBrush>(ArtistDetailView.HeroAfterFadeBrush(page));
+            Assert.Equal(fade.GradientStops[^1].Color, after.GradientStops[0].Color);
+            Assert.Equal(0, after.GradientStops[^1].Color.A);
+        }
     }
 
     [AvaloniaFact]

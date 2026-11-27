@@ -48,6 +48,8 @@ public partial class ArtistDetailView : UserControl
         // Follows a theme or accent tint swapping the page colour.
         HeroPageFade.Bind(Border.BackgroundProperty,
             this.GetResourceObservable("AppMainBackground", o => HeroFadeBrush(o as IBrush)));
+        HeroAfterFade.Bind(Border.BackgroundProperty,
+            this.GetResourceObservable("AppMainBackground", o => HeroAfterFadeBrush(o as IBrush)));
     }
 
     // ── Artist video in the hero ──
@@ -95,24 +97,50 @@ public partial class ArtistDetailView : UserControl
     /// The hero's fade into the page: the page colour as a vertical gradient, transparent at the
     /// top. It was a page-coloured Border under a gradient OpacityMask, which is an offscreen
     /// layer the size of the hero redrawn with every video frame (probe, real Skia at 1600x900:
-    /// 20.5-25.6 ms a frame with it, 13.8 without). Same pixels: the colour keeps its own alpha
-    /// and the brush's opacity, each stop's alpha scaled by the old mask's.
+    /// 20.5-25.6 ms a frame with it, 13.8 without). Each stop's alpha is the old mask's.
+    /// Always the opaque page colour at the bottom: a see-through page (Liquid Glass paints it
+    /// at 35%, Smoke at #99) left the hero's bottom edge showing as a hard cut across the page
+    /// (owner 11-27, most visible under an artist video). <see cref="HeroAfterFadeBrush"/>
+    /// takes the opaque colour back out below the hero.
     /// </summary>
     internal static IBrush? HeroFadeBrush(IBrush? page)
     {
         if (page is not ISolidColorBrush solid) return page;
         var c = solid.Color;
-        Color At(double mask) => Color.FromArgb((byte)Math.Round(c.A * mask), c.R, c.G, c.B);
+        Color At(double mask) => Color.FromArgb((byte)Math.Round(255 * mask), c.R, c.G, c.B);
         return new LinearGradientBrush
         {
             StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
             EndPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
-            Opacity = solid.Opacity,
             GradientStops =
             {
                 new GradientStop(At(0), 0.4),
                 new GradientStop(At(0xB0 / 255.0), 0.82),
                 new GradientStop(At(1), 1),
+            },
+        };
+    }
+
+    /// <summary>
+    /// Under the hero on a see-through page: the opaque page colour the hero ends in, fading
+    /// out downwards into the page's own (translucent) surface, so there is no edge where the
+    /// hero stops. Null (nothing drawn) on an opaque page, where the hero's fade already ends
+    /// in the page's exact colour.
+    /// </summary>
+    internal static IBrush? HeroAfterFadeBrush(IBrush? page)
+    {
+        if (page is not ISolidColorBrush solid) return null;
+        var c = solid.Color;
+        if (c.A == 255 && solid.Opacity >= 1) return null;
+        return new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
+            GradientStops =
+            {
+                new GradientStop(Color.FromArgb(255, c.R, c.G, c.B), 0),
+                new GradientStop(Color.FromArgb(0x50, c.R, c.G, c.B), 0.5),
+                new GradientStop(Color.FromArgb(0, c.R, c.G, c.B), 1),
             },
         };
     }
