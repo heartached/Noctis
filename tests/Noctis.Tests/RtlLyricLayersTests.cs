@@ -52,7 +52,7 @@ public class RtlLyricLayersTests
         },
     };
 
-    private static void PumpFor(int ms)
+    internal static void PumpFor(int ms)
     {
         var until = DateTime.UtcNow.AddMilliseconds(ms);
         do
@@ -119,7 +119,8 @@ public class RtlLyricLayersTests
         Assert.True(X(words[0]) > X(words[1]), $"{surface}: Persian words run from the right");
         Assert.True(X(roman[0]) < X(roman[1]), $"{surface}: romanization {X(roman[0]):F1} vs {X(roman[1]):F1}");
         Assert.All(roman, w => Assert.False(Cell(root, w).RightToLeft));
-        var romanRight = roman.Max(w => Cell(root, w).TranslatePoint(new Point(Cell(root, w).Bounds.Width, 0), wordBlock)!.Value.X);
+        // Its last glyph at the right edge (the line-final pad hangs past it, LyricWrapPanel).
+        var romanRight = roman.Max(w => Cell(root, w).TranslatePoint(new Point(Cell(root, w).GlyphSpan.Right, 0), wordBlock)!.Value.X);
         Assert.True(Math.Abs(romanRight - wordBlock.Bounds.Width) < 1,
             $"{surface}: romanization row ends at {romanRight:F1} of {wordBlock.Bounds.Width:F1}");
     }
@@ -202,7 +203,7 @@ public class RtlLyricLayersTests
 
     /// <summary>The phone's lyrics page showing <paramref name="lrc"/> from a sidecar, the way a
     /// song's lyrics load on the phone.</summary>
-    private static (ShellView View, Window Window, LyricsPageViewModel Lyrics) MountPhone(string lrc)
+    internal static (ShellView View, Window Window, LyricsPageViewModel Lyrics) MountPhone(string lrc)
     {
         var root = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
         var library = new FakeLibraryService();
@@ -227,7 +228,7 @@ public class RtlLyricLayersTests
         return (view, window, lyrics);
     }
 
-    private static Visual PhoneList(ShellView view) =>
+    internal static Visual PhoneList(ShellView view) =>
         view.GetLogicalDescendants().OfType<LyricsPage>().Single().FindControl<Control>("LyricsList")!;
 
     // The sample lines from the desktop fix's live check.

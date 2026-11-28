@@ -65,6 +65,7 @@ public class KaraokeRestingWords : Control
     private object? _measuredKey;                       // what _cellSizes were measured with
     private Rect[] _cells = Array.Empty<Rect>();       // arranged cell slots
     private double[] _scales = Array.Empty<double>();  // DownOnly Viewbox scale per cell
+    private double[] _glyphs = Array.Empty<double>();  // the trimmed word's width (what is drawn)
     private TextLayout?[] _layouts = Array.Empty<TextLayout?>();
     private IBrush? _layoutBrush;
 
@@ -118,6 +119,7 @@ public class KaraokeRestingWords : Control
             _cellSizes = new Size[count];
             _cells = new Rect[count];
             _scales = new double[count];
+            _glyphs = new double[count];
             _layouts = new TextLayout?[count];
         }
         // The template's Viewbox measures its word with no constraint.
@@ -128,6 +130,11 @@ public class KaraokeRestingWords : Control
             _measurer.Padding = WordOverflowPaddingConverter.PaddingFor(w);
             _measurer.Measure(Size.Infinity);
             _cellSizes[i] = _measurer.DesiredSize;
+            // What KaraokeWordText draws: the trimmed word.
+            _measurer.Text = (w.Text ?? string.Empty).TrimEnd();
+            _measurer.Padding = default;
+            _measurer.Measure(Size.Infinity);
+            _glyphs[i] = _measurer.TextLayout.WidthIncludingTrailingWhitespace;
         }
         _measurer.Text = string.Empty;
         _measurer.Padding = default;
@@ -224,6 +231,10 @@ public class KaraokeRestingWords : Control
             double total = 0;
             for (int i = start; i < end; i++) total += Cell(_cellSizes[i], available).Size.Width;
             u = ItemsAlignment == WrapPanelItemsAlignment.Center ? (available - total) / 2 : available - total;
+            // Leave out the blank at the row's reading end, as LyricWrapPanel does.
+            var last = end - 1;
+            var inset = ReadingEndInset(last) * Cell(_cellSizes[last], available).Scale;
+            u += ItemsAlignment == WrapPanelItemsAlignment.Center ? inset / 2 : inset;
         }
         // Arrange puts each cell on the pixel grid (a centred row can start mid-pixel).
         var dpi = UseLayoutRounding ? LayoutHelper.GetLayoutScale(this) : 0;
@@ -239,6 +250,32 @@ public class KaraokeRestingWords : Control
             u += size.Width;
         }
     }
+
+    /// <summary>Tests: word <paramref name="i"/>'s arranged cell.</summary>
+    internal Rect CellOf(int i) => _cells[i];
+
+    /// <summary>Tests: where word <paramref name="i"/>'s glyphs start and end as drawn.</summary>
+    internal (double Left, double Right) GlyphSpan(int i)
+    {
+        var pad = WordOverflowPaddingConverter.PaddingFor(Words![i]);
+        var left = _cells[i].X + GlyphOffset(i, pad) * _scales[i];
+        return (left, left + _glyphs[i] * _scales[i]);
+    }
+
+    /// <summary>The blank in cell <paramref name="i"/> at its word's reading end (its trailing
+    /// space, the line-final pad), unscaled: what LyricWrapPanel leaves out of a row's alignment.</summary>
+    private double ReadingEndInset(int i)
+    {
+        var pad = WordOverflowPaddingConverter.PaddingFor(Words![i]);
+        return RightToLeft
+            ? GlyphOffset(i, pad)
+            : Math.Max(0, _cellSizes[i].Width - pad.Left - _glyphs[i]);
+    }
+
+    /// <summary>Where word <paramref name="i"/>'s glyphs start in its cell, unscaled: after its
+    /// padding, and for a right-to-left word at the right end of the cell (KaraokeWordText).</summary>
+    private double GlyphOffset(int i, Thickness pad) =>
+        RightToLeft ? Math.Max(pad.Left, _cellSizes[i].Width - pad.Right - _glyphs[i]) : pad.Left;
 
     public override void Render(DrawingContext context)
     {
@@ -260,7 +297,7 @@ public class KaraokeRestingWords : Control
             var pad = WordOverflowPaddingConverter.PaddingFor(words[i]);
             var cell = _cells[i];
             var scale = _scales[i];
-            var transform = Matrix.CreateTranslation(pad.Left, pad.Top);
+            var transform = Matrix.CreateTranslation(GlyphOffset(i, pad), pad.Top);
             // ReSharper disable once CompareOfFloatsByEqualityOperator
             if (scale != 1) transform *= Matrix.CreateScale(scale, scale);
             transform *= Matrix.CreateTranslation(cell.X, cell.Y);

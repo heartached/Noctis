@@ -241,6 +241,10 @@ public class MobileLyricsAllocationTests
     /// in an optimized build); rows are now kept and handed the next line (RowItemsControl).
     /// A word-timed row keeps its word cells too (WordItemsControl). A row handed a new line
     /// shows that line's dimming and blur at once, not faded from the line it showed before.
+    /// The measured scroll is run once first and scrolled back: how many rows the settling glide
+    /// had realised varied with timing (11 or 12), and with one row short the first step built a
+    /// row from scratch (~580 KB more, 2 runs in 8 over the budget). Measured, every row is a
+    /// reused one, which is what this test is about.
     /// </summary>
     [AvaloniaTheory]
     [InlineData(".lrc", 200)]
@@ -265,7 +269,21 @@ public class MobileLyricsAllocationTests
             while (settle.ElapsedMilliseconds < 1500) { Pump(); Thread.Sleep(16); }
 
             var prepared = new List<Control>();
-            list.ContainerPrepared += (_, e) => prepared.Add(e.Container);
+            var known = new HashSet<Control>(list.GetRealizedContainers());
+            list.ContainerPrepared += (_, e) => { prepared.Add(e.Container); known.Add(e.Container); };
+            // Warm-up: the same six steps and back, so the rows the measured steps need exist.
+            var top = scroll.Offset.Y;
+            for (var step = 0; step < 6; step++)
+            {
+                scroll.Offset = new Avalonia.Vector(0, scroll.Offset.Y + 120);
+                win.UpdateLayout();
+                Pump();
+            }
+            scroll.Offset = new Avalonia.Vector(0, top);
+            win.UpdateLayout();
+            Pump();
+            var pool = new HashSet<Control>(known);
+
             var built = 0L;
             var rows = 0;
             for (var step = 0; step < 6; step++)
@@ -276,6 +294,7 @@ public class MobileLyricsAllocationTests
                 win.UpdateLayout();
                 built += GC.GetAllocatedBytesForCurrentThread() - b0;
                 rows += prepared.Count;
+                Assert.All(prepared, row => Assert.Contains(row, pool));   // handed a line, not built
                 foreach (var row in prepared)
                 {
                     var button = row.GetVisualDescendants().OfType<Button>().First(b => b.Classes.Contains("lyric-line"));
