@@ -320,6 +320,37 @@ public class KaraokeWordText : TextBlock
     internal int PieceCount { get { EnsurePieces(); return _pieces.Count; } }
     internal WordDrawMode EffectMode { get { EnsurePieces(); return _effect is null ? WordDrawMode.Native : _mode; } }
 
+    /// <summary>
+    /// How far right of the text origin a right-to-left word is drawn: to the right end of its
+    /// cell, so its trailing space (the gap to the next word in reading order) falls on its left
+    /// and the line's first word meets the line's right edge (#269).
+    /// </summary>
+    private double RightToLeftOffset
+    {
+        get
+        {
+            var scale = Avalonia.Layout.LayoutHelper.GetLayoutScale(this);
+            var padding = Avalonia.Layout.LayoutHelper.RoundLayoutThickness(Padding, scale);
+            return Math.Max(0, Bounds.Width - padding.Left - padding.Right - _glyphWidth);
+        }
+    }
+
+    /// <summary>Where the word's glyphs start and end in this control, as drawn (LyricWrapPanel
+    /// aligns rows by them).</summary>
+    internal (double Left, double Right) GlyphSpan
+    {
+        get
+        {
+            if (_dirty)
+            {
+                EnsurePieces();
+                UpdateStops();
+            }
+            var left = TextOrigin().X + (RightToLeft ? RightToLeftOffset : 0);
+            return (left, left + _glyphWidth);
+        }
+    }
+
     /// <summary>Tests: every piece was last drawn in one colour (no gradient).</summary>
     internal bool DrawnUniform => _pieces.Count > 0 && _pieces.TrueForAll(p => p.DrawnUniform);
 
@@ -714,6 +745,7 @@ public class KaraokeWordText : TextBlock
             UpdateStops();
         }
         if (_pieces.Count == 0 || _glyphWidth <= 0) return;
+        if (RightToLeft) origin = new Point(origin.X + RightToLeftOffset, origin.Y);
 
         if (Posed)
         {

@@ -613,4 +613,41 @@ public class GroupTagRoundTrip1127Tests : IDisposable
         var diff = Diff(before, Dump(song));
         Assert.All(diff, k => Assert.StartsWith("id3:POPM", k)); // only the rating save's own change
     }
+
+    // ── A song in a hidden folder is found too ──
+
+    [Fact]
+    public async Task RatingSave_WhileAnUndoWaits_OnASongInAHiddenFolder_EndsAsTheUndoPlusTheRating()
+    {
+        var (library, song, reference) = await UndoWaitingAsync("mp3");
+        // Folders the user hid are left out of the id lookup (the visible songs only).
+        await library.SetFolderHiddenAsync(Path.GetDirectoryName(song)!, true);
+        Assert.Null(library.GetTrackById(library.AllTracks.Single(t => t.FilePath == song).Id));
+        IMetadataService metadata = new MetadataService();
+
+        Assert.True(metadata.WriteRating(song, 4, false));
+        Assert.True(metadata.WriteRating(reference, 4, false));
+
+        AssertSameTags(reference, song);
+        using (var f = TagLib.File.Create(song)) Assert.Empty(f.Tag.AlbumArtists);
+        var track = library.AllTracks.Single(t => t.FilePath == song);
+        Assert.Null(track.PendingAlbumWrite);
+        Assert.False(track.AlbumGroupingUnwritten);
+    }
+
+    [Fact]
+    public async Task APendingWrite_IsFound_WhateverSpellingTheWriterUses()
+    {
+        var (library, song, reference) = await UndoWaitingAsync("flac");
+        // Another case, the other separator, a long path prefix: the same file.
+        var spelled = @"\\?\" + song.ToUpperInvariant().Replace('\\', '/');
+        if (!OperatingSystem.IsWindows()) spelled = song; // the prefix and case folding are Windows spellings
+        Assert.NotNull(PendingAlbumWrites.Find(spelled));
+        Assert.True(Noctis.Helpers.PathComparison.Comparer.Equals(LibraryService.PendingKey(song), LibraryService.PendingKey(spelled)));
+
+        Assert.True(((IMetadataService)new MetadataService()).WriteRating(song, 2, false));
+        Assert.True(((IMetadataService)new MetadataService()).WriteRating(reference, 2, false));
+        AssertSameTags(reference, song);
+        Assert.Null(PendingAlbumWrites.Find(spelled));
+    }
 }

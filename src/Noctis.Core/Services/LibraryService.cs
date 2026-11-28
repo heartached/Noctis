@@ -133,24 +133,53 @@ public class LibraryService : ILibraryService
         PendingAlbumWrites.Register(this, FindPendingAlbumWrite, PendingAlbumWriteHonoured);
     }
 
-    /// <summary>Songs whose pending album write was set this session, by path (a song loaded
-    /// with one is found by its id, <see cref="ComputeFileId"/>).</summary>
+    /// <summary>
+    /// Every song with a pending album write, hidden folders' and the Inbox's too, by
+    /// <see cref="PendingKey"/>. Kept apart from the id lookup (<see cref="_trackIndex"/>),
+    /// which holds the visible songs only (RebuildIndexesCoreAsync), so a hidden song's waiting
+    /// write was never found and the next save of its file skipped it. Filled when a write is
+    /// left pending and on every rebuild (songs loaded with one); a song no longer in the
+    /// library drops out at the next rebuild.
+    /// </summary>
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, Track> _pendingAlbumFiles =
-        new(StringComparer.OrdinalIgnoreCase);
+        new(PathComparison.Comparer);
+
+    /// <summary>
+    /// A file path as the library compares them: the full path (<see cref="NormalizePath"/>, as
+    /// a scan and <see cref="TrackIdForPath"/> take it), matched with <see cref="PathComparison"/>
+    /// (case-insensitive on Windows and macOS, case-sensitive on Linux). A long
+    /// path or UNC prefix ("\\?\C:\…", "\\?\UNC\server\…") is taken off first, so the same
+    /// file matches however a writer spells it. Links are not resolved, as the scan does not.
+    /// </summary>
+    internal static string PendingKey(string path)
+    {
+        var p = path;
+        if (p.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase)) p = @"\\" + p[8..];
+        else if (p.StartsWith(@"\\?\", StringComparison.Ordinal) || p.StartsWith(@"\\.\", StringComparison.Ordinal)) p = p[4..];
+        return TryNormalizePath(p) ?? p;
+    }
 
     /// <summary>The library's song at <paramref name="path"/> with a pending album write
-    /// (<see cref="PendingAlbumWrites"/>), or null.</summary>
+    /// (<see cref="PendingAlbumWrites"/>), or null. Every tag save of any file asks: one path
+    /// normalisation and one dictionary lookup, nothing at all while no write is pending.</summary>
     private Track? FindPendingAlbumWrite(string path)
     {
-        // Every tag save of any file asks: plain dictionary lookups only.
-        var index = _trackIndex;
-        if (index.TryGetValue(ComputeFileId(path), out var byId) && byId.PendingAlbumWrite != null
-            && string.Equals(byId.FilePath, path, StringComparison.OrdinalIgnoreCase))
-            return byId;
-        return !_pendingAlbumFiles.IsEmpty && _pendingAlbumFiles.TryGetValue(path, out var t) && t.PendingAlbumWrite != null
-               && index.TryGetValue(t.Id, out var current) && ReferenceEquals(current, t)
-            ? t
-            : null;
+        if (_pendingAlbumFiles.IsEmpty) return null;
+        return _pendingAlbumFiles.TryGetValue(PendingKey(path), out var t) && t.PendingAlbumWrite != null ? t : null;
+    }
+
+    /// <summary>Rebuild: every song carrying a pending album write is findable; songs that left
+    /// the library (removed, or replaced by a rescan of their file) are not.</summary>
+    private void IndexPendingAlbumWrites(IReadOnlyList<Track> allTracks)
+    {
+        foreach (var t in allTracks)
+            if (t.PendingAlbumWrite != null)
+                _pendingAlbumFiles[PendingKey(t.FilePath)] = t;
+        if (_pendingAlbumFiles.IsEmpty) return;
+        var live = new HashSet<Track>(allTracks, ReferenceEqualityComparer.Instance);
+        foreach (var (key, t) in _pendingAlbumFiles)
+            if (t.PendingAlbumWrite == null || !live.Contains(t))
+                _pendingAlbumFiles.TryRemove(new KeyValuePair<string, Track>(key, t));
     }
 
     /// <summary>Sets (or clears) <paramref name="t"/>'s pending album write and its retry flag.</summary>
@@ -158,8 +187,9 @@ public class LibraryService : ILibraryService
     {
         t.PendingAlbumWrite = write;
         t.AlbumGroupingUnwritten = write != null;
-        if (write != null) _pendingAlbumFiles[t.FilePath] = t;
-        else _pendingAlbumFiles.TryRemove(t.FilePath, out _);
+        var key = PendingKey(t.FilePath);
+        if (write != null) _pendingAlbumFiles[key] = t;
+        else _pendingAlbumFiles.TryRemove(new KeyValuePair<string, Track>(key, t));
     }
 
     /// <summary>
@@ -2759,6 +2789,7 @@ public class LibraryService : ILibraryService
             // Undo Grouping: a song edited since its grouping drops what it had before (it no
             // longer applies, and Undo must never overwrite the newer edit).
             AlbumUndo.Prune(allTracks);
+            IndexPendingAlbumWrites(allTracks);
             albumMoves = AlbumGrouping.Restore(allTracks, grouping);
             if (grouping)
             {

@@ -33,7 +33,10 @@ public class WordOverflowPaddingConverter : IValueConverter
     {
         var lineFinal = word is { IsLastInLine: true, Text: { Length: > 0 } text }
                         && !char.IsWhiteSpace(text[^1]);
-        return lineFinal ? new Thickness(0, 0, RightPad, 0) : default(Thickness);
+        if (!lineFinal) return default;
+        // A right-to-left line ends on its left (#269): the pad goes there, not between its last
+        // two words.
+        return word!.IsRightToLeft ? new Thickness(RightPad, 0, 0, 0) : new Thickness(0, 0, RightPad, 0);
     }
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
