@@ -251,14 +251,14 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     /// its byte budget (128 MB of decoded covers, native memory) with covers of pages that are not
     /// even shown. Once the window has been in the background for <see cref="BackgroundTrimDelay"/>,
     /// the covers no control holds are dropped (<see cref="ArtworkCache.TrimUnheld"/>; what is on
-    /// screen stays) and the managed heap is compacted after it (<see cref="MemoryTrim"/>, a
-    /// background collection while music plays, #139). Coming back and quick minimize/restore
-    /// cycles cancel it.
+    /// screen stays) and the managed heap is trimmed after it (<see cref="MemoryTrim"/>: a
+    /// background collection, then the working set once playback has been idle a while, #139).
+    /// Coming back and quick minimize/restore cycles cancel it.
     /// </summary>
     private void ScheduleBackgroundTrim()
     {
         // Behind the mini player the app is still in use (its play button is right there),
-        // so only a hidden or minimized window with no mini player lets a blocking trim run.
+        // so only a hidden or minimized window with no mini player lets the working set go.
         MemoryTrim.SetAppInBackground(IsInBackground && _miniPlayer == null);
         var generation = ++_backgroundTrimGeneration;
         if (!IsInBackground) return;
@@ -1393,8 +1393,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
         // Minimized, in the tray or behind the mini player for a while: let go of what only
         // pages nobody is looking at hold (see ScheduleBackgroundTrim).
-        // From here on the desktop reports its windows, and a blocking compacting trim waits
-        // for the app to be in the background (see MemoryTrim.MayBlock).
+        // From here on the desktop reports its windows, and the working-set trim waits for the
+        // app to be in the background (see MemoryTrim.MayTrimWorkingSet).
         MemoryTrim.SetAppInBackground(false);
         PropertyChanged += (_, e) =>
         {

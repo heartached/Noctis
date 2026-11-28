@@ -1,20 +1,29 @@
 using System.Runtime;
+using System.Runtime.InteropServices;
 
 namespace Noctis.Services;
 
 /// <summary>
-/// Gives the managed heap back after a burst of large garbage.
+/// Gives memory back after a burst of large garbage, without ever pausing the app for it.
 ///
 /// The startup pipeline (library parse, tag reads during the scan, artwork
 /// backfill) leaves hundreds of MB of dead Large Object Heap arrays behind —
 /// measured at 236 MB of unrooted byte[] on a 7k-track library, most of them
 /// embedded cover files TagLib had materialised. Nothing allocates afterwards, so
 /// the GC has no reason to run a gen2 and the memory stays committed for the whole
-/// session: that is the "Noctis sits at 500+ MB doing nothing" report. A single
-/// compacting full collection once the burst is over returns it.
+/// session: that is the "Noctis sits at 500+ MB doing nothing" report.
+///
+/// The trim is a background gen2 (the dead objects are freed while every thread keeps
+/// running), and on Windows, once the app is in the background and idle, a working-set
+/// trim that hands its physical pages back to the OS. It never asks for a blocking
+/// collection: one suspends every managed thread, the audio render thread and the UI
+/// thread that takes a Play click included. The compacting trim this replaced paused
+/// 306 ms on a 575 MB harness heap, and a press landing in it waited 345 ms for audio
+/// (11-27). See <see cref="BackgroundCollect"/> for why even the background request is
+/// made in <see cref="GCLatencyMode.SustainedLowLatency"/>.
 ///
 /// Requests are debounced: every producer (startup, a scan, a backfill) calls
-/// <see cref="RequestAfterIdle"/> when it finishes, and the collection runs once
+/// <see cref="RequestAfterIdle(string)"/> when it finishes, and the collection runs once
 /// <see cref="Quiet"/> has passed since the last request, so overlapping producers
 /// pay for one collection, after all of them are done.
 /// </summary>
@@ -23,33 +32,26 @@ public static class MemoryTrim
     /// <summary>How long after the last request the trim runs.</summary>
     public static TimeSpan Quiet { get; set; } = TimeSpan.FromSeconds(6);
 
-    /// <summary>
-    /// Set by the app: true while music plays. A blocking compacting gen2 suspends
-    /// every managed thread for its whole pause, the audio render thread included
-    /// (a trim after the startup scan put a 34 ms GC inside a 39 ms render gap), so
-    /// while this is true the trim runs as a background collection instead.
-    /// </summary>
+    /// <summary>Set by the app: true while music plays.</summary>
     public static Func<bool>? IsAudioPlaying { get; set; }
 
-    /// <summary>Test seam: what runs when the quiet period elapses, given whether it may block. Null = the real collection.</summary>
+    /// <summary>
+    /// Test seam: what runs when the quiet period elapses, given whether the working set is
+    /// trimmed after the background collection. Null = the real trim.
+    /// </summary>
     internal static Action<bool>? Collector { get; set; }
 
     private static readonly object Gate = new();
     private static int _pending;
     private static string _reason = "";
     private static bool _playing;
-    private static bool _deferred;
+    private static int _lowLatencyHolds; // background collections in flight (see BackgroundCollect)
+    private static bool _deferred;       // a working-set trim is owed (desktop)
     private static GCLatencyMode _restoreMode = GCLatencyMode.Interactive;
     private static bool? _appInBackground; // null: the host does not report it (server, phone)
     private static long _idleSince = Environment.TickCount64;
 
-    /// <summary>
-    /// How long playback must have been stopped or paused before a blocking compacting trim
-    /// may run. Play pressed during that collection waits for it: a headless harness (575 MB
-    /// heap, resume landing inside the trim) measured up to 68.7 ms from resume to the next
-    /// render with the blocking trim (pauses 59-99 ms) against 15.3 ms with a background one
-    /// (pauses 0.1 ms; the rest is the 10 ms render period).
-    /// </summary>
+    /// <summary>How long playback must have been stopped or paused before the working set is trimmed.</summary>
     public static TimeSpan LongIdle { get; set; } = TimeSpan.FromSeconds(60);
 
     /// <summary>Test seam: the clock idle time is measured on (milliseconds).</summary>
@@ -57,8 +59,8 @@ public static class MemoryTrim
 
     /// <summary>
     /// Set by the desktop app: true while nothing of it is on screen (main window hidden or
-    /// minimized and no mini player). Once reported, a blocking compacting trim only runs
-    /// then, see <see cref="MayBlock"/>; a play button on screen never waits behind one.
+    /// minimized and no mini player). The working-set trim only runs then, see
+    /// <see cref="MayTrimWorkingSet"/>.
     /// </summary>
     public static void SetAppInBackground(bool inBackground)
     {
@@ -82,17 +84,15 @@ public static class MemoryTrim
     }
 
     /// <summary>
-    /// Whether the trim may be a blocking compacting collection. Never while music plays (the
-    /// render thread would freeze with it). Where the host reports its windows (the desktop),
-    /// only with the whole app in the background and playback idle for <see cref="LongIdle"/>:
-    /// a resume pressed while a blocking trim runs waits for it to end. Otherwise it is a
-    /// background collection, which frees the dead objects without the pause; the compaction
-    /// (which also gives the emptied regions back to the OS) stays owed until such a moment.
-    /// Hosts that never report (server, phone) keep the old rule: block whenever not playing.
-    /// Pure; internal for tests.
+    /// Whether the working set is trimmed after the background collection: Windows hosts that
+    /// report their windows (the desktop), with nothing playing, the whole app in the
+    /// background and playback idle for <see cref="LongIdle"/>. The trim suspends no thread
+    /// (harness: the call took 57-107 ms on the trimming thread, a gen1 right after it paused
+    /// 0.9 ms), but pages touched later fault back in, so it is kept away from playback and
+    /// from a window on screen. Pure; internal for tests.
     /// </summary>
-    internal static bool MayBlock(bool playing, bool? appInBackground, long idleMs, TimeSpan longIdle) =>
-        !playing && (appInBackground is not { } background || (background && idleMs >= longIdle.TotalMilliseconds));
+    internal static bool MayTrimWorkingSet(bool playing, bool? appInBackground, long idleMs, TimeSpan longIdle) =>
+        !playing && appInBackground == true && idleMs >= longIdle.TotalMilliseconds;
 
     /// <summary>
     /// Called by the app on every playback state change. While music plays the GC runs in
@@ -104,7 +104,7 @@ public static class MemoryTrim
     /// gave a 281-309 ms blocking compacting gen2 in Interactive and none in
     /// SustainedLowLatency, the heap ending at the same 270 MB. Low system memory still gets
     /// full blocking collections from the runtime. When playback stops the previous mode
-    /// comes back, and a compacting trim skipped while playing runs then.
+    /// comes back, and a working-set trim owed while playing is asked for.
     /// </summary>
     public static void SetAudioPlaying(bool playing)
     {
@@ -113,33 +113,40 @@ public static class MemoryTrim
         {
             if (_playing == playing) return;
             _playing = playing;
-            try
-            {
-                if (playing)
-                {
-                    var current = GCSettings.LatencyMode;
-                    if (current != GCLatencyMode.SustainedLowLatency) _restoreMode = current;
-                    GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
-                }
-                else
-                {
-                    GCSettings.LatencyMode = _restoreMode;
-                }
-            }
-            catch
-            {
-                // Best effort: a runtime without concurrent GC keeps its mode.
-            }
+            ApplyLatencyModeLocked();
             if (!playing)
             {
                 _idleSince = Now();
                 runDeferred = _deferred;
             }
         }
-        // Not right away: the compacting trim needs playback idle for LongIdle, and is checked
-        // again when it fires (a resume in between keeps it a background collection). Quiet on
-        // top so the timer never lands a clock tick short of LongIdle.
+        // Not right away: the working-set trim needs playback idle for LongIdle, and is checked
+        // again when it fires. Quiet on top so the timer never lands a clock tick short of it.
         if (runDeferred) RequestAfterIdle("playback stopped (deferred trim)", LongIdle + Quiet);
+    }
+
+    // SustainedLowLatency while music plays or a trim's background collection is in flight,
+    // the mode the app had otherwise.
+    private static void ApplyLatencyModeLocked()
+    {
+        try
+        {
+            var current = GCSettings.LatencyMode;
+            if (_playing || _lowLatencyHolds > 0)
+            {
+                if (current == GCLatencyMode.SustainedLowLatency) return;
+                _restoreMode = current;
+                GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
+            }
+            else if (current == GCLatencyMode.SustainedLowLatency)
+            {
+                GCSettings.LatencyMode = _restoreMode;
+            }
+        }
+        catch
+        {
+            // Best effort: a runtime without concurrent GC keeps its mode.
+        }
     }
 
     private static bool AudioPlaying => IsAudioPlaying?.Invoke() == true || Volatile.Read(ref _playing);
@@ -172,48 +179,91 @@ public static class MemoryTrim
         {
             // Checked when the quiet period ends, not when the trim was asked for: playback
             // may have started since.
-            var playing = AudioPlaying;
-            bool blocking;
+            bool trimWorkingSet;
             lock (Gate)
             {
-                blocking = MayBlock(playing, _appInBackground, Now() - _idleSince, LongIdle);
-                // The compacting trim waits for its moment (SetAudioPlaying, SetAppInBackground).
-                _deferred = !blocking;
+                trimWorkingSet = MayTrimWorkingSet(AudioPlaying, _appInBackground, Now() - _idleSince, LongIdle);
+                // Owed until such a moment (SetAudioPlaying, SetAppInBackground); only hosts
+                // that report their windows ever get one.
+                _deferred = !trimWorkingSet && _appInBackground is not null;
             }
             if (Collector is { } custom)
             {
-                custom(blocking);
+                custom(trimWorkingSet);
                 return;
             }
             var before = GC.GetTotalMemory(false);
-            if (!blocking)
-            {
-                // Background gen2: dead objects are freed while the render thread keeps
-                // running (only short suspensions). No compaction, and no CompactOnce, which
-                // would otherwise ride along on the next blocking gen2 during playback.
-                GC.Collect(2, GCCollectionMode.Forced, blocking: false, compacting: false);
-                DebugLog.Write("Memory",
-                    $"trim after {_reason}: managed {before / 1048576} MB, background collection " +
-                    $"({(playing ? "audio playing" : "app on screen or playback idle under " + LongIdle.TotalSeconds + " s")}; compacting trim deferred)");
-                return;
-            }
-            // Aggressive, not Forced + LOH CompactOnce: with regions (.NET 7+) a Forced
-            // compacting gen2 frees the objects but keeps the emptied regions committed, so
-            // the process kept its footprint (11-03, Debug, 4.4k-track library: GC committed
-            // 68 -> 70 MB, private bytes 365 -> 366 MB, 60 ms pause). Aggressive also
-            // decommits the free regions (committed 66 -> 51 MB, private 365 -> 349 MB) for
-            // the same pause (58 ms). It compacts the LOH too, so CompactOnce is not needed.
-            var committedBefore = GC.GetGCMemoryInfo().TotalCommittedBytes;
-            GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
+            var collected = BackgroundCollect(TimeSpan.FromSeconds(5));
             var after = GC.GetTotalMemory(false);
-            var committedAfter = GC.GetGCMemoryInfo().TotalCommittedBytes;
-            DebugLog.Write("Memory",
-                $"trim after {_reason}: managed {before / 1048576} MB -> {after / 1048576} MB, " +
-                $"committed {committedBefore / 1048576} MB -> {committedAfter / 1048576} MB");
+            var line = $"trim after {_reason}: managed {before / 1048576} MB -> {after / 1048576} MB, background collection" +
+                       (collected ? "" : " (still running)");
+            if (trimWorkingSet && OperatingSystem.IsWindows())
+            {
+                // Checked again: the collection took a moment, and a resume may have come in.
+                lock (Gate)
+                    trimWorkingSet = MayTrimWorkingSet(AudioPlaying, _appInBackground, Now() - _idleSince, LongIdle);
+                if (trimWorkingSet)
+                {
+                    var wsBefore = Environment.WorkingSet;
+                    SetProcessWorkingSetSize(GetCurrentProcess(), -1, -1);
+                    line += $", working set {wsBefore / 1048576} MB -> {Environment.WorkingSet / 1048576} MB";
+                }
+                else
+                {
+                    lock (Gate) _deferred = true;
+                }
+            }
+            DebugLog.Write("Memory", line);
         }
         catch
         {
             // A trim is best effort; never let it surface.
         }
     }
+
+    /// <summary>
+    /// A non-blocking gen2, requested in <see cref="GCLatencyMode.SustainedLowLatency"/> and held
+    /// there until it ends (or <paramref name="timeout"/>). "blocking: false" alone is only a
+    /// wish: in Interactive the runtime turned 4 of 48 such requests into full blocking gen2s of
+    /// 392-841 ms (harness 11-27, 575 MB fragmented heap), the size of the owner's 760 ms cut;
+    /// in SustainedLowLatency 0 of 42 did (36 lone, 6 overlapping a running background GC),
+    /// worst pause 11.2 ms. Returns whether the collection was seen to finish.
+    /// </summary>
+    internal static bool BackgroundCollect(TimeSpan timeout)
+    {
+        lock (Gate)
+        {
+            _lowLatencyHolds++;
+            ApplyLatencyModeLocked();
+        }
+        try
+        {
+            var index = GC.GetGCMemoryInfo(GCKind.Background).Index;
+            // No compaction, and no LOH CompactOnce: that would ride along on the next blocking
+            // gen2, which is exactly the pause this avoids.
+            GC.Collect(2, GCCollectionMode.Forced, blocking: false, compacting: false);
+            var deadline = Environment.TickCount64 + (long)timeout.TotalMilliseconds;
+            while (GC.GetGCMemoryInfo(GCKind.Background).Index == index)
+            {
+                if (Environment.TickCount64 > deadline) return false;
+                Thread.Sleep(20);
+            }
+            return true;
+        }
+        finally
+        {
+            lock (Gate)
+            {
+                _lowLatencyHolds--;
+                ApplyLatencyModeLocked();
+            }
+        }
+    }
+
+    [DllImport("kernel32.dll")]
+    private static extern IntPtr GetCurrentProcess();
+
+    [DllImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetProcessWorkingSetSize(IntPtr process, nint minimum, nint maximum);
 }
