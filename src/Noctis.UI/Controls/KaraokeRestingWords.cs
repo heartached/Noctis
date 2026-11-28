@@ -133,7 +133,8 @@ public class KaraokeRestingWords : Control
             _cellSizes[i] = _measurer.DesiredSize;
             // What KaraokeWordText draws, measured as it measures it (its _glyphWidth): the trimmed
             // word. The same number, so the two place a row's words on the same pixels.
-            using (var glyphs = new TextLayout((w.Text ?? string.Empty).TrimEnd(), typeface, _measurer.FontSize, Brushes.White))
+            var trimmed = (w.Text ?? string.Empty).TrimEnd();
+            using (var glyphs = new TextLayout(trimmed, typeface, _measurer.FontSize, Brushes.White, flowDirection: KaraokeWordText.ParagraphOf(trimmed)))
                 _glyphs[i] = glyphs.WidthIncludingTrailingWhitespace;
         }
         _measurer.Text = string.Empty;
@@ -287,7 +288,7 @@ public class KaraokeRestingWords : Control
             // What KaraokeWordText draws at rest: the trimmed word at the cell's padding origin.
             var text = (words[i].Text ?? string.Empty).TrimEnd();
             if (text.Length == 0) continue;
-            var layout = _layouts[i] ??= new TextLayout(text, typeface, _measurer.FontSize, brush);
+            var layout = _layouts[i] ??= new TextLayout(text, typeface, _measurer.FontSize, brush, flowDirection: KaraokeWordText.ParagraphOf(text));
             var pad = WordOverflowPaddingConverter.PaddingFor(words[i]);
             var cell = _cells[i];
             var scale = _scales[i];
