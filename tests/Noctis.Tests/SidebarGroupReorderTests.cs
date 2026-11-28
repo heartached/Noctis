@@ -6,6 +6,7 @@ using Avalonia.Input;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Noctis.Controls;
 using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
@@ -21,8 +22,36 @@ namespace Noctis.Tests;
 /// passes slide over by the whole block, and the order is saved with the playlists
 /// (Playlist.FolderOrder). A plain click on a header still folds / unfolds it.
 /// </summary>
-public class SidebarGroupReorderTests
+/// <remarks>
+/// The fold (<see cref="FoldingListBoxItem"/>) and the drag card / row slide
+/// (<see cref="LiquidReorder"/>) step by the frame time. That was the wall clock, so on a busy
+/// machine "six frames" could hold a whole 280 ms fold, and the class failed now and then in a
+/// big batch. The frames here read <see cref="AnimationFrameClock"/>, which moves exactly
+/// <see cref="FrameStep"/> per pumped frame and never on its own, and each pumped frame waits
+/// until the window really delivered it (see <see cref="NextFrame"/>). Process-wide, which is safe:
+/// the suite runs one test at a time (HeadlessTestApp: DisableTestParallelization), and
+/// Dispose restores it.
+/// </remarks>
+public class SidebarGroupReorderTests : IDisposable
 {
+    /// <summary>One frame of the test's animation clock (60 Hz).</summary>
+    private static readonly TimeSpan FrameStep = TimeSpan.FromMilliseconds(16);
+    private static TimeSpan _frameTime;
+    /// <summary>The window the test's sidebar is in, whose frames <see cref="Pump"/> waits for.</summary>
+    private static Window? _window;
+
+    public SidebarGroupReorderTests()
+    {
+        _frameTime = TimeSpan.FromSeconds(1);
+        AnimationFrameClock.Override = () => _frameTime;
+    }
+
+    public void Dispose()
+    {
+        AnimationFrameClock.Override = null;
+        _window = null;
+    }
+
     private sealed class PlaylistPersistence : TestPersistenceService
     {
         public List<Playlist> Saved { get; private set; } = new();
@@ -51,15 +80,46 @@ public class SidebarGroupReorderTests
         app.Styles.Add(new StyleInclude(new Uri("avares://Noctis/")) { Source = new Uri("avares://Noctis.UI/Assets/Styles.axaml") });
     }
 
+    /// <summary>Runs <paramref name="frames"/> frames, each one <see cref="FrameStep"/> on the
+    /// animation clock, however long the machine takes over it.</summary>
     private static void Pump(int frames)
     {
         for (var i = 0; i < frames; i++)
         {
-            Dispatcher.UIThread.RunJobs();
-            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-            Thread.Sleep(16);
+            _frameTime += FrameStep;
+            NextFrame();
         }
         Dispatcher.UIThread.RunJobs();
+    }
+
+    /// <summary>
+    /// One animation frame, delivered at the current <see cref="_frameTime"/>. A render-timer
+    /// tick alone is not one: the render loop holds a tick back while the compositor is still
+    /// on the previous frame, which on a busy machine dropped frames from a pump and left the
+    /// drag card short of its target (the old fixed 16 ms sleep only made that rarer). So this
+    /// waits for a frame callback of its own; the sidebar's callbacks queued before it run in
+    /// that same frame.
+    /// </summary>
+    private static void NextFrame()
+    {
+        Dispatcher.UIThread.RunJobs();
+        if (_window == null)
+        {
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            return;
+        }
+        var delivered = false;
+        _window.RequestAnimationFrame(_ => delivered = true);
+        var waited = System.Diagnostics.Stopwatch.StartNew();
+        while (true)
+        {
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Dispatcher.UIThread.RunJobs();
+            if (delivered) return;
+            if (waited.Elapsed > TimeSpan.FromSeconds(10))
+                throw new TimeoutException("the window delivered no animation frame in 10 s");
+            Thread.Sleep(1);
+        }
     }
 
     private sealed record Sidebar(SidebarViewModel Vm, PlaylistPersistence Persistence, SidebarView View, Window Win, ListBox List);
@@ -74,6 +134,7 @@ public class SidebarGroupReorderTests
         // Tall enough that every playlist row sits inside the window under the nav rows.
         var win = new Window { Width = 260, Height = 1400, Content = view };
         win.Show();
+        _window = win;
         Pump(4);
         return new Sidebar(vm, persistence, view, win, view.FindControl<ListBox>("PlaylistList")!);
     }
@@ -84,6 +145,12 @@ public class SidebarGroupReorderTests
     private static ListBoxItem Row(ListBox list, int index) => (ListBoxItem)list.ContainerFromIndex(index)!;
 
     private static double OffsetY(Control row) => row.RenderTransform is TranslateTransform t ? t.Y : 0;
+
+    /// <summary>The opacity the drag gave the row (0 lifted out, 1 shown), not the value the
+    /// row style's 0.15 s fade is passing through on the way there: that fade runs on
+    /// Avalonia's own clock, which is the wall clock, not <see cref="AnimationFrameClock"/>.</summary>
+    private static double Shown(Control row) =>
+        row.GetBaseValue(Visual.OpacityProperty) is { HasValue: true } v ? v.Value : row.Opacity;
 
     private static void DragTo(Window win, Point start, Point end)
     {
@@ -124,7 +191,7 @@ public class SidebarGroupReorderTests
         var cardRows = (StackPanel)s.View.FindControl<ContentControl>("PlaylistDragCardContent")!.Content!;
         Assert.Equal(new[] { "Alpha", "A1", "A2" }, cardRows.Children.Select(c => ((PlaylistNavItem)((ContentControl)c).Content!).Label));
         for (var i = 0; i < 3; i++)
-            Assert.Equal(0, Row(s.List, i).Opacity);
+            Assert.Equal(0, Shown(Row(s.List, i)));
         Assert.Equal(-3 * pitch, OffsetY(Row(s.List, 3)), 1.0); // Beta
         Assert.Equal(-3 * pitch, OffsetY(Row(s.List, 4)), 1.0); // B1
         for (var i = 5; i < 8; i++)
@@ -145,7 +212,7 @@ public class SidebarGroupReorderTests
         Assert.Equal(new[] { "A1", "A2", "B1", "G1", "Loose" }, s.Persistence.Saved.Select(p => p.Name));
         foreach (var c in s.List.GetRealizedContainers())
         {
-            Assert.Equal(1, c.Opacity);
+            Assert.Equal(1, Shown(c));
             Assert.False(c.RenderTransform is TranslateTransform { Y: not 0 }, "rows snap home after the drop");
         }
     }
@@ -167,7 +234,7 @@ public class SidebarGroupReorderTests
         var card = s.View.FindControl<Border>("PlaylistDragCard")!;
         Assert.True(card.IsVisible, "drag card should be showing");
         Assert.Equal(gamma.Bounds.Height, card.Height, 0.5);   // one row: same pill as a playlist
-        Assert.Equal(0, gamma.Opacity);
+        Assert.Equal(0, Shown(gamma));
         for (var i = 0; i < 5; i++)
             Assert.Equal(pitch, OffsetY(Row(s.List, i)), 1.0); // everything above slides down one row
         Assert.Equal(0, OffsetY(Row(s.List, 6)));              // Loose stays
@@ -291,7 +358,7 @@ public class SidebarGroupReorderTests
         Assert.False(card.IsVisible, "a lone folder has nowhere to go");
         foreach (var c in s.List.GetRealizedContainers())
         {
-            Assert.Equal(1, c.Opacity); // no hole where the folder was
+            Assert.Equal(1, Shown(c)); // no hole where the folder was
             Assert.Equal(0, OffsetY(c)); // and no gap opening in the pinned ones
         }
         s.Win.MouseUp(end, MouseButton.Left, RawInputModifiers.None);

@@ -166,6 +166,8 @@ public class KaraokeWordText : TextBlock
         IsEmphasis = word.IsEmphasis;
         HeldDurationMs = word.HeldDurationMs;
         IsLastInLine = word.IsLastInLine;
+        // A Persian word fills from its right (#269); the desktop binds this, the phone follows it.
+        RightToLeft = word.IsRightToLeft;
         OnValueChanged(ProgressProperty);
         OnValueChanged(LiftProperty);
         OnValueChanged(EmphasisMsProperty);
