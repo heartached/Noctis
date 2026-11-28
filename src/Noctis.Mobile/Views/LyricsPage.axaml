@@ -341,7 +341,7 @@
                                         <Ellipse Width="10" Height="10" Fill="{StaticResource LyricsFg}" />
                                         <Ellipse Width="10" Height="10" Fill="{StaticResource LyricsFg}" />
                                     </StackPanel>
-                                    <TextBlock Text="{Binding Text, Converter={x:Static conv:KeepHangulWordsConverter.Instance}}" FontWeight="Bold"
+                                    <controls:LyricTextBlock Text="{Binding Text, Converter={x:Static conv:KeepHangulWordsConverter.Instance}}" FontWeight="Bold"
                                                TextWrapping="Wrap" Foreground="{StaticResource LyricsFg}" IsVisible="{Binding ShowLineText}"
                                                TextAlignment="{Binding Side, Converter={StaticResource VoiceTextAlign}}"
                                                FlowDirection="{Binding IsRightToLeft, Converter={x:Static conv:LyricLineFlowDirectionConverter.Instance}}" />
@@ -370,30 +370,30 @@
                                             </ItemsPanelTemplate>
                                         </views:WordItemsControl.ItemsPanel>
                                     </views:WordItemsControl>
-                                    <TextBlock Text="{Binding Transliteration}" TextWrapping="Wrap" Opacity="0.6" FontWeight="SemiBold"
+                                    <controls:LyricTextBlock Text="{Binding Transliteration}" TextWrapping="Wrap" Opacity="0.6" FontWeight="SemiBold"
                                                Foreground="{StaticResource LyricsFg}"
                                                TextAlignment="{Binding Side, Converter={StaticResource VoiceTextAlign}}"
                                                FlowDirection="{Binding Transliteration, Converter={x:Static conv:LyricTextFlowDirectionConverter.Instance}}"
                                                FontSize="{Binding $parent[UserControl].((vm:ShellViewModel)DataContext).Lyrics.LayerFontSize}">
-                                        <TextBlock.IsVisible>
+                                        <controls:LyricTextBlock.IsVisible>
                                             <MultiBinding Converter="{x:Static BoolConverters.And}">
                                                 <Binding Path="HasTransliteration" />
                                                 <Binding Path="$parent[UserControl].((vm:ShellViewModel)DataContext).Lyrics.ShowRomanization" />
                                             </MultiBinding>
-                                        </TextBlock.IsVisible>
-                                    </TextBlock>
-                                    <TextBlock Text="{Binding Translation, Converter={x:Static conv:KeepHangulWordsConverter.Instance}}" TextWrapping="Wrap"
+                                        </controls:LyricTextBlock.IsVisible>
+                                    </controls:LyricTextBlock>
+                                    <controls:LyricTextBlock Text="{Binding Translation, Converter={x:Static conv:KeepHangulWordsConverter.Instance}}" TextWrapping="Wrap"
                                                Opacity="0.6" FontWeight="SemiBold" Foreground="{StaticResource LyricsFg}"
                                                TextAlignment="{Binding Side, Converter={StaticResource VoiceTextAlign}}"
                                                FlowDirection="{Binding Translation, Converter={x:Static conv:LyricTextFlowDirectionConverter.Instance}}"
                                                FontSize="{Binding $parent[UserControl].((vm:ShellViewModel)DataContext).Lyrics.LayerFontSize}">
-                                        <TextBlock.IsVisible>
+                                        <controls:LyricTextBlock.IsVisible>
                                             <MultiBinding Converter="{x:Static BoolConverters.And}">
                                                 <Binding Path="HasTranslation" />
                                                 <Binding Path="$parent[UserControl].((vm:ShellViewModel)DataContext).Lyrics.ShowTranslation" />
                                             </MultiBinding>
-                                        </TextBlock.IsVisible>
-                                    </TextBlock>
+                                        </controls:LyricTextBlock.IsVisible>
+                                    </controls:LyricTextBlock>
                                 </StackPanel>
                             </Button>
                         </DataTemplate>
