@@ -518,37 +518,22 @@ public class MiniPlayerUnifiedControlsTests
         finally { win.Close(); }
     }
 
-    // ── Quality tag on every form ─────────────────────────────
+    // ── No quality tag (owner 11-27: "remove the lossless tag from the mini player") ──
 
     [AvaloniaTheory]
     [MemberData(nameof(Forms))]
-    public async Task QualityTag_RidesTheArtistLine_OnEveryForm(string prefix, string style, double w, double h)
+    public async Task NoQualityTag_OnAnyForm(string prefix, string style, double w, double h)
     {
         var track = T("Lossless song");
         track.Codec = "FLAC";
         var (win, vm, player) = await Open(prefix, style, w, h, track);
         try
         {
-            var info = win.FindControl<StackPanel>(prefix + "InfoHost")!;
-            var tag = info.GetVisualDescendants().OfType<StackPanel>().Single(p => p.Classes.Contains("mini-quality"));
-            var label = tag.Children.OfType<TextBlock>().Single();
-            var full = info.Bounds.Width >= MiniPlayerWindow.QualityFullWidth;
-            _out.WriteLine($"{prefix}: info column {info.Bounds.Width:0} -> {(full ? "mark + label" : "mark")}");
-            Assert.True(tag.IsEffectivelyVisible, $"{prefix}: no quality tag");
-            Assert.Equal("Lossless", label.Text);
-            Assert.Equal(full, label.IsVisible);
-            // Inside the info column, clear of the heart / More.
-            Rect InWindow(Control c) => new(c.TranslatePoint(default, win)!.Value, c.Bounds.Size);
-            var tagRect = InWindow(tag);
-            var infoRect = InWindow(info);
-            Assert.True(tagRect.Right <= infoRect.Right + 0.5, $"{prefix}: tag {tagRect} runs past the info column {infoRect}");
-            foreach (var name in new[] { "HeartButton", "MoreButton" })
-                Assert.False(tagRect.Intersects(InWindow(win.FindControl<Button>(prefix + name)!)), $"{prefix}: tag under the {name}");
-
-            // No track, no tag.
-            player.CurrentTrack = null;
-            await PumpFor(60);
-            Assert.False(tag.IsEffectivelyVisible);
+            Assert.Equal("Lossless", track.AudioQualityBadge);
+            Assert.DoesNotContain(win.GetVisualDescendants().OfType<TextBlock>(),
+                t => t.IsEffectivelyVisible && t.Text == track.AudioQualityBadge);
+            Assert.DoesNotContain(win.GetVisualDescendants().OfType<StyledElement>(),
+                c => c.Classes.Contains("mini-quality"));
         }
         finally { win.Close(); }
     }

@@ -83,17 +83,6 @@ public partial class MiniPlayerWindow : Window
 
     private MiniPlayerViewModel? Vm => DataContext as MiniPlayerViewModel;
 
-    /// <summary>Info column width from which the quality tag shows its label too.</summary>
-    internal const double QualityFullWidth = 140;
-    /// <summary>Info column width from which the quality tag shows its mark (label in the tooltip).</summary>
-    internal const double QualityIconWidth = 90;
-
-    /// <summary>The quality tag's room rule (artist line InlineContent): parameter "full" asks
-    /// for the label, anything else for the mark. Value: the info column width.</summary>
-    public static readonly Avalonia.Data.Converters.IValueConverter QualityRoom =
-        new Avalonia.Data.Converters.FuncValueConverter<double, string?, bool>((width, part) =>
-            width >= (part == "full" ? QualityFullWidth : QualityIconWidth));
-
     /// <summary>Every form's seek slider (one per form and design, all the same shared class).</summary>
     internal Slider[] SeekSliders => new[] { BarSeekSlider, CardSeekSlider, LargeSeekSlider, LyricsSeekSlider, PillSeekSlider, SleeveSeekSlider };
 
