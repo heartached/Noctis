@@ -318,7 +318,7 @@ public class MemoryTrimTests
     {
         var vm = File.ReadAllText(Path.Combine(FindRepoRoot(), "src", "Noctis", "ViewModels", "MainWindowViewModel.cs"))
             .Replace("\r\n", "\n"); // a Windows checkout may give CRLF
-        Assert.Contains("e.PropertyName == nameof(PlayerViewModel.State))\n               Services.MemoryTrim.SetAudioPlaying(Player.IsPlaying);", vm);
+        Assert.Contains("e.PropertyName == nameof(PlayerViewModel.State))\n                Services.MemoryTrim.SetAudioPlaying(Player.IsPlaying);", vm);
     }
 
     [Fact]
