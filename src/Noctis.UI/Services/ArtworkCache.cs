@@ -626,6 +626,9 @@ public static class ArtworkCache
     {
         // First: a control still on screen (a window a test left open) must let go of its
         // cover, or its next layout reads a disposed bitmap and throws.
+        // A load the previous test started must land before the next test's decoder is set, and
+        // before the controls let go below (a load landing after would put a bitmap back up).
+        Noctis.Controls.CachedImage.WaitForLoadsForTests(TimeSpan.FromSeconds(30));
         ClearingForTests?.Invoke();
         MissingOnLoad.Clear();
         foreach (var key in Cache.Keys.ToList())

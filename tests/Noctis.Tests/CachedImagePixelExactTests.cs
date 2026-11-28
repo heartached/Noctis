@@ -126,7 +126,7 @@ public class CachedImagePixelExactTests : IDisposable
         await Flush();
 
         image.SourcePath = P("hero");
-        await Flush();
+        await CoverLoadSync.Settle();
 
         Assert.Equal(new[] { 340 }, Requested()); // not the 384 bucket, not the 256 cap
         var shown = Assert.IsAssignableFrom<Bitmap>(image.Source);
@@ -189,7 +189,7 @@ public class CachedImagePixelExactTests : IDisposable
         window.Show();
         await Flush();
         image.SourcePath = P("hero");
-        await Flush();
+        await CoverLoadSync.Settle();
         var first = Assert.IsAssignableFrom<Bitmap>(image.Source);
         // The cache evicted it meanwhile (still alive: the image holds it), so there is no
         // cached copy of this cover to fall back on.
@@ -199,12 +199,12 @@ public class CachedImagePixelExactTests : IDisposable
         Assert.Null(ArtworkCache.TryGet(P("hero"), 300, exact: true));
 
         image.Width = image.Height = 400;
-        await Flush((int)CachedImage.ExactResizeDelay.TotalMilliseconds + 200);
+        await CoverLoadSync.Until(() => Requested().Contains(400)); // the re-decode, held at the gate
         Assert.Contains(400, Requested());
         Assert.NotNull(image.Source); // still a cover up while the 400 decode is parked
 
         gate.Set();
-        await Flush(300);
+        await CoverLoadSync.Settle(300);
         var shown = Assert.IsAssignableFrom<Bitmap>(image.Source);
         Assert.Equal(400, shown.PixelSize.Width);
         Assert.NotSame(first, shown);
@@ -223,12 +223,13 @@ public class CachedImagePixelExactTests : IDisposable
         window.Show();
         await Flush();
         image.SourcePath = P("disc");
-        await Flush();
+        await CoverLoadSync.Settle();
         Assert.Equal(new[] { 600 }, Requested());
 
         // The page grows the costume: the Viewbox rescales without re-arranging the image.
         viewbox.Width = viewbox.Height = 800;
-        await Flush((int)CachedImage.ExactResizeDelay.TotalMilliseconds + 300);
+        await CoverLoadSync.Until(() => Requested().Length >= 2);
+        await CoverLoadSync.Settle((int)CachedImage.ExactResizeDelay.TotalMilliseconds + 300);
         Assert.Equal(new[] { 600, 800 }, Requested());
         window.Close();
     }

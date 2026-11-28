@@ -185,7 +185,7 @@ public class ClearArtworkCacheTests : IDisposable
             // hands the binding the same path.
             persistence.SaveArtwork(albumId, png);
             image.SourcePath = path;
-            PumpUntil(() => image.Source is not null, seconds: 3);
+            PumpUntil(() => image.Source is not null);
 
             Assert.NotNull(image.Source);
         }
@@ -196,7 +196,7 @@ public class ClearArtworkCacheTests : IDisposable
         }
     }
 
-    private static void PumpUntil(Func<bool> done, double seconds = 10)
+    private static void PumpUntil(Func<bool> done, double seconds = 60)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
         while (!done() && sw.Elapsed < TimeSpan.FromSeconds(seconds))
@@ -348,7 +348,7 @@ public class ClearArtworkCacheLibraryTests : IDisposable
     private static readonly byte[] PortraitBytes =
         new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 }.Concat(Enumerable.Repeat((byte)0x42, 8000)).ToArray();
 
-    private static void PumpUntil(Func<bool> done, double seconds = 10)
+    private static void PumpUntil(Func<bool> done, double seconds = 60)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
         while (!done() && sw.Elapsed < TimeSpan.FromSeconds(seconds))
