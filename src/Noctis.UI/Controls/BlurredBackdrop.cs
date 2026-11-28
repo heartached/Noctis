@@ -89,8 +89,12 @@ public class BlurredBackdrop : Panel
 
     private void UpdateOpaqueCover()
     {
-        IsOpaqueCover = _snapshot != null && !_live && !_blurHidden && ReferenceEquals(_image.Source, _snapshot)
-                        && _image.Opacity >= 1 && Opacity >= 1 && IsVisible;
+        // A retake's cross-fade covers it too: the new snapshot fades in over the old one at full
+        // strength, both opaque (11-27: the app under the sheet came back for the whole fade, the
+        // newly themed page drawn behind two opaque bitmaps, and the sheet's frost re-read it).
+        var shown = ReferenceEquals(_image.Source, _snapshot)
+                    && (_image.Opacity >= 1 || _fadingOut.Source is not null && _fadingOut.Opacity >= 1);
+        IsOpaqueCover = _snapshot != null && !_live && !_blurHidden && shown && Opacity >= 1 && IsVisible;
         ApplyHostHidden();
     }
 
@@ -220,6 +224,10 @@ public class BlurredBackdrop : Panel
         {
             if (e.Property == OpacityProperty || e.Property == Image.SourceProperty) UpdateOpaqueCover();
         };
+        _fadingOut.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == OpacityProperty || e.Property == Image.SourceProperty) UpdateOpaqueCover();
+        };
         // A light/dark switch repaints the whole app under the sheet.
         ActualThemeVariantChanged += (_, _) => RefreshSoon();
 
@@ -239,6 +247,10 @@ public class BlurredBackdrop : Panel
     /// <summary>The radius the shown snapshot was blurred at, and how many live re-blurs ran (tests).</summary>
     internal double ShownRadius { get; private set; }
     internal int ReblurCount { get; private set; }
+    /// <summary>A snapshot is being taken (tests).</summary>
+    internal bool IsCapturing => _capture is { IsCompleted: false };
+    /// <summary>How many <see cref="RefreshSoon"/> retakes waited for a rendered frame first (tests).</summary>
+    internal int RetakesAfterFrame { get; private set; }
     /// <summary>How many snapshots were taken and shown (tests).</summary>
     internal int CaptureCount { get; private set; }
     /// <summary>Live mode is on, and the BlurEffect radius currently on Target (tests).</summary>
@@ -489,7 +501,7 @@ public class BlurredBackdrop : Panel
     {
         if (soon)
         {
-            await Dispatcher.UIThread.InvokeAsync(static () => { }, DispatcherPriority.Background);
+            await AfterNextFrameAsync();
             _soonQueued = false;
         }
         else
@@ -504,6 +516,31 @@ public class BlurredBackdrop : Panel
         _refreshPending = false;
         if (_snapshot != null) await CaptureAsync();
     }
+
+    /// <summary>
+    /// Resumes once the next frame has been rendered (11-27: a theme switch from the open sheet
+    /// queued its retake behind a Background hop only, which can run before the render tick, so
+    /// the switch's first frame waited for the capture as well). The retake now starts after the
+    /// frame that shows the new look under the old snapshot; not drawing (minimised), it waits
+    /// <see cref="FrameWaitLimit"/> at most.
+    /// </summary>
+    private async Task AfterNextFrameAsync()
+    {
+        if (TopLevel.GetTopLevel(this) is { } top)
+        {
+            var rendered = new TaskCompletionSource();
+            // The callback runs as the frame starts; a Background job posted from it runs once
+            // that frame's layout and render are done.
+            top.RequestAnimationFrame(_ => Dispatcher.UIThread.Post(() => rendered.TrySetResult(), DispatcherPriority.Background));
+            await Task.WhenAny(rendered.Task, Task.Delay(FrameWaitLimit));
+            RetakesAfterFrame++;
+        }
+        else
+            await Dispatcher.UIThread.InvokeAsync(static () => { }, DispatcherPriority.Background);
+    }
+
+    /// <summary>Longest wait for a frame before a <see cref="RefreshSoon"/> retake goes ahead anyway.</summary>
+    internal static readonly TimeSpan FrameWaitLimit = TimeSpan.FromMilliseconds(100);
 
     /// <summary>
     /// Settings → Background Blur moved while the sheet is up (the slider lives on it): the

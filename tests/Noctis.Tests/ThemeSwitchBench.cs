@@ -33,6 +33,8 @@ namespace Noctis.Tests;
 /// measure- / arrange-invalid by the switch, layout passes, and UI-thread KB allocated.
 /// Scenarios: artist page; + Liquid Glass; + accent window tint; + Settings sheet open.
 /// Explicit only: NOCTIS_PERF_HARNESS=1; NOCTIS_PERF_OUT / NOCTIS_PERF_TAG append "tag\tline".
+/// NOCTIS_PERF_KEEP=0 lets pages leave the tree (PageDeck before 11-15); NOCTIS_PERF_ROUNDS (5);
+/// NOCTIS_PERF_SCENARIOS=artist,settings,artist+glass,settings+glass,artist+glass+tint,settings+glass+tint.
 ///   dotnet test --filter "FullyQualifiedName~ThemeSwitchBench"
 /// Headless drawing stubs: frame numbers are layout + composition, not rasterization.
 /// </summary>
@@ -81,6 +83,10 @@ public class ThemeSwitchBench
 
     /// <summary>Pumps with short real-time gaps (posted Background work, timers) and returns the
     /// UI-thread time spent in the pumps, gaps excluded.</summary>
+    /// <summary>The longest single pump of the <see cref="Quiet"/> calls since it was reset: the
+    /// worst UI-thread job (one frame's worth of work) after a switch.</summary>
+    private static double _quietMax;
+
     private static double Quiet(int rounds = 25)
     {
         var busy = 0.0;
@@ -90,13 +96,14 @@ public class ThemeSwitchBench
             var sw = Stopwatch.StartNew();
             Pump();
             busy += sw.Elapsed.TotalMilliseconds;
+            _quietMax = Math.Max(_quietMax, sw.Elapsed.TotalMilliseconds);
         }
         return busy;
     }
 
     private sealed record Sample(string From, string To, double SyncMs, double FirstFrameMs, double TailMs,
         int AppRc, int WinRc, int Variant, int Accent, int Glass, int MeasureInvalid, int ArrangeInvalid,
-        int LayoutPasses, long Kb, int ScrimCaptures, double SetThemeMs);
+        int LayoutPasses, long Kb, int ScrimCaptures, double SetThemeMs, double TailMaxMs);
 
     /// <summary>Rounds through <see cref="Cycle"/> per scenario, the first one a warm-up (NOCTIS_PERF_ROUNDS, 5).</summary>
     private static int Rounds => int.TryParse(Environment.GetEnvironmentVariable("NOCTIS_PERF_ROUNDS"), out var n) && n > 1 ? n : 5;
@@ -108,10 +115,12 @@ public class ThemeSwitchBench
     {
         Assert.SkipUnless(Enabled, "set NOCTIS_PERF_HARNESS=1");
         var gen = Stopwatch.StartNew();
-        var (tracks, _) = Task.Run(() => PageScrollBench.WriteLibrary(TrackCount,
-            Environment.GetEnvironmentVariable("NOCTIS_PERF_COVERS") != "0")).GetAwaiter().GetResult();
+        var (tracks, _) = PageScrollBench.WriteLibraryOffUiThread(TrackCount,
+            Environment.GetEnvironmentVariable("NOCTIS_PERF_COVERS") != "0");
         Log($"library: {tracks.Count} tracks ({gen.ElapsedMilliseconds} ms to write)");
 
+        // NOCTIS_PERF_KEEP=0: pages leave the tree on every switch (PageDeck before 11-15).
+        Noctis.Controls.PageDeck.KeepSections = Environment.GetEnvironmentVariable("NOCTIS_PERF_KEEP") != "0";
         PageScrollBench.LoadAppAsTheApp();
         var host = Application.Current!;
         var noctis = new App { ThemeHost = host };
@@ -211,7 +220,7 @@ public class ThemeSwitchBench
                 foreach (var to in Cycle)
                 {
                     appRc = winRc = variant = accent = glass = layouts = 0;
-                    var captures0 = scrim?.CaptureCount ?? 0;
+                    var captures0 = (scrim?.CaptureCount ?? 0) + (scrim?.RetakeCount ?? 0);
                     var b0 = GC.GetAllocatedBytesForCurrentThread();
                     var sw = Stopwatch.StartNew();
                     Apply(to);
@@ -219,19 +228,24 @@ public class ThemeSwitchBench
                     var visuals = window.GetVisualDescendants().OfType<Layoutable>().ToList();
                     var measureInvalid = visuals.Count(v => !v.IsMeasureValid);
                     var arrangeInvalid = visuals.Count(v => !v.IsArrangeValid);
+                    // The first frame: the jobs queued by the switch, then the render tick (layout
+                    // and render run in it headless). What a frame callback posts after it is tail.
                     sw.Restart();
-                    Pump();
+                    Dispatcher.UIThread.RunJobs();
+                    AvaloniaHeadlessPlatform.ForceRenderTimerTick();
                     var first = sw.Elapsed.TotalMilliseconds;
+                    _quietMax = 0;
                     var tail = Quiet();
+                    var tailMax = _quietMax;
                     var kb = (GC.GetAllocatedBytesForCurrentThread() - b0) / 1024;
                     if (round > 0) // round 0 warms the JIT and the overlay loads
                         samples.Add(new Sample(current, to, sync, first, tail, appRc, winRc, variant, accent, glass,
-                            measureInvalid, arrangeInvalid, layouts, kb, (scrim?.CaptureCount ?? 0) - captures0, setThemeMs));
+                            measureInvalid, arrangeInvalid, layouts, kb, (scrim?.CaptureCount ?? 0) + (scrim?.RetakeCount ?? 0) - captures0, setThemeMs, tailMax));
                     current = to;
                 }
             }
             foreach (var s in samples.Take(Cycle.Length))
-                Log($"{scenario} {s.From}->{s.To}: sync {s.SyncMs:0.0} ms (SetTheme {s.SetThemeMs:0.0}), first frame {s.FirstFrameMs:0.0} ms, tail {s.TailMs:0.0} ms | " +
+                Log($"{scenario} {s.From}->{s.To}: sync {s.SyncMs:0.0} ms (SetTheme {s.SetThemeMs:0.0}), first frame {s.FirstFrameMs:0.0} ms, tail {s.TailMs:0.0} ms (worst job {s.TailMaxMs:0.0}) | " +
                     $"app RC {s.AppRc}, window RC {s.WinRc}, variant {s.Variant}, AccentApplied {s.Accent}, AppGlass {s.Glass} | " +
                     $"measure-invalid {s.MeasureInvalid}, arrange-invalid {s.ArrangeInvalid}, layout passes {s.LayoutPasses}, scrim captures {s.ScrimCaptures} | {s.Kb} KB");
             static double Median(IEnumerable<double> xs) { var l = xs.OrderBy(x => x).ToList(); return l[l.Count / 2]; }
@@ -239,26 +253,38 @@ public class ThemeSwitchBench
                 $"App.SetTheme {Median(samples.Select(s => s.SetThemeMs)):0.0}, max {samples.Max(s => s.SetThemeMs):0.0}), " +
                 $"first frame {Median(samples.Select(s => s.FirstFrameMs)):0.0} ms (max {samples.Max(s => s.FirstFrameMs):0.0}), " +
                 $"sync+first {Median(samples.Select(s => s.SyncMs + s.FirstFrameMs)):0.0} ms (max {samples.Max(s => s.SyncMs + s.FirstFrameMs):0.0}), " +
-                $"tail {Median(samples.Select(s => s.TailMs)):0.0} ms | window RC total {samples.Sum(s => s.WinRc)} " +
+                $"tail {Median(samples.Select(s => s.TailMs)):0.0} ms, worst tail job {Median(samples.Select(s => s.TailMaxMs)):0.0} ms (max {samples.Max(s => s.TailMaxMs):0.0}) | window RC total {samples.Sum(s => s.WinRc)} " +
                 $"({samples.Sum(s => s.WinRc) / (double)samples.Count:0.0}/switch), variant {samples.Sum(s => s.Variant)}");
             return samples;
         }
 
         try
         {
-            Run("artist");
+            // NOCTIS_PERF_SCENARIOS=artist,settings,... picks scenarios (all by default).
+            var only = Environment.GetEnvironmentVariable("NOCTIS_PERF_SCENARIOS")?.Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
+            bool Want(string name) => only == null || only.Contains(name);
+            void Sheet(bool open)
+            {
+                vm.IsSettingsModalOpen = open;
+                for (var i = 0; i < 40; i++) { Pump(); Thread.Sleep(10); }
+            }
+
+            // NOCTIS_PERF_NOBLUR=1: Background Blur off (no snapshot, no stand-in): what the
+            // backdrop's retakes add to a switch under the sheet.
+            if (Environment.GetEnvironmentVariable("NOCTIS_PERF_NOBLUR") == "1")
+                Noctis.Controls.BackdropSnapshot.BlurRadius = 0;
+            if (Want("artist")) Run("artist");
+            if (Want("settings")) { Sheet(true); Run("settings"); Sheet(false); }
 
             settings.LiquidGlassEnabled = true;
             Quiet();
-            Run("artist+glass");
+            if (Want("artist+glass")) Run("artist+glass");
+            if (Want("settings+glass")) { Sheet(true); Run("settings+glass"); Sheet(false); }
 
             noctis.SetTintWindowWithAccent(true);
             Quiet();
-            Run("artist+glass+tint");
-
-            vm.IsSettingsModalOpen = true;
-            for (var i = 0; i < 30; i++) { Pump(); Thread.Sleep(10); }
-            Run("settings+glass+tint");
+            if (Want("artist+glass+tint")) Run("artist+glass+tint");
+            if (Want("settings+glass+tint")) { Sheet(true); Run("settings+glass+tint"); }
         }
         finally
         {
@@ -268,6 +294,8 @@ public class ThemeSwitchBench
             Apply("Gray");
             Quiet();
             window.Close();
+            Noctis.Controls.PageDeck.KeepSections = true;
+            Noctis.Controls.BackdropSnapshot.BlurRadius = Noctis.Controls.BackdropSnapshot.DefaultBlurRadius;
         }
     }
 }
