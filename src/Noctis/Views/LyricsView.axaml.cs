@@ -19,10 +19,9 @@ namespace Noctis.Views;
 
 public partial class LyricsView : UserControl
 {
-    private int _lastScrolledIndex = -1;
-    // Bumped to invalidate any in-flight frame-clock scroll animation (replaces stopping a timer).
-    private int _scrollAnimationGeneration;
-    private bool _isProgrammaticScroll;
+    // The synced-lyrics scroll engine (tempo-spring glide + cascade, scrub chase, auto-follow
+    // pause/resume), shared with the mini player's lyrics panel — see LyricsScrollDriver.
+    private readonly LyricsScrollDriver _scroll;
 
     // Dev-mode event trace of the lyrics flow (Settings ▸ About ▸ Developer Mode ▸
     // Copy Logs): every line change, every scroll start with its route, every glide
@@ -35,12 +34,6 @@ public partial class LyricsView : UserControl
         if (Services.DebugLog.VlcBridgeEnabled)
             Services.DebugLog.Write("Lyrics", $"+{TraceClock.ElapsedMilliseconds}ms {message}");
     }
-    // Lines currently carrying a transient cascade translate (Apple Music-style
-    // staggered glide); cleared whenever the scroll animation ends or is cancelled.
-    private HashSet<Control>? _cascadeLines;
-    // The glide in flight (or last run): a new line change hands its velocities on.
-    private LineGlide? _glide;
-    private DispatcherTimer? _autoFollowResumeTimer;
     private LyricsViewModel? _subscribedVm;
 
     /// <summary>True while this view is counted in the VM's visible-surface tally.</summary>
@@ -81,6 +74,9 @@ public partial class LyricsView : UserControl
 
     public LyricsView()
     {
+        _scroll = new LyricsScrollDriver(this, () => LyricsScrollViewer, () => LyricsItemsControl,
+            () => LyricsItemsControl?.Margin.Top ?? 0, () => ActiveAnchorRatio,
+            () => DataContext as LyricsViewModel, Trace);
         InitializeComponent();
 
         RightPanel.SizeChanged += (_, _) => UpdateFollowPillMargin();
@@ -130,7 +126,7 @@ public partial class LyricsView : UserControl
         if (DataContext is not LyricsViewModel vm) return;
         if (!vm.IsSyncTabSelected || vm.IsAutoFollowPaused || vm.ScrollLineIndex < 0) return;
 
-        _lastScrolledIndex = -1; // force the jump even if the index didn't change
+        _scroll.LastScrolledIndex = -1; // force the jump even if the index didn't change
         JumpToActiveLineWhenReady(vm.ScrollLineIndex);
     }
 
@@ -160,7 +156,7 @@ public partial class LyricsView : UserControl
     {
         base.OnAttachedToVisualTree(e);
         // Reset scroll guard so re-entering the page always scrolls to the active line
-        _lastScrolledIndex = -1;
+        _scroll.LastScrolledIndex = -1;
 
         // Tell the VM a lyrics surface is on screen, so the 100ms sync timer and the
         // per-frame word clock only run while something can actually display them.
@@ -610,7 +606,7 @@ public partial class LyricsView : UserControl
             if (!vm.IsSyncTabSelected || vm.IsAutoFollowPaused) return;
             if (vm.ScrollLineIndex < 0) return;
 
-            _lastScrolledIndex = -1; // force the jump even if the index didn't change
+            _scroll.LastScrolledIndex = -1; // force the jump even if the index didn't change
             JumpToActiveLineWhenReady(vm.ScrollLineIndex);
         };
         _resizeRecenterTimer.Start();
@@ -626,7 +622,7 @@ public partial class LyricsView : UserControl
         UnsubscribeVm();
 
         // Reset scroll state
-        _lastScrolledIndex = -1;
+        _scroll.LastScrolledIndex = -1;
         CancelScrollAnimation();
         CancelAutoFollowResumeTimer();
 
@@ -704,7 +700,7 @@ public partial class LyricsView : UserControl
         // track's offset is meaningless on new content, so jump.
         if (DataContext is LyricsViewModel vm)
         {
-            _lastScrolledIndex = -1;
+            _scroll.LastScrolledIndex = -1;
             CancelScrollAnimation();
             CancelAutoFollowResumeTimer();
             vm.IsAutoFollowPaused = false;
@@ -735,7 +731,7 @@ public partial class LyricsView : UserControl
             || DataContext is not LyricsViewModel vm) return;
         CancelScrollAnimation();
         // The offset settles to the restored value; nothing in between is the user's.
-        _isProgrammaticScroll = true;
+        _scroll.IsProgrammaticScroll = true;
         var index = vm.ScrollLineIndex;
         var preferred = vm.IsSyncTabSelected && !vm.IsAutoFollowPaused && index >= 0 && index < vm.LyricLines.Count
             ? vm.LyricLines[index]
@@ -758,14 +754,14 @@ public partial class LyricsView : UserControl
                 ApplyScrollOffset(viewer, target);
                 followed = index;
             }
-            _lastScrolledIndex = followed;
+            _scroll.LastScrolledIndex = followed;
         }
         finally
         {
-            _isProgrammaticScroll = false;
+            _scroll.IsProgrammaticScroll = false;
         }
         // The move came with a line change: glide to the new line as usual.
-        if (vm.IsSyncTabSelected && vm.ScrollLineIndex >= 0 && vm.ScrollLineIndex != _lastScrolledIndex)
+        if (vm.IsSyncTabSelected && vm.ScrollLineIndex >= 0 && vm.ScrollLineIndex != _scroll.LastScrolledIndex)
             ScrollToActiveLine(vm.ScrollLineIndex);
     }
 
@@ -864,7 +860,7 @@ public partial class LyricsView : UserControl
                 // Plain mode: no active-line tracking — keep the list still.
                 if (!vm.IsSyncTabSelected)
                 {
-                    _lastScrolledIndex = -1;
+                    _scroll.LastScrolledIndex = -1;
                     CancelScrollAnimation();
                     CancelAutoFollowResumeTimer();
                     return;
@@ -874,7 +870,7 @@ public partial class LyricsView : UserControl
                     ScrollToActiveLine(vm.ScrollLineIndex);
                 else
                 {
-                    _lastScrolledIndex = -1;
+                    _scroll.LastScrolledIndex = -1;
                     CancelScrollAnimation();
                     CancelAutoFollowResumeTimer();
                 }
@@ -892,7 +888,7 @@ public partial class LyricsView : UserControl
             // show a blank window (LyricLines outside ±9 of active have opacity 0).
             if (sender is LyricsViewModel vm2)
             {
-                _lastScrolledIndex = -1;
+                _scroll.LastScrolledIndex = -1;
                 CancelScrollAnimation();
                 CancelAutoFollowResumeTimer();
                 vm2.IsAutoFollowPaused = false;
@@ -928,7 +924,7 @@ public partial class LyricsView : UserControl
                 CancelAutoFollowResumeTimer();
                 if (resumed.IsSyncTabSelected && resumed.ScrollLineIndex >= 0)
                 {
-                    _lastScrolledIndex = -1;
+                    _scroll.LastScrolledIndex = -1;
                     ScrollToActiveLine(resumed.ScrollLineIndex);
                 }
             }
@@ -1166,125 +1162,21 @@ public partial class LyricsView : UserControl
     // Committed seeks from any surface (this page's timeline, the player bar, a
     // lyric-line click) mark the moment; ScrollToActiveLine routes the resulting
     // line change to the chase instead of the glide.
-    private void OnPlayerSeeked(object? sender, TimeSpan target)
-    {
-        _lastSeekCommitTicks = Stopwatch.GetTimestamp();
-    }
+    private void OnPlayerSeeked(object? sender, TimeSpan target) => _scroll.NoteSeekCommitted();
 
     private static double GetTimelineValueFromPointer(Slider slider, Point position)
     {
         return PillSliderVisualHelper.GetValueFromPointer(slider, position, LyricsTimelineThumbSize);
     }
 
-    private void CancelScrollAnimation()
-    {
-        if (_isProgrammaticScroll || _chaseRunning)
-            Trace($"cancel {(_chaseRunning ? "chase" : "glide")} in flight at offset {LyricsScrollViewer?.Offset.Y:0}");
-        _scrollAnimationGeneration++;
-        _isProgrammaticScroll = false;
-        _chaseRunning = false;
-        _glide = null;
-        ClearCascadeTransforms();
-    }
-
-    // ── Scrub chase ──
-    // Dragging the timeline delivers a new active line every frame or two. The eased
-    // glide below cannot follow that: each update cancelled the previous animation about
-    // two milliseconds in, and smootherstep opens at essentially zero velocity, so the
-    // list did not move at all until the drag stopped — in either direction. Restarting
-    // faster cannot fix it; the target has to be retargeted without restarting the curve.
-    // This is the same exponential chase SmoothScrollBehavior uses for the wheel: a new
-    // target only moves the goalpost, so the existing velocity carries straight over.
-    private const double ScrubWindowMs = 250;   // updates closer together than this = a drag
-    private const double ScrubSettleMs = 380;   // time to ~99% of a stationary target
-    // A committed seek re-anchors with the chase, never the eased glide: smootherstep
-    // opens at near-zero velocity, so after an explicit jump the page sat visibly still
-    // for ~250-300ms before moving — and whether a click even got the chase used to
-    // depend on the request race above, timing the user cannot see. The window covers
-    // the commit debounce (60ms, posted) plus a 100ms sync tick, with margin.
-    private const double SeekFollowWindowMs = 400;
-    private long _lastSeekCommitTicks;
-    private long _lastScrollRequestTicks;
-    private double _chaseTargetY;
-    private double _chaseY;
-    private bool _chaseRunning;
-    private long _chaseLastFrameTicks;
-
-    private void ChaseTo(ScrollViewer scrollViewer, double targetY)
-    {
-        _chaseTargetY = targetY;
-
-        if (!_chaseRunning)
-        {
-            // Pick the chase up from wherever the offset actually is, so a glide that was
-            // in flight hands over without a jump.
-            _chaseY = scrollViewer.Offset.Y;
-            Trace($"chase start {_chaseY:0}→{targetY:0}");
-            _chaseLastFrameTicks = Stopwatch.GetTimestamp();
-            _chaseRunning = true;
-            _isProgrammaticScroll = true;
-            RequestChaseFrame();
-        }
-    }
-
-    private void RequestChaseFrame()
-    {
-        var topLevel = TopLevel.GetTopLevel(this);
-        if (topLevel == null)
-        {
-            // No frame clock (detached mid-drag) — land on the target rather than strand
-            // the offset part-way.
-            if (LyricsScrollViewer != null)
-                ApplyScrollOffset(LyricsScrollViewer, _chaseTargetY);
-            _chaseRunning = false;
-            _isProgrammaticScroll = false;
-            return;
-        }
-        topLevel.RequestAnimationFrame(ChaseFrame);
-    }
-
-    private void ChaseFrame(TimeSpan _)
-    {
-        if (!_chaseRunning) return;
-
-        var scrollViewer = LyricsScrollViewer;
-        if (scrollViewer == null)
-        {
-            _chaseRunning = false;
-            _isProgrammaticScroll = false;
-            return;
-        }
-
-        var now = Stopwatch.GetTimestamp();
-        // Clamped so a stalled UI thread cannot produce one huge jump.
-        var dt = Math.Min((now - _chaseLastFrameTicks) / (double)Stopwatch.Frequency, 0.1);
-        _chaseLastFrameTicks = now;
-
-        // Extent grows as lines re-wrap, so re-clamp every frame.
-        var maxY = Math.Max(0, scrollViewer.Extent.Height - scrollViewer.Viewport.Height);
-        var target = Math.Clamp(_chaseTargetY, 0, maxY);
-
-        _chaseY += (target - _chaseY) * (1 - Math.Exp(-dt / (ScrubSettleMs / 4600.0)));
-
-        if (Math.Abs(target - _chaseY) < 0.5)
-        {
-            _chaseY = target;
-            ApplyScrollOffset(scrollViewer, target);
-            _chaseRunning = false;
-            _isProgrammaticScroll = false;
-            return;
-        }
-
-        ApplyScrollOffset(scrollViewer, _chaseY);
-        RequestChaseFrame();
-    }
+    private void CancelScrollAnimation() => _scroll.Cancel();
 
     // The page's anchor math runs in the scroll viewer's extent space, which includes
     // LyricsItemsControl's top margin (UpdateLyricsCenterPadding) — so it cannot reuse
     // LyricsScrollAnchor.AnchorRatio (0.22, the panel's margin-exclusive space) directly:
     // with the normal 10% top margin, 0.32 in extent space IS that shipped geometry
     // (0.10 + 0.22), offsets and clamps identical.
-    private const double PageAnchorRatio = 0.32;
+    private const double PageAnchorRatio = LyricsScrollDriver.PageAnchorRatio;
 
     // Fullscreen focus dims everything but the active ±2 lines, so the active line sits
     // at the optical center: geometric 50% reads slightly low to the eye, so the anchor
@@ -1300,126 +1192,39 @@ public partial class LyricsView : UserControl
             ? FocusAnchorRatio
             : PageAnchorRatio;
 
-    /// <summary>Anchor offset for a line, or null if the item containers are not laid out
-    /// yet. Shared by the eased glide and the scrub chase.</summary>
-    private double? TryComputeAnchorOffset(int index)
-    {
-        if (LyricsItemsControl == null || LyricsScrollViewer == null) return null;
-        if (index < 0 || index >= LyricsItemsControl.ItemCount) return null;
+    /// <summary>Anchor offset for a line, or null if the item containers are not laid out yet.</summary>
+    private double? TryComputeAnchorOffset(int index) => _scroll.TryComputeAnchorOffset(index);
 
-        var presenter = LyricsItemsControl.GetVisualDescendants()
-            .OfType<ItemsPresenter>()
-            .FirstOrDefault();
-        if (presenter?.GetVisualChildren().FirstOrDefault() is not Panel panel) return null;
-        if (index >= panel.Children.Count) return null;
-
-        var targetChild = panel.Children[index];
-        var childBounds = targetChild.TransformToVisual(panel);
-        if (childBounds == null) return null;
-
-        // Panel coordinates exclude LyricsItemsControl's margin, but the anchor math
-        // runs in the scroll viewer's offset/extent space, which includes it.
-        var childTop = childBounds.Value.Transform(new Point(0, 0)).Y
-                       + LyricsItemsControl.Margin.Top;
-        return Helpers.LyricsScrollAnchor.ComputeAnchorOffset(
-            childTop, targetChild.Bounds.Height,
-            LyricsScrollViewer.Viewport.Height,
-            LyricsScrollViewer.Extent.Height,
-            ActiveAnchorRatio);
-    }
-
-    private void ClearCascadeTransforms()
-    {
-        if (_cascadeLines == null) return;
-        foreach (var control in _cascadeLines)
-        {
-            if (control.RenderTransform is TranslateTransform tt)
-                tt.Y = 0;
-        }
-        _cascadeLines = null;
-    }
-
-    private void CancelAutoFollowResumeTimer()
-    {
-        _autoFollowResumeTimer?.Stop();
-        _autoFollowResumeTimer = null;
-    }
+    private void CancelAutoFollowResumeTimer() => _scroll.CancelAutoFollowResumeTimer();
 
     // Every scroll this view performs itself goes through ApplyScrollOffset, which records
     // the value it wrote. Anything that lands in Offset without matching it came from the
-    // user — a scrollbar drag, a touch pan, PageDown — and pauses auto-follow. The pause
-    // used to hang off PointerWheelChanged alone, so those three did nothing and the next
-    // line change simply yanked the view back with no "Follow" button to explain it.
-    private double _lastAppliedScrollY = double.NaN;
-
-    private void ApplyScrollOffset(ScrollViewer scrollViewer, double y)
-    {
-        _lastAppliedScrollY = y;
-        scrollViewer.Offset = new Vector(0, y);
-    }
+    // user — a scrollbar drag, a touch pan, PageDown — and pauses auto-follow (the driver).
+    private void ApplyScrollOffset(ScrollViewer scrollViewer, double y) => _scroll.ApplyOffset(scrollViewer, y);
 
     private void OnLyricsScrollViewerPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
     {
         if (e.Property != ScrollViewer.OffsetProperty) return;
-        if (_isProgrammaticScroll) return;
+        if (_scroll.IsProgrammaticScroll) return;
         if (e.NewValue is not Vector v) return;
         MaybeScrollLyricsWindow(v);
-
-        // Nothing has been scrolled by us yet — this is the first layout pass, not a user
-        // gesture. Adopt it as the baseline.
-        if (double.IsNaN(_lastAppliedScrollY))
-        {
-            _lastAppliedScrollY = v.Y;
-            return;
-        }
-
-        // 1px tolerance: layout can round the offset we asked for.
-        if (Math.Abs(v.Y - _lastAppliedScrollY) > 1.0)
-        {
-            Trace($"offset moved externally {_lastAppliedScrollY:0}→{v.Y:0} — pausing auto-follow");
-            PauseAutoFollow();
-        }
+        _scroll.OnOffsetChanged(v);
     }
 
-    private void OnLyricsPointerWheelChanged(object? sender, PointerWheelEventArgs e)
-    {
-        if (!_isProgrammaticScroll)
-            PauseAutoFollow();
-    }
+    private void OnLyricsPointerWheelChanged(object? sender, PointerWheelEventArgs e) => _scroll.OnWheel();
 
     private void OnLyricsOffsetWheel(object? sender, PointerWheelEventArgs e)
     {
-        if (!SmoothScrollBehavior.HasCommandModifier(e) || DataContext is not LyricsViewModel vm) return;
-        // Over the lyrics only — not the artwork and controls column.
-        if (LyricsScrollViewer is not { } scroller || e.Source is not Visual source
-            || !(source == scroller || scroller.IsVisualAncestorOf(source))) return;
-        // Handled: no scroll, and the bubble handler above never pauses auto-follow.
-        if (vm.NudgeLyricsOffset(e.Delta.Y))
+        // Over the lyrics only — not the artwork and controls column. Handled: no scroll,
+        // and the bubble handler above never pauses auto-follow.
+        if (LyricsScrollDriver.TryNudgeOffset(DataContext as LyricsViewModel, LyricsScrollViewer, e))
             e.Handled = true;
     }
 
-    private void PauseAutoFollow()
-    {
-        if (DataContext is not LyricsViewModel vm) return;
-
-        vm.IsAutoFollowPaused = true;
-
-        // Auto-resume after 5 seconds, unless Settings › Lyrics Page › "Return to the current
-        // line automatically" is off: then only the Follow pill (or a seek) resumes.
-        CancelAutoFollowResumeTimer();
-        if (!vm.AutoReturnToCurrentLine) return;
-        _autoFollowResumeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
-        _autoFollowResumeTimer.Tick += (_, _) =>
-        {
-            CancelAutoFollowResumeTimer();
-            if (DataContext is LyricsViewModel { AutoReturnToCurrentLine: true } v)
-                v.IsAutoFollowPaused = false;
-        };
-        _autoFollowResumeTimer.Start();
-    }
+    private void PauseAutoFollow() => _scroll.PauseAutoFollow();
 
     /// <summary>Whether a scrolled-away view will return to the sung line by itself (tests).</summary>
-    internal static bool AutoFollowResumePending(LyricsView view) => view._autoFollowResumeTimer != null;
+    internal static bool AutoFollowResumePending(LyricsView view) => view._scroll.AutoFollowResumePending;
 
     // ── Center-anchored lyrics padding ──
 
@@ -1450,8 +1255,8 @@ public partial class LyricsView : UserControl
         }
         else
         {
-            topPad = viewportHeight * 0.10;
-            bottomPad = viewportHeight * 0.78;
+            topPad = viewportHeight * LyricsScrollDriver.TopPadRatio;
+            bottomPad = viewportHeight * LyricsScrollDriver.BottomPadRatio;
         }
         // Right margin reserves an overflow zone for the active line's 1.07× scale
         // transform. Without it, scaled glyphs on long lines get clipped by the
@@ -1482,327 +1287,7 @@ public partial class LyricsView : UserControl
         return idx;
     }
 
-    private void ScrollToActiveLine(int index)
-    {
-        if (index == _lastScrolledIndex) return;
-        _lastScrolledIndex = index;
+    private void ScrollToActiveLine(int index) => _scroll.ScrollToLine(index);
 
-        if (DataContext is LyricsViewModel vm && vm.IsAutoFollowPaused)
-        {
-            Trace($"scroll→{index} skipped: auto-follow paused");
-            return;
-        }
-
-        // Updates arriving on top of each other mean the position is being dragged, not
-        // advancing with playback. Those go to the chase, which retargets instead of
-        // restarting; a normal line advance is seconds apart and keeps the eased glide.
-        // A line change landing right after a committed seek is that seek resolving:
-        // chase as well, so a discrete click always answers with the same fast settle.
-        var now = Stopwatch.GetTimestamp();
-        var sinceLastMs = _lastScrollRequestTicks == 0
-            ? double.MaxValue
-            : (now - _lastScrollRequestTicks) * 1000.0 / Stopwatch.Frequency;
-        _lastScrollRequestTicks = now;
-
-        var sinceSeekMs = _lastSeekCommitTicks == 0
-            ? double.MaxValue
-            : (now - _lastSeekCommitTicks) * 1000.0 / Stopwatch.Frequency;
-
-        if ((sinceLastMs < ScrubWindowMs || sinceSeekMs < SeekFollowWindowMs) && LyricsScrollViewer != null)
-        {
-            // No settle delay here: a scrub only changes WHICH line is active, so the
-            // item layout the offset is measured against has not moved.
-            if (TryComputeAnchorOffset(index) is { } scrubTarget)
-            {
-                Trace($"scroll→{index} chase to {scrubTarget:0} (sinceLast {sinceLastMs:0}ms, sinceSeek {sinceSeekMs:0}ms)");
-                _scrollAnimationGeneration++;   // supersede the eased glide, keep the chase
-                _glide = null;
-                ClearCascadeTransforms();
-                ChaseTo(LyricsScrollViewer, scrubTarget);
-                return;
-            }
-        }
-
-        // Stop the frame loop of a glide in flight but keep its state: the new glide
-        // starts from exactly what is on screen — offset, cascade translates and their
-        // velocities (LineGlide). Every early return below cancels properly instead.
-        _scrollAnimationGeneration++;
-        var started = false;
-
-        // Start the glide NOW, on the same frame the line's scale/opacity transitions
-        // start. It used to wait on a 10ms DispatcherTimer "for layout to settle" —
-        // a relic of the era when activation swapped in a differently-wrapped
-        // TextBlock. Lines are always word-laid-out today, so activation changes no
-        // layout; and on Windows a 10ms timer fires on the ~15.6ms timer tick, so the
-        // list held still for a frame or two after the line had brightened and begun
-        // to grow, then set off on the curve's acceleration — a hesitation at the
-        // start of every flow. (Mounts and track swaps, where layout IS pending, go
-        // through JumpToActiveLineWhenReady, not here.)
-        try
-        {
-            if (LyricsItemsControl == null || index >= LyricsItemsControl.ItemCount) return;
-
-            var presenter = LyricsItemsControl.GetVisualDescendants()
-                .OfType<ItemsPresenter>()
-                .FirstOrDefault();
-            if (presenter == null) return;
-
-            var panel = presenter.GetVisualChildren().FirstOrDefault() as Panel;
-            if (panel == null || index >= panel.Children.Count) return;
-
-            var targetChild = panel.Children[index];
-            if (LyricsScrollViewer == null) return;
-
-            var childBounds = targetChild.TransformToVisual(panel);
-            if (childBounds == null) return;
-
-            // Extent space: panel coordinates + the ItemsControl top margin
-            // (see TryComputeAnchorOffset).
-            var childTop = childBounds.Value.Transform(new Point(0, 0)).Y
-                           + LyricsItemsControl.Margin.Top;
-            var childHeight = targetChild.Bounds.Height;
-
-            var targetOffset = Helpers.LyricsScrollAnchor.ComputeAnchorOffset(
-                childTop, childHeight,
-                LyricsScrollViewer.Viewport.Height,
-                LyricsScrollViewer.Extent.Height,
-                ActiveAnchorRatio);
-
-            var currentOffset = LyricsScrollViewer.Offset.Y;
-            var diff = targetOffset - currentOffset;
-
-            if (Math.Abs(diff) < 2 && _glide == null)
-            {
-                Trace($"scroll→{index} snap {currentOffset:0}→{targetOffset:0}");
-                ApplyScrollOffset(LyricsScrollViewer, targetOffset);
-                return;
-            }
-
-            // The spring follows the tempo: how long this line stays the target (its start
-            // to the next line's start). Fast rap lines land quickly, slow lines glide.
-            var hold = DataContext is LyricsViewModel lvm
-                ? Noctis.Services.LyricsTimeline.HoldMs(lvm.LyricLines, index)
-                : double.NaN;
-            var spring = LineMotion.ForHold(hold);
-            Trace($"scroll→{index} glide {currentOffset:0}→{targetOffset:0} ({diff:+0;-0}px) hold {hold:0}ms " +
-                  $"spring ζ{spring.Zeta:0.00} ωn{spring.NaturalFrequency:0.0}{(_glide != null ? " carried" : "")}");
-            AnimateScroll(LyricsScrollViewer, currentOffset, targetOffset, spring, panel, index);
-            started = true;
-        }
-        catch { }
-        finally
-        {
-            if (!started) CancelScrollAnimation();
-        }
-    }
-
-    private void JumpToActiveLineWhenReady(int index)
-    {
-        if (index < 0)
-            return;
-
-        Trace($"jump→{index}");
-        _lastScrolledIndex = index;
-        CancelScrollAnimation();
-
-        Dispatcher.UIThread.Post(() =>
-        {
-            try
-            {
-                if (LyricsItemsControl == null || index >= LyricsItemsControl.ItemCount) return;
-
-                var presenter = LyricsItemsControl.GetVisualDescendants()
-                    .OfType<ItemsPresenter>()
-                    .FirstOrDefault();
-                if (presenter == null) return;
-
-                var panel = presenter.GetVisualChildren().FirstOrDefault() as Panel;
-                if (panel == null || index >= panel.Children.Count) return;
-
-                var targetChild = panel.Children[index];
-                if (LyricsScrollViewer == null) return;
-
-                var childBounds = targetChild.TransformToVisual(panel);
-                if (childBounds == null) return;
-
-                // Extent space: panel coordinates + the ItemsControl top margin
-                // (see TryComputeAnchorOffset).
-                var childTop = childBounds.Value.Transform(new Point(0, 0)).Y
-                               + LyricsItemsControl.Margin.Top;
-                var childHeight = targetChild.Bounds.Height;
-
-                var targetOffset = Helpers.LyricsScrollAnchor.ComputeAnchorOffset(
-                    childTop, childHeight,
-                    LyricsScrollViewer.Viewport.Height,
-                    LyricsScrollViewer.Extent.Height,
-                    ActiveAnchorRatio);
-                ApplyScrollOffset(LyricsScrollViewer, targetOffset);
-            }
-            catch { }
-        }, DispatcherPriority.Loaded);
-    }
-
-    // Cascade tuning: each line below the active one starts its glide this much later,
-    // with the stagger depth capped — the Apple Music "settle top-down" feel.
-    private const double CascadeDelayPerLineMs = LineMotion.CascadeDelayPerLineMs;
-    private const int CascadeMaxLines = 8;
-    // A line's lag may exceed the line above's by at most this much — see the lyrics
-    // panel's constant of the same name (uncapped stagger made lines overlap mid-glide).
-    private const double MaxCascadeLagStepPx = 16;
-
-    /// <summary>
-    /// Frame-clock scroll animation: each step is scheduled via TopLevel.RequestAnimationFrame,
-    /// so movement is vsync-locked instead of a 16ms DispatcherTimer beating against the
-    /// compositor's ~16.7ms frame interval (which dropped/doubled a frame about once a second).
-    /// The offset and every line follow one <see cref="LineGlide"/> on <paramref name="spring"/>;
-    /// lines below the active one set off a stagger later each (a transient translate that
-    /// relaxes to zero), so the stack settles top-down instead of moving as one rigid slab.
-    /// A glide still in flight (<see cref="_glide"/>) hands over positions and velocities.
-    /// </summary>
-    private void AnimateScroll(ScrollViewer scrollViewer, double from, double to, LineSpring spring,
-        Panel? linesPanel = null, int activeIndex = -1)
-    {
-        _scrollAnimationGeneration++;
-        _isProgrammaticScroll = true;
-
-        var delta = to - from;
-
-        // The stagger is a SETTLING effect for line-to-line advance. Over a seek-sized
-        // jump it is not readable at all, and it is the one place the two scroll
-        // directions cost different amounts: membership is "every line below the active
-        // one", so a jump UP lands on a low index and drags several times as many lines —
-        // each carrying a blur effect that re-renders every frame — through the viewport
-        // as an equal jump DOWN. That is why seeking backwards ran visibly heavier than
-        // seeking forwards. Past a viewport and a half, glide cleanly with no cascade.
-        var seekSized = Math.Abs(delta) > scrollViewer.Viewport.Height * 1.5;
-        var cascade = linesPanel != null && activeIndex >= 0 && Math.Abs(delta) > 8 && !seekSized;
-
-        // Every line below the active one takes part; only the DELAY is capped. Cutting
-        // the list at CascadeMaxLines left the first excluded line static while the last
-        // included one lagged a full line height onto it — lyrics overlapped mid-glide
-        // wherever that boundary was on screen (see LyricsPanelView.AnimateScroll).
-        var lines = linesPanel?.Children;
-        var lineCount = lines?.Count ?? 0;
-        var glide = LineGlide.Begin(_glide, NowMs(), from, to, spring, lineCount, activeIndex,
-            cascade ? CascadeDelayPerLineMs : 0, CascadeMaxLines,
-            i => lines![i].RenderTransform is TranslateTransform tt ? tt.Y : 0);
-        _glide = glide;
-        var touched = _cascadeLines ??= new HashSet<Control>();
-
-        var generation = _scrollAnimationGeneration;
-        var startMs = glide.StartMs;
-
-        // Frame-pacing diagnostic: a dropped frame during the glide is a visible skip
-        // (positions are time-based, so the next frame catches up in one step). One
-        // dev-log line per glide that dropped any, with where in the glide it happened.
-        var lastFrameMs = double.NaN;
-        var frames = 0;
-        var maxGapMs = 0.0;
-        var maxGapAtMs = 0.0;
-        var droppedFrames = 0;
-
-        void Frame(TimeSpan _)
-        {
-            // Superseded or cancelled: the canceller already reset flags/transforms.
-            if (generation != _scrollAnimationGeneration) return;
-
-            var now = NowMs();
-            var elapsed = now - startMs;
-
-            frames++;
-            if (!double.IsNaN(lastFrameMs))
-            {
-                var gap = elapsed - lastFrameMs;
-                if (gap > maxGapMs) { maxGapMs = gap; maxGapAtMs = elapsed; }
-                if (gap > 30) droppedFrames++;
-            }
-            lastFrameMs = elapsed;
-
-            var scrollY = glide.Offset(now);
-            ApplyScrollOffset(scrollViewer, scrollY);
-
-            // Each line is displaced by the gap between the offset and its own course —
-            // positive while catching up, zero when settled. Chained clamp below the active
-            // line: on large scroll deltas the raw stagger between neighbours exceeds the
-            // inter-line gap, so each line's lag is bound to its predecessor's (the list is
-            // top-to-bottom) — lines can never cross. The chain is walked in full — each
-            // line's clamp depends on the one above it — but only lines near the viewport
-            // need the transform WRITTEN: a write costs a visual invalidation plus a
-            // re-render of that line's blur effect, and a backward seek (which lands on a
-            // low index) enrolls most of the song. Off-screen lines render identically at
-            // any lag. Bounds is layout-only, so the transforms written here don't move it;
-            // the band is a viewport of slack either side of the visible area.
-            var viewportHeight = scrollViewer.Viewport.Height;
-            var bandTop = scrollY - viewportHeight;
-            var bandBottom = scrollY + viewportHeight * 2;
-
-            if (lines != null)
-            {
-                var prevLag = 0.0;
-                var n = Math.Min(lineCount, lines.Count);
-                for (var i = 0; i < n; i++)
-                {
-                    var lag = glide.LineLag(i, now);
-                    if (i > activeIndex)
-                    {
-                        lag = LineMotion.CascadeStep(lag, prevLag, MaxCascadeLagStepPx);
-                        prevLag = lag;
-                    }
-                    var control = lines[i];
-                    var top = control.Bounds.Top + lag;
-                    var target = top + control.Bounds.Height >= bandTop && top <= bandBottom ? lag : 0.0;
-
-                    if (control.RenderTransform is TranslateTransform tt)
-                    {
-                        // ReSharper disable once CompareOfFloatsByEqualityOperator
-                        if (tt.Y != target)
-                        {
-                            tt.Y = target;
-                            touched.Add(control);
-                        }
-                    }
-                    else if (Math.Abs(target) > 0.01)
-                    {
-                        control.RenderTransform = new TranslateTransform(0, target);
-                        touched.Add(control);
-                    }
-                }
-            }
-
-            if (glide.IsDone(now))
-            {
-                ApplyScrollOffset(scrollViewer, to);
-                ClearCascadeTransforms();
-                _glide = null;
-                _isProgrammaticScroll = false;
-                Trace($"glide end at {elapsed:0}ms (planned {glide.EndMs - startMs:0}): {frames} frames, " +
-                      $"{droppedFrames} gap(s) >30ms, worst {maxGapMs:0}ms at {maxGapAtMs:0}ms, cascade {cascade}, offset {to:0}");
-                return;
-            }
-
-            RequestScrollFrame(Frame, scrollViewer, to);
-        }
-
-        RequestScrollFrame(Frame, scrollViewer, to);
-    }
-
-    private static double NowMs() => Stopwatch.GetTimestamp() * 1000.0 / Stopwatch.Frequency;
-
-    /// <summary>Schedules the next animation frame. If the view left the visual tree
-    /// mid-animation (no TopLevel → no frame callbacks), snaps to the target instead
-    /// so the offset never strands mid-glide.</summary>
-    private void RequestScrollFrame(Action<TimeSpan> frame, ScrollViewer scrollViewer, double to)
-    {
-        if (TopLevel.GetTopLevel(this) is { } topLevel)
-        {
-            topLevel.RequestAnimationFrame(frame);
-        }
-        else
-        {
-            ApplyScrollOffset(scrollViewer, to);
-            CancelScrollAnimation();
-        }
-    }
-
+    private void JumpToActiveLineWhenReady(int index) => _scroll.JumpToLineWhenReady(index);
 }
-

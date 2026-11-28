@@ -8,6 +8,7 @@
         xmlns:conv="using:Noctis.Converters"
         xmlns:helpers="using:Noctis.Helpers"
         xmlns:sys="using:System"
+        xmlns:views="using:Noctis.Views"
         x:Class="Noctis.Views.MiniPlayerWindow"
         x:DataType="vm:MiniPlayerViewModel"
         Title="{loc:T MiniPlayer.NoctisMiniPlayer}"
@@ -243,6 +244,8 @@
                 </Template>
             </Setter>
         </Style>
+        <!-- Artist line. It sits in an artist row (Grid.mini-artist-row: the artist in a Border,
+             the quality tag beside it), so its width bound is that Border's. -->
         <Style Selector="controls|MarqueeTextBlock.mini-artist" x:DataType="vm:MiniPlayerViewModel">
             <Setter Property="Text" Value="{Binding Player.CurrentTrack.ArtistDisplay, FallbackValue=''}"/>
             <Setter Property="FontSize" Value="12"/>
@@ -250,7 +253,53 @@
             <Setter Property="HorizontalAlignment" Value="Left"/>
             <Setter Property="IsMiniPlayer" Value="True"/>
             <Setter Property="IsForAlbum" Value="True"/>
-            <Setter Property="MaxDisplayWidth" Value="{Binding $parent[StackPanel].Bounds.Width}"/>
+            <Setter Property="MaxDisplayWidth" Value="{Binding $parent[Border].Bounds.Width}"/>
+        </Style>
+        <!-- The codec quality tag (Lossless / Hi-Res / codec) ends the artist row on every form
+             and design: same place, no extra row, so it fits the Pill and the Bar too, and it
+             never scrolls away with a long artist. Room rule (MiniPlayerWindow.QualityRoom, on
+             the row's width): from QualityFullWidth (140) it shows mark + label; from
+             QualityIconWidth (90) the mark alone (label in the tooltip); narrower it steps
+             aside and the artist gets the whole row. Hidden while a music video's own audio
+             plays (it describes the song file). -->
+        <Style Selector="ContentControl.mini-quality">
+            <Setter Property="Grid.Column" Value="1"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Content">
+                <Template>
+                    <StackPanel Classes="mini-quality" Orientation="Horizontal" Spacing="3" Background="Transparent"
+                                VerticalAlignment="Center" Margin="6,0,0,0"
+                                x:DataType="vm:MiniPlayerViewModel">
+                        <StackPanel.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
+                                <Binding Path="Player.CurrentTrack.AudioQualityBadge" Converter="{x:Static StringConverters.IsNotNullOrEmpty}"/>
+                                <Binding Path="!Player.IsPlayingMusicVideoAudio"/>
+                                <Binding Path="$parent[Grid].Bounds.Width" Converter="{x:Static views:MiniPlayerWindow.QualityRoom}" ConverterParameter="icon"/>
+                            </MultiBinding>
+                        </StackPanel.IsVisible>
+                        <ToolTip.Tip>
+                            <StackPanel Width="220" Spacing="4">
+                                <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityBadge}"
+                                           FontSize="13" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                                <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityDetailedInfo}"
+                                           FontSize="12" Opacity="0.9"
+                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                                <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityDescription, FallbackValue=''}"
+                                           FontSize="11" TextWrapping="Wrap" Opacity="0.85" Margin="0,4,0,0"
+                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+                            </StackPanel>
+                        </ToolTip.Tip>
+                        <Viewbox Width="16" Height="11" VerticalAlignment="Center">
+                            <Path Data="{DynamicResource LosslessWaveIcon}" Fill="{DynamicResource MiniDrawerTextSoft}"/>
+                        </Viewbox>
+                        <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityBadge, FallbackValue=''}"
+                                   FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource MiniDrawerTextSoft}"
+                                   IsVisible="{Binding $parent[Grid].Bounds.Width, Converter={x:Static views:MiniPlayerWindow.QualityRoom}, ConverterParameter=full}"/>
+                    </StackPanel>
+                </Template>
+            </Setter>
         </Style>
         <Style Selector="Window.plain-track-links controls|MarqueeTextBlock.mini-artist">
             <Setter Property="Foreground" Value="{DynamicResource MiniDrawerTextSoft}"/>
@@ -581,43 +630,6 @@
             </Setter>
         </Style>
 
-        <!-- Codec quality tag (Lossless / Hi-Res / codec), centred like Apple Music; hidden
-             while a music video's own audio plays (it describes the song file). -->
-        <Style Selector="ContentControl.mini-quality">
-            <Setter Property="HorizontalAlignment" Value="Center"/>
-            <Setter Property="Content">
-                <Template>
-                    <StackPanel Orientation="Horizontal" Spacing="4" Background="Transparent" Margin="0,4,0,0"
-                                x:DataType="vm:MiniPlayerViewModel">
-                        <StackPanel.IsVisible>
-                            <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
-                                <Binding Path="Player.CurrentTrack.AudioQualityBadge" Converter="{x:Static StringConverters.IsNotNullOrEmpty}"/>
-                                <Binding Path="!Player.IsPlayingMusicVideoAudio"/>
-                            </MultiBinding>
-                        </StackPanel.IsVisible>
-                        <ToolTip.Tip>
-                            <StackPanel Width="220" Spacing="4">
-                                <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityBadge}"
-                                           FontSize="13" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-                                <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityDetailedInfo}"
-                                           FontSize="12" Opacity="0.9"
-                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                                <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityDescription, FallbackValue=''}"
-                                           FontSize="11" TextWrapping="Wrap" Opacity="0.85" Margin="0,4,0,0"
-                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                            </StackPanel>
-                        </ToolTip.Tip>
-                        <Viewbox Width="16" Height="11" VerticalAlignment="Center" Margin="0,0,0,1">
-                            <Path Data="{DynamicResource LosslessWaveIcon}" Fill="{DynamicResource MiniDrawerTextSoft}"/>
-                        </Viewbox>
-                        <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityBadge, FallbackValue=''}"
-                                   FontSize="10" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource MiniDrawerTextSoft}" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Template>
-            </Setter>
-        </Style>
 
         <!-- The transport row: shuffle | prev play next | repeat. MaxWidth keeps the five
              together on a wide card instead of flinging the toggles to its far ends; on a
@@ -1125,7 +1137,10 @@
                     <StackPanel Grid.Column="1" x:Name="BarInfoHost" VerticalAlignment="Center" Margin="12,0,8,0" Spacing="1">
                         <controls:MarqueeTextBlock Classes="mini-title"/>
                         <TextBlock Classes="mini-no-track"/>
-                        <controls:MarqueeTextBlock Classes="mini-artist"/>
+                        <Grid Classes="mini-artist-row" ColumnDefinitions="*,Auto">
+                            <Border><controls:MarqueeTextBlock Classes="mini-artist"/></Border>
+                            <ContentControl Classes="mini-quality"/>
+                        </Grid>
                     </StackPanel>
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                         <Button x:Name="BarHeartButton" Classes="mini-transport glass-circle mini-heart"/>
@@ -1177,7 +1192,10 @@
                     <StackPanel Grid.Column="1" x:Name="CardInfoHost" VerticalAlignment="Center" Margin="12,0,8,0" Spacing="1">
                         <controls:MarqueeTextBlock Classes="mini-title"/>
                         <TextBlock Classes="mini-no-track"/>
-                        <controls:MarqueeTextBlock Classes="mini-artist"/>
+                        <Grid Classes="mini-artist-row" ColumnDefinitions="*,Auto">
+                            <Border><controls:MarqueeTextBlock Classes="mini-artist"/></Border>
+                            <ContentControl Classes="mini-quality"/>
+                        </Grid>
                     </StackPanel>
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                         <Button x:Name="CardHeartButton" Classes="mini-transport glass-circle mini-heart"/>
@@ -1199,7 +1217,6 @@
                     </Grid>
                 </Panel>
 
-                <ContentControl Grid.Row="2" Classes="mini-quality"/>
 
                 <Grid Grid.Row="3" x:Name="CardTransport" Classes="mini-transport-row" ColumnDefinitions="Auto,*,Auto" Margin="0,8,0,0">
                     <Button x:Name="CardShuffleButton" Classes="mini-transport glass-circle mini-shuffle"/>
@@ -1296,7 +1313,10 @@
                     <StackPanel Grid.Column="0" x:Name="LargeInfoHost" VerticalAlignment="Center" Margin="0,0,8,0" Spacing="1">
                         <controls:MarqueeTextBlock Classes="mini-title"/>
                         <TextBlock Classes="mini-no-track"/>
-                        <controls:MarqueeTextBlock Classes="mini-artist"/>
+                        <Grid Classes="mini-artist-row" ColumnDefinitions="*,Auto">
+                            <Border><controls:MarqueeTextBlock Classes="mini-artist"/></Border>
+                            <ContentControl Classes="mini-quality"/>
+                        </Grid>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                         <Button x:Name="LargeHeartButton" Classes="mini-transport glass-circle mini-heart"/>
@@ -1311,7 +1331,6 @@
                     <TextBlock Classes="mini-time mini-remaining"/>
                 </Grid>
 
-                <ContentControl Grid.Row="2" Classes="mini-quality"/>
 
                 <Grid Grid.Row="3" x:Name="LargeTransport" Classes="mini-transport-row" ColumnDefinitions="Auto,*,Auto" Margin="0,6,0,0">
                     <Button x:Name="LargeShuffleButton" Classes="mini-transport glass-circle mini-shuffle"/>
@@ -1404,7 +1423,10 @@
                         <StackPanel Grid.Column="0" x:Name="LyricsInfoHost" Spacing="1" VerticalAlignment="Center" Margin="0,0,6,0">
                             <controls:MarqueeTextBlock Classes="mini-title"/>
                             <TextBlock Classes="mini-no-track"/>
-                            <controls:MarqueeTextBlock Classes="mini-artist"/>
+                            <Grid Classes="mini-artist-row" ColumnDefinitions="*,Auto">
+                                <Border><controls:MarqueeTextBlock Classes="mini-artist"/></Border>
+                                <ContentControl Classes="mini-quality"/>
+                            </Grid>
                         </StackPanel>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                             <Button x:Name="LyricsHeartButton" Classes="mini-transport glass-circle mini-heart"/>
@@ -1426,7 +1448,6 @@
                         </Grid>
                     </Panel>
 
-                    <ContentControl Grid.Row="2" Classes="mini-quality"/>
 
                     <Grid Grid.Row="3" x:Name="LyricsTransport" Classes="mini-transport-row" ColumnDefinitions="Auto,*,Auto" Margin="0,6,0,0">
                         <Button x:Name="LyricsShuffleButton" Classes="mini-transport glass-circle mini-shuffle"/>
@@ -1774,6 +1795,21 @@
                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                IsVisible="{Binding HasNoLyrics}"/>
                 </Panel>
+                <!-- The lyrics page's Follow pill (outside the edge-fade mask): shown while scrolling by hand paused
+                     auto-follow; it (or the 5 s auto-return, or a seek) brings the sung
+                     line back (LyricsScrollDriver). -->
+                <Button Grid.Column="1" x:Name="LyricsFollowButton" Classes="pill-btn"
+                        HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                        Margin="0,0,0,14"
+                        IsVisible="{Binding Lyrics.IsAutoFollowPaused}"
+                        Command="{Binding Lyrics.ResumeAutoFollowCommand}"
+                        AutomationProperties.Name="{loc:T Lyrics.Follow}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <controls:LineIcon Data="{DynamicResource PageLineFollow}"
+                                           Width="15" Height="15" VerticalAlignment="Center"/>
+                        <TextBlock Text="{loc:T Lyrics.Follow}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
             </Grid>
 
             </Panel>
@@ -1821,7 +1857,10 @@
                                 <StackPanel Grid.Column="0" x:Name="PillInfoHost" VerticalAlignment="Center" Spacing="1">
                                     <controls:MarqueeTextBlock Classes="mini-title"/>
                                     <TextBlock Classes="mini-no-track"/>
-                                    <controls:MarqueeTextBlock Classes="mini-artist"/>
+                                    <Grid Classes="mini-artist-row" ColumnDefinitions="*,Auto">
+                                        <Border><controls:MarqueeTextBlock Classes="mini-artist"/></Border>
+                                        <ContentControl Classes="mini-quality"/>
+                                    </Grid>
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="8,0,0,0">
                                     <Button x:Name="PillHeartButton" Classes="mini-transport glass-circle mini-heart"/>
@@ -1932,7 +1971,10 @@
                                 <StackPanel Grid.Column="1" x:Name="SleeveInfoHost" VerticalAlignment="Center" Margin="8,0" Spacing="1">
                                     <controls:MarqueeTextBlock x:Name="SleeveTitle" Classes="mini-title" HorizontalAlignment="Center"/>
                                     <TextBlock Classes="mini-no-track" HorizontalAlignment="Center"/>
-                                    <controls:MarqueeTextBlock Classes="mini-artist" HorizontalAlignment="Center"/>
+                                    <Grid Classes="mini-artist-row" ColumnDefinitions="*,Auto">
+                                        <Border><controls:MarqueeTextBlock Classes="mini-artist" HorizontalAlignment="Center"/></Border>
+                                        <ContentControl Classes="mini-quality"/>
+                                    </Grid>
                                 </StackPanel>
                                 <Button Grid.Column="2" x:Name="SleeveMoreButton" Classes="mini-transport glass-circle mini-more" Click="OnMoreMenuClick"/>
                             </Grid>

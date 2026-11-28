@@ -176,17 +176,25 @@ public class MiniPlayerFrameClockTests
         Assert.Equal(h0 + 120, win.Height, 0.5);
     }
 
+    // The lyrics column's scroll is the lyrics page's engine now (LyricsScrollDriver); its
+    // scrub chase keeps the same contract: a retarget only moves the goalpost, the loop ends
+    // with the window, and a target it cannot reach still lands (clamped) and stops.
+
+    private static object Engine(MiniPlayerWindow win) => win.LyricsScrollEngine;
+
     [AvaloniaFact]
     public void LyricsChase_RetargetsWithoutSecondLoop()
     {
         var win = ShowWindow();
         Pump(2);
-        SetField(win, "_lyricsChaseTarget", 100.0);
-        SetField(win, "_lyricsChaseRunning", true);
+        var engine = Engine(win);
+        SetField(engine, "_chaseTargetY", 100.0);
+        SetField(engine, "_chaseRunning", true);
         // Retargeting while running must only move the goalpost.
-        SetField(win, "_lyricsChaseTarget", 300.0);
-        Assert.True(Field<bool>(win, "_lyricsChaseRunning"));
-        Assert.Equal(300.0, Field<double>(win, "_lyricsChaseTarget"));
+        SetField(engine, "_chaseTargetY", 300.0);
+        Assert.True(Field<bool>(engine, "_chaseRunning"));
+        Assert.Equal(300.0, Field<double>(engine, "_chaseTargetY"));
+        win.Close();
     }
 
     [AvaloniaFact]
@@ -194,10 +202,14 @@ public class MiniPlayerFrameClockTests
     {
         var win = ShowWindow();
         Pump(2);
-        SetField(win, "_lyricsChaseRunning", true);
+        var engine = win.LyricsScrollEngine;
+        SetField(engine, "_chaseRunning", true);
         win.Close();
         PumpFor(300); // > 170 ms close animation, then the real Close runs OnClosed
-        Assert.False(Field<bool>(win, "_lyricsChaseRunning"));
+        Assert.False(Field<bool>(engine, "_chaseRunning"));
+        Assert.False(engine.IsAnimating);
+        engine.ScrollToLine(3);
+        Assert.NotEqual(3, engine.LastScrolledIndex); // stopped for good
     }
 
     [AvaloniaFact]
@@ -205,15 +217,17 @@ public class MiniPlayerFrameClockTests
     {
         var win = ShowWindow();
         Pump(2);
-        // No lyrics loaded: the scroll extent is empty, so every offset write is coerced
-        // back to 0 and the target can never be reached. A chase that cannot land must stop
-        // instead of asking the compositor for a frame forever.
-        SetField(win, "_lyricsChaseTarget", 5000.0);
-        SetField(win, "_lyricsChaseRunning", true);
-        SetField(win, "_lyricsChaseLastTicks",
+        // No lyrics loaded: the scroll extent is empty, so the target clamps to 0. A chase
+        // that cannot reach its raw target must land on what is reachable and stop instead
+        // of asking the compositor for a frame forever.
+        var engine = Engine(win);
+        SetField(engine, "_chaseTargetY", 5000.0);
+        SetField(engine, "_chaseRunning", true);
+        SetField(engine, "_chaseLastFrameTicks",
             System.Diagnostics.Stopwatch.GetTimestamp() - System.Diagnostics.Stopwatch.Frequency / 20); // 50 ms ago
-        Call(win, "LyricsChaseFrame", TimeSpan.Zero);
+        Call(engine, "ChaseFrame", TimeSpan.Zero);
         Assert.Equal(0.0, win.FindControl<ScrollViewer>("LyricsScroll")!.Offset.Y);
-        Assert.False(Field<bool>(win, "_lyricsChaseRunning"));
+        Assert.False(Field<bool>(engine, "_chaseRunning"));
+        win.Close();
     }
 }

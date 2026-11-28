@@ -8,6 +8,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Noctis.Controls;
+using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.ViewModels;
@@ -198,7 +199,7 @@ public class MiniPlayerUnifiedControlsTests
 
             // Title first, artist second, inside the same info stack.
             var info = win.FindControl<StackPanel>(prefix + "InfoHost")!;
-            var lines = info.Children.OfType<MarqueeTextBlock>().ToList();
+            var lines = info.GetVisualDescendants().OfType<MarqueeTextBlock>().ToList();
             Assert.Equal(2, lines.Count);
             Assert.Contains("mini-title", lines[0].Classes);
             Assert.Contains("mini-artist", lines[1].Classes);
@@ -415,35 +416,278 @@ public class MiniPlayerUnifiedControlsTests
         Assert.NotEqual(MiniPlayerForm.Sleeve, vm.Form); // nor follows the style picker
     }
 
-    /// <summary>The seek row must not move while the clock runs: tabular digits keep the
-    /// labels' width, so a position tick re-lays out nothing above the labels themselves.
-    /// Also reports the per-tick cost of the whole window (probe numbers in the output).</summary>
+    /// <summary>
+    /// Position ticks: the seek row must not move while the clock runs (tabular digits keep the
+    /// labels' width), and only the form on screen may listen. Measured in one run: the old
+    /// arrangement (every form root bound to the view model) against the new one (hidden forms
+    /// unbound, SetFormBound), each minus the view-model-only cost of the same ticks, so the
+    /// numbers are what the mini player itself adds per tick. Pinned: the bound-only-visible
+    /// cost stays well under the all-bound one.
+    /// </summary>
     [AvaloniaFact]
-    public async Task PositionTicks_LeaveTheSeekRowStill_AndStayCheap()
+    public async Task PositionTicks_TouchOnlyTheVisibleForm_AndLeaveTheSeekRowStill()
     {
         var (win, vm, player) = await Open("Card", "Classic", 340, 432, T("Clock", TimeSpan.FromMinutes(9)));
         try
         {
             var seek = win.FindControl<Slider>("CardSeekSlider")!;
-            var before = seek.Bounds;
             var root = win.FindControl<Grid>("CardFormRoot")!;
-            const int ticks = 300;
-            var bytes = GC.GetAllocatedBytesForCurrentThread();
-            var sw = Stopwatch.StartNew();
-            for (var i = 0; i < ticks; i++)
+            var card = win.FormRoots[(int)MiniPlayerForm.Card];
+            Assert.Same(root, card);
+            const int ticks = 400;
+            var tick = 0;
+
+            (double Us, double Bytes) Run(bool layout)
             {
-                var pos = TimeSpan.FromMilliseconds(i * 250);
+                // Warm the paths first, then measure.
+                for (var w = 0; w < 50; w++) Step(layout);
+                GC.Collect();
+                var bytes = GC.GetAllocatedBytesForCurrentThread();
+                var sw = Stopwatch.StartNew();
+                for (var i = 0; i < ticks; i++) Step(layout);
+                sw.Stop();
+                return (sw.Elapsed.TotalMilliseconds / ticks * 1000,
+                        (GC.GetAllocatedBytesForCurrentThread() - bytes) / (double)ticks);
+            }
+            void Step(bool layout)
+            {
+                var pos = TimeSpan.FromMilliseconds(tick++ * 250 % 500_000);
                 player.Position = pos;
                 player.PositionText = PlayerViewModel.FormatTime(pos);
                 player.RemainingTimeText = PlayerViewModel.FormatTime(player.Duration - pos);
                 player.PositionFraction = pos / player.Duration;
-                win.UpdateLayout();
-                Assert.Equal(before.Width, seek.Bounds.Width, 3);
-                Assert.True(root.IsMeasureValid);
+                if (layout) win.UpdateLayout();
             }
-            sw.Stop();
-            var perTickBytes = (GC.GetAllocatedBytesForCurrentThread() - bytes) / (double)ticks;
-            _out.WriteLine($"position tick (all forms bound, Card shown): {sw.Elapsed.TotalMilliseconds / ticks * 1000:0} µs, {perTickBytes:0} B allocated per tick");
+
+            // The view model alone (window unbound entirely): the player's own share.
+            foreach (var r in win.FormRoots) r.DataContext = null;
+            var vmOnly = Run(layout: true);
+            // Before: every form bound, as the window used to be.
+            foreach (var r in win.FormRoots) r.ClearValue(StyledElement.DataContextProperty);
+            var allBound = Run(layout: true);
+            // After: only the visible form bound (what the window does now).
+            foreach (var r in win.FormRoots) if (!ReferenceEquals(r, card)) r.DataContext = null;
+            var before = seek.Bounds;
+            var visibleOnly = Run(layout: true);
+            Assert.Equal(before.Width, seek.Bounds.Width, 3);
+            Assert.True(root.IsMeasureValid);
+
+            _out.WriteLine($"position tick, view model only: {vmOnly.Us:0} µs, {vmOnly.Bytes:0} B");
+            _out.WriteLine($"position tick, all forms bound (before): {allBound.Us:0} µs, {allBound.Bytes:0} B; mini share {allBound.Us - vmOnly.Us:0} µs, {allBound.Bytes - vmOnly.Bytes:0} B");
+            _out.WriteLine($"position tick, visible form only (after): {visibleOnly.Us:0} µs, {visibleOnly.Bytes:0} B; mini share {visibleOnly.Us - vmOnly.Us:0} µs, {visibleOnly.Bytes - vmOnly.Bytes:0} B");
+            var beforeShare = allBound.Bytes - vmOnly.Bytes;
+            var afterShare = visibleOnly.Bytes - vmOnly.Bytes;
+            Assert.True(afterShare < beforeShare * 0.75, $"visible-only ticks allocate {afterShare:0} B vs {beforeShare:0} B all-bound");
+
+            // And the window really runs that way: after a form change only the shown root is bound.
+            win.Width = 420; win.Height = 188;
+            await PumpFor(500);
+            Assert.Equal(MiniPlayerForm.Bar, vm.Form);
+            foreach (var r in win.FormRoots)
+                Assert.Equal(ReferenceEquals(r, win.FindControl<Grid>("BarFormRoot")), r.DataContext != null);
+        }
+        finally { win.Close(); }
+    }
+
+    /// <summary>A track change with Card on screen: no hidden form asks for its artwork (their
+    /// covers have no source at all), so nothing hidden is decoded.</summary>
+    [AvaloniaFact]
+    public async Task TrackChange_DecodesNoArtworkForHiddenForms()
+    {
+        var (win, vm, player) = await Open("Card", "Classic", 340, 432);
+        try
+        {
+            var next = T("With cover");
+            next.AlbumArtworkPath = @"C:\covers\with-cover.jpg";
+            player.CurrentTrack = next;
+            player.CurrentArtPath = next.AlbumArtworkPath; // what a track change with a cover sets
+            await PumpFor(200);
+            var card = win.FormRoots[(int)MiniPlayerForm.Card];
+            foreach (var root in win.FormRoots.Where(r => !ReferenceEquals(r, card)))
+            {
+                foreach (var img in root.GetVisualDescendants().OfType<CachedImage>())
+                    Assert.True(string.IsNullOrEmpty(img.SourcePath), $"{root.Name}: hidden cover still loads {img.SourcePath}");
+                foreach (var art in root.GetVisualDescendants().OfType<MediaArtwork>())
+                    Assert.True(string.IsNullOrEmpty(art.SourcePath), $"{root.Name}: hidden disc still loads {art.SourcePath}");
+            }
+            // The shown card does follow it.
+            Assert.Contains(card.GetVisualDescendants().OfType<CachedImage>(), i => i.SourcePath == player.CurrentArtPath);
+        }
+        finally { win.Close(); }
+    }
+
+    // ── Quality tag on every form ─────────────────────────────
+
+    [AvaloniaTheory]
+    [MemberData(nameof(Forms))]
+    public async Task QualityTag_RidesTheArtistLine_OnEveryForm(string prefix, string style, double w, double h)
+    {
+        var track = T("Lossless song");
+        track.Codec = "FLAC";
+        var (win, vm, player) = await Open(prefix, style, w, h, track);
+        try
+        {
+            var info = win.FindControl<StackPanel>(prefix + "InfoHost")!;
+            var tag = info.GetVisualDescendants().OfType<StackPanel>().Single(p => p.Classes.Contains("mini-quality"));
+            var label = tag.Children.OfType<TextBlock>().Single();
+            var full = info.Bounds.Width >= MiniPlayerWindow.QualityFullWidth;
+            _out.WriteLine($"{prefix}: info column {info.Bounds.Width:0} -> {(full ? "mark + label" : "mark")}");
+            Assert.True(tag.IsEffectivelyVisible, $"{prefix}: no quality tag");
+            Assert.Equal("Lossless", label.Text);
+            Assert.Equal(full, label.IsVisible);
+            // Inside the info column, clear of the heart / More.
+            Rect InWindow(Control c) => new(c.TranslatePoint(default, win)!.Value, c.Bounds.Size);
+            var tagRect = InWindow(tag);
+            var infoRect = InWindow(info);
+            Assert.True(tagRect.Right <= infoRect.Right + 0.5, $"{prefix}: tag {tagRect} runs past the info column {infoRect}");
+            foreach (var name in new[] { "HeartButton", "MoreButton" })
+                Assert.False(tagRect.Intersects(InWindow(win.FindControl<Button>(prefix + name)!)), $"{prefix}: tag under the {name}");
+
+            // No track, no tag.
+            player.CurrentTrack = null;
+            await PumpFor(60);
+            Assert.False(tag.IsEffectivelyVisible);
+        }
+        finally { win.Close(); }
+    }
+
+    // ── Interface Size, RTL text, narrow card with the menu open ─────────────
+
+    /// <summary>The controls of one form that must never clip or overlap.</summary>
+    private static List<(string Name, Rect Rect)> LayoutParts(MiniPlayerWindow win, string prefix)
+    {
+        Rect InWindow(Control c) => new(c.TranslatePoint(default, win)!.Value, c.Bounds.Size);
+        var parts = new List<(string, Rect)>();
+        foreach (var name in new[] { "HeartButton", "MoreButton", "ShuffleButton", "PrevButton", "PlayButton", "NextButton", "RepeatButton" })
+            if (win.FindControl<Button>(prefix + name) is { IsEffectivelyVisible: true } b)
+                parts.Add((name, InWindow(b)));
+        var seek = win.FindControl<Slider>(prefix + "SeekSlider")!;
+        parts.Add(("Seek", InWindow(seek)));
+        foreach (var t in ((Grid)seek.GetVisualParent()!).Children.OfType<TextBlock>().Where(t => t.IsEffectivelyVisible))
+            parts.Add((t.Classes.Contains("mini-elapsed") ? "Elapsed" : "Remaining", InWindow(t)));
+        parts.Add(("Info", InWindow(win.FindControl<StackPanel>(prefix + "InfoHost")!)));
+        return parts;
+    }
+
+    private static void AssertNoClipOrOverlap(MiniPlayerWindow win, string prefix, string context)
+    {
+        var client = new Rect(win.ClientSize).Inflate(0.5);
+        var parts = LayoutParts(win, prefix);
+        foreach (var (name, r) in parts)
+            Assert.True(client.Contains(r), $"{context}: {name} {r} outside the window {client}");
+        for (var i = 0; i < parts.Count; i++)
+            for (var j = i + 1; j < parts.Count; j++)
+            {
+                var overlap = parts[i].Rect.Intersect(parts[j].Rect);
+                Assert.True(overlap.Width * overlap.Height < 1,
+                    $"{context}: {parts[i].Name} {parts[i].Rect} overlaps {parts[j].Name} {parts[j].Rect}");
+            }
+    }
+
+    public static IEnumerable<object[]> FormsAtScales() =>
+        Forms().SelectMany(f => new[] { 0.6, 1.0, 1.5 }.Select(scale => f.Append(scale).ToArray()));
+
+    /// <summary>Interface Size (GitHub #145) leaves this window at 100% on purpose (its code sizes
+    /// the window from its content in the same DIPs, UiScale.Exclude): at 60%, 100% and 150% the
+    /// mini player lays out the same, with nothing clipped or overlapping.</summary>
+    [AvaloniaTheory]
+    [MemberData(nameof(FormsAtScales))]
+    public async Task InterfaceSize_LeavesEveryFormWhole(string prefix, string style, double w, double h, double scale)
+    {
+        UiScale.Install();
+        var saved = UiScale.Factor;
+        UiScale.SetFactor(scale);
+        try
+        {
+            var (win, vm, player) = await Open(prefix, style, w, h);
+            try
+            {
+                Assert.True(UiScale.GetExclude(win));
+                var applied = UiScale.GetApplied(win);
+                Assert.True(applied == 0 || Math.Abs(applied - 1) < 0.001, $"the mini player was scaled to {applied}");
+                AssertNoClipOrOverlap(win, prefix, $"{prefix} at {scale:P0}");
+            }
+            finally { win.Close(); }
+        }
+        finally { UiScale.SetFactor(saved); }
+    }
+
+    [AvaloniaTheory]
+    [InlineData("Bar", "Classic", 420.0, 188.0)]
+    [InlineData("Card", "Classic", 340.0, 432.0)]
+    [InlineData("Pill", "Pill", 360.0, 140.0)]
+    [InlineData("Sleeve", "Sleeve", 340.0, 372.0)]
+    public async Task RightToLeftTitles_StayInTheirColumn_AndTrimWithAnEllipsis(string prefix, string style, double w, double h)
+    {
+        var track = T("placeholder");
+        track.Title = "ای کاش می‌دانستی که چقدر دلم برایت تنگ شده است در این شب‌های بلند زمستانی";
+        track.Artist = "محمدرضا شجریان و گروه آوای شیدا و همراهان همیشگی";
+        var titleScroll = MarqueeTextBlock.GlobalMiniPlayerTitleScrollEnabled;
+        var artistScroll = MarqueeTextBlock.GlobalMiniPlayerAlbumScrollEnabled;
+        MarqueeTextBlock.GlobalMiniPlayerTitleScrollEnabled = false;
+        MarqueeTextBlock.GlobalMiniPlayerAlbumScrollEnabled = false;
+        try
+        {
+            var (win, vm, player) = await Open(prefix, style, w, h, track);
+            try
+            {
+                await PumpFor(300);
+                Rect InWindow(Control c) => new(c.TranslatePoint(default, win)!.Value, c.Bounds.Size);
+                var info = win.FindControl<StackPanel>(prefix + "InfoHost")!;
+                var infoRect = InWindow(info);
+                foreach (var line in info.GetVisualDescendants().OfType<MarqueeTextBlock>())
+                {
+                    var r = InWindow(line);
+                    Assert.True(r.X >= infoRect.X - 0.5 && r.Right <= infoRect.Right + 0.5,
+                        $"{prefix}: line at {r} leaves its column {infoRect}");
+                    var text = line.GetVisualDescendants().OfType<TextBlock>().First(t => t.Text == line.Text);
+                    Assert.Equal(Avalonia.Media.TextTrimming.CharacterEllipsis, text.TextTrimming);
+                    Assert.True(text.Bounds.Width <= info.Bounds.Width + 0.5);
+                }
+                AssertNoClipOrOverlap(win, prefix, $"{prefix} RTL");
+            }
+            finally { win.Close(); }
+        }
+        finally
+        {
+            MarqueeTextBlock.GlobalMiniPlayerTitleScrollEnabled = titleScroll;
+            MarqueeTextBlock.GlobalMiniPlayerAlbumScrollEnabled = artistScroll;
+        }
+    }
+
+    /// <summary>The owner's clipped "…:09": at the narrowest Bar, with the "…" menu open, both
+    /// time labels sit wholly inside the card's rounded outline (the menu may cover them; the
+    /// card edge never cuts them).</summary>
+    [AvaloniaFact]
+    public async Task NarrowestBar_WithTheMenuOpen_TimeLabelsStayInsideTheCard()
+    {
+        var (win, vm, player) = await Open("Bar", "Classic", 240, 140, T("Clock", TimeSpan.FromMinutes(61)));
+        try
+        {
+            var more = win.FindControl<Button>("BarMoreButton")!;
+            more.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            await PumpFor(300);
+            Assert.True(win.FindControl<Avalonia.Controls.Primitives.Popup>("MorePopup")!.IsOpen);
+
+            var root = win.FindControl<Border>("RootBorder")!;
+            var card = new Rect(root.TranslatePoint(default, win)!.Value, root.Bounds.Size).Deflate(root.BorderThickness.Left);
+            var radius = root.CornerRadius.TopLeft;
+            bool InsideRounded(Point p)
+            {
+                if (!card.Contains(p)) return false;
+                var cx = Math.Clamp(p.X, card.Left + radius, card.Right - radius);
+                var cy = Math.Clamp(p.Y, card.Top + radius, card.Bottom - radius);
+                return (p.X - cx) * (p.X - cx) + (p.Y - cy) * (p.Y - cy) <= radius * radius;
+            }
+            var seek = win.FindControl<Slider>("BarSeekSlider")!;
+            foreach (var label in ((Grid)seek.GetVisualParent()!).Children.OfType<TextBlock>())
+            {
+                var r = new Rect(label.TranslatePoint(default, win)!.Value, label.Bounds.Size);
+                _out.WriteLine($"{label.Text}: {r} in card {card} r={radius}");
+                Assert.True(label.Bounds.Width + 0.5 >= label.DesiredSize.Width, $"{label.Text} squeezed");
+                foreach (var corner in new[] { r.TopLeft, r.TopRight, r.BottomLeft, r.BottomRight })
+                    Assert.True(InsideRounded(corner), $"{label.Text} corner {corner} cut by the card edge");
+            }
         }
         finally { win.Close(); }
     }
@@ -493,7 +737,9 @@ public class MiniPlayerUnifiedControlsTests
         }
         _out.WriteLine($"save with {SyncWorkPersistence.WorkMs} ms synchronous file work per call, UI-thread ms: {string.Join(", ", samples.Select(s => s.ToString("0.0")))}");
         Assert.Equal(0, slow.UiThreadCalls);
-        Assert.True(samples.Skip(2).Max() < SyncWorkPersistence.WorkMs / 2.0,
+        // Before the fix each save held the UI for the three calls' work (203-307 ms measured);
+        // the bound leaves room for unrelated dispatcher jobs the drain also runs in-suite.
+        Assert.True(samples.Skip(2).Max() < SyncWorkPersistence.WorkMs * 2,
             $"a save held the UI thread {samples.Skip(2).Max():0.0} ms");
 
         // The real service on a temp folder, for the record (no assertion: disk timing varies).
