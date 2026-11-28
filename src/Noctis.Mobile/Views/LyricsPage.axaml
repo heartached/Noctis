@@ -296,7 +296,7 @@
             <!-- Keeps Avalonia's render loop awake while the lines play (RenderKeepAlive). -->
             <views:RenderKeepAlive Grid.Row="3" Name="KeepAlive" HorizontalAlignment="Left" VerticalAlignment="Top" />
             <ScrollViewer Grid.Row="3" Name="LyricsScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
-                          IsVisible="{Binding Lyrics.HasLyrics}" FlowDirection="{Binding Lyrics.LinesFlowDirection}">
+                          IsVisible="{Binding Lyrics.HasLyrics}" FlowDirection="LeftToRight">
                 <!-- Rows are built once and handed the next line (RowItemsControl): each line
                      change scrolled a line in, and Avalonia's own path built its row from
                      scratch, ~330 KB for a plain line and ~1 MB for a word-timed one. -->
@@ -313,9 +313,9 @@
                         <DataTemplate x:DataType="m:LyricLine">
                             <Button Classes="lyric-line" Classes.active="{Binding IsActive}" views:LineScale.IsActive="{Binding IsActive}"
                                     Background="Transparent" BorderThickness="0" Padding="0" Margin="0,14"
-                                    HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
+                                    HorizontalAlignment="{Binding Side, Converter={StaticResource VoiceAlign}}"
                                     HorizontalContentAlignment="Left"
-                                    RenderTransformOrigin="{Binding Voice, Converter={StaticResource VoiceOrigin}}"
+                                    RenderTransformOrigin="{Binding Side, Converter={StaticResource VoiceOrigin}}"
                                     Opacity="{Binding LineOpacity}" views:LineFade.IsEnabled="True"
                                     views:LineFade.BlurRadius="{Binding BlurRadius}"
                                     AutomationProperties.Name="{Binding Text}"
@@ -343,19 +343,20 @@
                                     </StackPanel>
                                     <TextBlock Text="{Binding Text, Converter={x:Static conv:KeepHangulWordsConverter.Instance}}" FontWeight="Bold"
                                                TextWrapping="Wrap" Foreground="{StaticResource LyricsFg}" IsVisible="{Binding ShowLineText}"
-                                               TextAlignment="{Binding Voice, Converter={StaticResource VoiceTextAlign}}" />
+                                               TextAlignment="{Binding Side, Converter={StaticResource VoiceTextAlign}}"
+                                               FlowDirection="{Binding IsRightToLeft, Converter={x:Static conv:LyricLineFlowDirectionConverter.Instance}}" />
                                     <!-- Word cells kept for the row's next line (WordItemsControl). -->
                                     <views:WordItemsControl ItemsSource="{Binding Words}" Classes="word-layer" Classes.active="{Binding IsSweepFocused}"
                                                             IsVisible="{Binding ShowWords}" ItemTemplate="{StaticResource WordCell}" ClipToBounds="False">
                                         <views:WordItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
-                                                <WrapPanel Orientation="Horizontal" ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}" />
+                                                <controls:LyricWrapPanel Orientation="Horizontal" ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}" RightToLeft="{Binding IsRightToLeft}" />
                                             </ItemsPanelTemplate>
                                         </views:WordItemsControl.ItemsPanel>
                                     </views:WordItemsControl>
                                     <views:WordItemsControl ItemsSource="{Binding BackgroundWords}" Classes="word-layer bg-vocals" Classes.active="{Binding IsSweepFocused}"
                                                             ItemTemplate="{StaticResource WordCell}" ClipToBounds="False"
-                                                            HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
+                                                            HorizontalAlignment="{Binding Side, Converter={StaticResource VoiceAlign}}"
                                                             FontSize="{Binding $parent[UserControl].((vm:ShellViewModel)DataContext).Lyrics.LayerFontSize}">
                                         <views:WordItemsControl.IsVisible>
                                             <MultiBinding Converter="{x:Static BoolConverters.And}">
@@ -365,13 +366,14 @@
                                         </views:WordItemsControl.IsVisible>
                                         <views:WordItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
-                                                <WrapPanel Orientation="Horizontal" ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}" />
+                                                <controls:LyricWrapPanel Orientation="Horizontal" ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}" RightToLeft="{Binding IsRightToLeft}" />
                                             </ItemsPanelTemplate>
                                         </views:WordItemsControl.ItemsPanel>
                                     </views:WordItemsControl>
                                     <TextBlock Text="{Binding Transliteration}" TextWrapping="Wrap" Opacity="0.6" FontWeight="SemiBold"
                                                Foreground="{StaticResource LyricsFg}"
-                                               TextAlignment="{Binding Voice, Converter={StaticResource VoiceTextAlign}}"
+                                               TextAlignment="{Binding Side, Converter={StaticResource VoiceTextAlign}}"
+                                               FlowDirection="{Binding Transliteration, Converter={x:Static conv:LyricTextFlowDirectionConverter.Instance}}"
                                                FontSize="{Binding $parent[UserControl].((vm:ShellViewModel)DataContext).Lyrics.LayerFontSize}">
                                         <TextBlock.IsVisible>
                                             <MultiBinding Converter="{x:Static BoolConverters.And}">
@@ -382,7 +384,8 @@
                                     </TextBlock>
                                     <TextBlock Text="{Binding Translation, Converter={x:Static conv:KeepHangulWordsConverter.Instance}}" TextWrapping="Wrap"
                                                Opacity="0.6" FontWeight="SemiBold" Foreground="{StaticResource LyricsFg}"
-                                               TextAlignment="{Binding Voice, Converter={StaticResource VoiceTextAlign}}"
+                                               TextAlignment="{Binding Side, Converter={StaticResource VoiceTextAlign}}"
+                                               FlowDirection="{Binding Translation, Converter={x:Static conv:LyricTextFlowDirectionConverter.Instance}}"
                                                FontSize="{Binding $parent[UserControl].((vm:ShellViewModel)DataContext).Lyrics.LayerFontSize}">
                                         <TextBlock.IsVisible>
                                             <MultiBinding Converter="{x:Static BoolConverters.And}">

@@ -1555,7 +1555,7 @@
                                                 Padding="0"
                                                 Margin="0,10"
                                                 MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
-                                                RenderTransformOrigin="{Binding Voice, Converter={StaticResource VoiceOrigin}}"
+                                                RenderTransformOrigin="{Binding Side, Converter={StaticResource VoiceOrigin}}"
                                                 HorizontalContentAlignment="Left"
                                                 Cursor="Hand"
                                                 IsHitTestVisible="{Binding IsClickable}"
@@ -1570,7 +1570,7 @@
                                                 </Button.HorizontalAlignment>
                                             <StackPanel HorizontalAlignment="Left"
                                                         MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
-                                            <Panel HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}">
+                                            <Panel HorizontalAlignment="{Binding Side, Converter={StaticResource VoiceAlign}}">
                                                 <!-- Plain text layer (lines without word timings) -->
                                                 <TextBlock Text="{Binding Text}"
                                                            Classes="mini-lyric-plain"
@@ -1658,7 +1658,7 @@
                                                           Classes="word-layer bg-vocals"
                                                           Classes.active="{Binding IsSweepFocused}"
                                                           Opacity="{Binding LineOpacity}"
-                                                          HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
+                                                          HorizontalAlignment="{Binding Side, Converter={StaticResource VoiceAlign}}"
                                                           ClipToBounds="False"
                                                           Margin="0,6,0,0"
                                                           FontSize="{Binding $parent[ItemsControl].FontSize, Converter={StaticResource FontScale}, ConverterParameter=0.6}"
@@ -1688,7 +1688,7 @@
                                                           Classes="word-layer romanization"
                                                           Classes.active="{Binding IsSweepFocused}"
                                                           Opacity="{Binding LineOpacity}"
-                                                          HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
+                                                          HorizontalAlignment="{Binding Side, Converter={StaticResource VoiceAlign}}"
                                                           ClipToBounds="False"
                                                           Margin="0,6,0,0"
                                                           FontSize="{Binding $parent[ItemsControl].FontSize, Converter={StaticResource FontScale}, ConverterParameter=0.6}"
@@ -1707,7 +1707,7 @@
                                                 </ItemsControl.Transitions>
                                                 <ItemsControl.ItemsPanel>
                                                     <ItemsPanelTemplate>
-                                                        <controls:LyricWrapPanel Orientation="Horizontal" ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}" RightToLeft="{Binding IsRightToLeft}"/>
+                                                        <controls:LyricWrapPanel Orientation="Horizontal" ItemsAlignment="{Binding TransliterationSide, Converter={StaticResource VoiceItemsAlign}}" RightToLeft="{Binding TransliterationIsRightToLeft}"/>
                                                     </ItemsPanelTemplate>
                                                 </ItemsControl.ItemsPanel>
                                             </ItemsControl>
@@ -1716,8 +1716,9 @@
                                                        FontWeight="Bold"
                                                        Foreground="{Binding $parent[Window].((vm:MiniPlayerViewModel)DataContext).Lyrics.LyricsPrimaryFg}"
                                                        Opacity="{Binding LineOpacity}"
-                                                       HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
-                                                       TextAlignment="{Binding Voice, Converter={StaticResource VoiceTextAlign}}"
+                                                       HorizontalAlignment="{Binding Side, Converter={StaticResource VoiceAlign}}"
+                                                       TextAlignment="{Binding Side, Converter={StaticResource VoiceTextAlign}}"
+                                                       FlowDirection="{Binding Transliteration, Converter={x:Static conv:LyricTextFlowDirectionConverter.Instance}}"
                                                        Margin="0,6,0,0"
                                                        FontSize="{Binding $parent[ItemsControl].FontSize, Converter={StaticResource FontScale}, ConverterParameter=0.6}"
                                                        MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
@@ -1739,8 +1740,9 @@
                                                        FontWeight="Bold"
                                                        Foreground="{Binding $parent[Window].((vm:MiniPlayerViewModel)DataContext).Lyrics.LyricsPrimaryFg}"
                                                        Opacity="{Binding LineOpacity}"
-                                                       HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
-                                                       TextAlignment="{Binding Voice, Converter={StaticResource VoiceTextAlign}}"
+                                                       HorizontalAlignment="{Binding Side, Converter={StaticResource VoiceAlign}}"
+                                                       TextAlignment="{Binding Side, Converter={StaticResource VoiceTextAlign}}"
+                                                       FlowDirection="{Binding Translation, Converter={x:Static conv:LyricTextFlowDirectionConverter.Instance}}"
                                                        Margin="0,6,0,0"
                                                        FontSize="{Binding $parent[ItemsControl].FontSize, Converter={StaticResource FontScale}, ConverterParameter=0.6}"
                                                        MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"

@@ -89,8 +89,32 @@ public class LyricLineTextAlignmentConverter : IMultiValueConverter
 /// in it orders its runs from the right and keeps its punctuation at its end.</summary>
 public class LyricLineFlowDirectionConverter : IValueConverter
 {
+    public static readonly LyricLineFlowDirectionConverter Instance = new();
+
+    // Boxed once: a phone row handed its next line converts again (RowItemsControl).
+    internal static readonly object RightToLeft = FlowDirection.RightToLeft;
+    internal static readonly object LeftToRight = FlowDirection.LeftToRight;
+
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
-        value is true ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
+        value is true ? RightToLeft : LeftToRight;
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotImplementedException();
+}
+
+/// <summary>
+/// A secondary row's text → its own paragraph direction, by its first letter: an English
+/// translation under a Persian line reads left to right, a Persian one under an English line right
+/// to left, wherever the row sits (LyricLine.Side).
+/// </summary>
+public class LyricTextFlowDirectionConverter : IValueConverter
+{
+    public static readonly LyricTextFlowDirectionConverter Instance = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        Noctis.Controls.TextDirection.FirstStrong(value as string) == FlowDirection.RightToLeft
+            ? LyricLineFlowDirectionConverter.RightToLeft
+            : LyricLineFlowDirectionConverter.LeftToRight;
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotImplementedException();

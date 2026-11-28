@@ -95,9 +95,20 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     /// <summary>The lines the page shows: synced, or plain (pre-activated, never swept).</summary>
     public BulkObservableCollection<LyricLine> Lines { get; } = new();
 
-    /// <summary>The way the lines read, by their own letters (<see cref="ScriptDirection"/>): an
-    /// Arabic song's lines sit right, an English song's left, whatever the phone's language.</summary>
-    [ObservableProperty] private Avalonia.Media.FlowDirection _linesFlowDirection;
+    /// <summary>
+    /// Marks which lines read right to left, by their own letters and the desktop's rule
+    /// (TextDirection.LineDirections, #269): a Persian line sits right with its words from the
+    /// right, an English line left, whatever the song's other lines or the phone's language.
+    /// </summary>
+    internal static void ApplyLineDirections(IReadOnlyList<LyricLine> lines)
+    {
+        var texts = new string[lines.Count];
+        for (var i = 0; i < texts.Length; i++) texts[i] = lines[i].Text ?? "";
+        var rtl = new bool[texts.Length];
+        Noctis.Controls.TextDirection.LineDirections(texts, rtl);
+        for (var i = 0; i < texts.Length; i++)
+            if (lines[i].IsRightToLeft != rtl[i]) lines[i].SetRightToLeft(rtl[i]);
+    }
 
     [ObservableProperty, NotifyPropertyChangedFor(nameof(WantsFrames))] private bool _isSynced;
     [ObservableProperty, NotifyPropertyChangedFor(nameof(StatusText), nameof(ShowsEmptyState))] private bool _hasLyrics;
@@ -516,8 +527,8 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
         }
 
         Source = result.Source;
+        ApplyLineDirections(result.Lines);
         Lines.ReplaceAll(result.Lines);
-        LinesFlowDirection = ScriptDirection.Of(result.Lines.Select(l => l.Text));
         _hasWordTiming = result.Lines.Any(l => l.HasWords || l.HasBackgroundWords || l.HasTransliterationWords);
         IsSynced = result.IsSynced;
         HasLyrics = result.Lines.Count > 0;
