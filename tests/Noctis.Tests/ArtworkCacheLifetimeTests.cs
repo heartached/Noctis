@@ -200,7 +200,7 @@ public class ArtworkCacheLifetimeTests : IDisposable
 
         // Arranged, then given a path: the request is sized for the control, not the cap.
         image.SourcePath = Path("tile");
-        await Flush();
+        await CoverLoadSync.Settle();
 
         Assert.Equal(new[] { 256 }, _requestedWidths); // 180 logical px at 1x → 256 bucket
         Assert.NotNull(image.Source);
@@ -218,7 +218,7 @@ public class ArtworkCacheLifetimeTests : IDisposable
         var image = new CachedImage { Width = 180, Height = 180, DecodeWidth = 768, SourcePath = Path("row") };
         var window = new Window { Width = 400, Height = 400, Content = image };
         window.Show();
-        await Flush();
+        await CoverLoadSync.Settle();
 
         var shown = Assert.IsAssignableFrom<Bitmap>(image.Source);
         Assert.Equal(256, shown.PixelSize.Width);
@@ -233,7 +233,7 @@ public class ArtworkCacheLifetimeTests : IDisposable
         var host = new ContentControl { Content = image };
         var window = new Window { Width = 400, Height = 400, Content = host };
         window.Show();
-        await Flush();
+        await CoverLoadSync.Settle();
         var bitmap = image.Source as Bitmap;
         Assert.NotNull(bitmap);
 
@@ -247,7 +247,7 @@ public class ArtworkCacheLifetimeTests : IDisposable
 
         // Coming back re-acquires from the cache.
         host.Content = image;
-        await Flush();
+        await CoverLoadSync.Settle();
         Assert.NotNull(image.Source);
         window.Close();
     }

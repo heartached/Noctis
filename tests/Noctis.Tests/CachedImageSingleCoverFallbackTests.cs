@@ -86,7 +86,7 @@ public class CachedImageSingleCoverFallbackTests : IDisposable
         var mid = image.Source;
 
         gate.Set();
-        await Flush(400);
+        await CoverLoadSync.Settle(400);
         var ownB = ArtworkCache.TryGet(P("b"), requested);
         var final = image.Source;
         window.Close();

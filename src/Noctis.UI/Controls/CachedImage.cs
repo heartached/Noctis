@@ -525,6 +525,7 @@ public class CachedImage : Image
         else if (ClearOnSourceChange && !showingThisCover)
             SetSource(null);
 
+        Interlocked.Increment(ref _pendingLoads);
         try
         {
             var bitmap = await Task.Run(() => DecodeGated(path, decodeWidth, generation, exact));
@@ -553,6 +554,35 @@ public class CachedImage : Image
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[CachedImage] Failed to load artwork '{path}': {ex.Message}");
+        }
+        finally
+        {
+            Interlocked.Decrement(ref _pendingLoads);
+        }
+    }
+
+    /// <summary>
+    /// Cache-miss loads started and not yet landed (decode queued or running, or its result not
+    /// yet handed to the control on the UI thread). Tests read it: a decode runs on a below-normal
+    /// pool thread, which a busy machine can leave waiting far longer than any fixed settle time.
+    /// </summary>
+    internal static int PendingLoads => Volatile.Read(ref _pendingLoads);
+    private static int _pendingLoads;
+
+    /// <summary>
+    /// Tests (<see cref="ArtworkCache.ClearForTests"/>): waits until every load started so far has
+    /// landed, pumping the UI thread when called on it (a load ends there). A test class swaps the
+    /// static <see cref="ArtworkCache.DecoderOverride"/>; a load the previous test started (a
+    /// control on a window it never closed, a decode a busy machine left waiting) used to land in
+    /// the next test's decoder and its counts.
+    /// </summary>
+    internal static void WaitForLoadsForTests(TimeSpan budget)
+    {
+        var deadline = Environment.TickCount64 + (long)budget.TotalMilliseconds;
+        while (PendingLoads > 0 && Environment.TickCount64 < deadline)
+        {
+            if (Dispatcher.UIThread.CheckAccess()) Dispatcher.UIThread.RunJobs();
+            Thread.Sleep(5);
         }
     }
 
