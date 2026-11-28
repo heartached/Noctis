@@ -127,6 +127,26 @@ public class PersianLyricsFontTests
         }
     }
 
+    [AvaloniaTheory]
+    [InlineData(400, 600)]
+    [InlineData(700, 700)]   // the phone's lyric lines (FontWeight="Bold")
+    public void OnThePhone_PersianInItsInterFamily_ResolvesToTheBundledVazirmatn(int requested, int drawn)
+    {
+        // The phone (NoctisApplication: WithInterFont + ScriptFonts) gives its text the registered
+        // Inter family with real weights (MobileStyles: "fonts:Inter#Inter, $Default").
+        var fm = SkiaFontManager(ScriptFonts.Options());
+        fm.AddFontCollection(new Avalonia.Fonts.Inter.InterFontCollection());
+        var family = FontFamily.Parse("fonts:Inter#Inter, $Default");
+        foreach (var cp in PersianCodepoints)
+        {
+            Assert.True(fm.TryMatchCharacter(cp, FontStyle.Normal, (FontWeight)requested, FontStretch.Normal,
+                family, CultureInfo.GetCultureInfo("en-US"), out var typeface), $"U+{cp:X4}");
+            Assert.Equal(Vazirmatn, typeface.FontFamily.Name);
+            Assert.True(fm.TryGetGlyphTypeface(typeface, out var gt));
+            Assert.Equal(drawn, (int)gt!.Weight);
+        }
+    }
+
     [AvaloniaFact]
     public void OnMacOsAndLinux_TheArabicFaceComesBeforeThePlatformFaces_WhichKeepTheirOrder()
     {
