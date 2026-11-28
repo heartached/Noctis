@@ -351,6 +351,9 @@ public class KaraokeWordText : TextBlock
         }
     }
 
+    /// <summary>Tests: the layout the word (in one piece) is drawn from.</summary>
+    internal TextLayout? WordLayout { get { EnsurePieces(); return _pieces.Count == 1 ? _pieces[0].Layout : null; } }
+
     /// <summary>Tests: every piece was last drawn in one colour (no gradient).</summary>
     internal bool DrawnUniform => _pieces.Count > 0 && _pieces.TrueForAll(p => p.DrawnUniform);
 
@@ -441,7 +444,7 @@ public class KaraokeWordText : TextBlock
 
         var sweep = (Text ?? string.Empty).TrimEnd();
         var typeface = new Typeface(FontFamily, FontStyle, FontWeight, FontStretch);
-        using var word = new TextLayout(sweep, typeface, FontSize, Brushes.White);
+        using var word = new TextLayout(sweep, typeface, FontSize, Brushes.White, flowDirection: ParagraphOf(sweep));
         _glyphWidth = word.WidthIncludingTrailingWhitespace;
         _layoutHeight = word.Height;
         _effect = null;
@@ -485,6 +488,15 @@ public class KaraokeWordText : TextBlock
         }
     }
 
+    /// <summary>
+    /// The paragraph direction a word is laid out in: its own, by its first letter. In a
+    /// left-to-right paragraph Avalonia gives a joiner (ZWNJ, ZWJ) the paragraph's level, not its
+    /// neighbours', and the halves of "می‌خواهم" on either side of it were drawn swapped
+    /// ("خواهم‌می", #269); in a right-to-left one they keep their order.
+    /// </summary>
+    internal static FlowDirection ParagraphOf(string text) =>
+        Noctis.Helpers.RightToLeftScript.StartsRightToLeft(text) ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
+
     private Piece MakePiece(string text, Typeface typeface, double x, double width)
     {
         // Absolute endpoints across the piece's own advance: stop offsets are then plain
@@ -498,9 +510,9 @@ public class KaraokeWordText : TextBlock
         var solid = new SolidColorBrush(Colors.White);
         return new Piece
         {
-            Layout = new TextLayout(text, typeface, FontSize, brush),
+            Layout = new TextLayout(text, typeface, FontSize, brush, flowDirection: ParagraphOf(text)),
             Brush = brush,
-            SolidLayout = new TextLayout(text, typeface, FontSize, solid),
+            SolidLayout = new TextLayout(text, typeface, FontSize, solid, flowDirection: ParagraphOf(text)),
             Solid = solid,
             X = x,
             Width = Math.Max(1, width),

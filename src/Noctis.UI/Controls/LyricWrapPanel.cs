@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Layout;
 using Avalonia.VisualTree;
 
 namespace Noctis.Controls;
@@ -25,79 +26,69 @@ public class LyricWrapPanel : WrapPanel
 
     protected override Size ArrangeOverride(Size finalSize)
     {
+        // WrapPanel breaks the rows; each row's cells are then placed by LyricRowPlacement, the
+        // rule the resting copy (KaraokeRestingWords) places them by too.
         var size = base.ArrangeOverride(finalSize);
-        if (RightToLeft) Mirror(finalSize.Width);
-        AlignRowsByTheirGlyphs(finalSize.Width);
-        return size;
-    }
-
-    private void Mirror(double width)
-    {
-        foreach (var child in Children)
-        {
-            // Bounds is the arranged box inside the margin: mirror the whole slot.
-            var b = child.Bounds;
-            var m = child.Margin;
-            var x = b.X - m.Left;
-            var w = b.Width + m.Left + m.Right;
-            child.Arrange(new Rect(width - x - w, b.Y - m.Top, w, b.Height + m.Top + m.Bottom));
-        }
-    }
-
-    /// <summary>
-    /// WrapPanel aligns a row by its cells, and a row's last cell ends in blank: its word's
-    /// trailing space, or the line-final pad (WordOverflowPaddingConverter). A row against the
-    /// right edge ended that much short of it, a centred one sat half of it off (#269). Each row is
-    /// moved, as drawn, until its glyphs meet its edge or sit centred; the move is rounded once,
-    /// so a row ends within half a pixel of the edge.
-    /// </summary>
-    private void AlignRowsByTheirGlyphs(double width)
-    {
-        var rtl = RightToLeft;
-        var alignment = ItemsAlignment;
-        var toRight = alignment == (rtl ? WrapPanelItemsAlignment.Start : WrapPanelItemsAlignment.End);
-        var toLeft = alignment == (rtl ? WrapPanelItemsAlignment.End : WrapPanelItemsAlignment.Start);
         var children = Children;
+        var dpi = UseLayoutRounding ? LayoutHelper.GetLayoutScale(this) : 0;
         var rowStart = 0;
         while (rowStart < children.Count)
         {
             var y = children[rowStart].Bounds.Y;
             var rowEnd = rowStart;
-            double left = double.MaxValue, right = double.MinValue;
+            var visible = 0;
             while (rowEnd < children.Count && children[rowEnd].Bounds.Y == y)
-            {
-                var cell = children[rowEnd++];
-                if (!cell.IsVisible || cell.Bounds.Width <= 0) continue;
-                var (l, r) = GlyphsOf(cell);
-                left = Math.Min(left, l);
-                right = Math.Max(right, r);
-            }
-            if (right > left)
-            {
-                var shift = toRight ? width - right : toLeft ? -left : width / 2 - (left + right) / 2;
-                if (Math.Abs(shift) > 0.01)
-                    for (var i = rowStart; i < rowEnd; i++)
-                    {
-                        var child = children[i];
-                        var b = child.Bounds;
-                        var m = child.Margin;
-                        child.Arrange(new Rect(b.X - m.Left + shift, b.Y - m.Top, b.Width + m.Left + m.Right, b.Height + m.Top + m.Bottom));
-                    }
-            }
+                if (children[rowEnd++].IsVisible) visible++;
+            if (visible > 0) PlaceRow(rowStart, rowEnd, visible, finalSize.Width, dpi);
             rowStart = Math.Max(rowEnd, rowStart + 1);
+        }
+        return size;
+    }
+
+    private void PlaceRow(int start, int end, int visible, double available, double dpi)
+    {
+        var children = Children;
+        Span<double> buffer = visible <= 64 ? stackalloc double[visible * 2] : new double[visible * 2];
+        var widths = buffer[..visible];
+        var xs = buffer[visible..];
+        double firstLeft = 0, firstRight = 0, lastLeft = 0, lastRight = 0;
+        var k = 0;
+        for (var i = start; i < end; i++)
+        {
+            var cell = children[i];
+            if (!cell.IsVisible) continue;
+            var m = cell.Margin;
+            widths[k] = cell.Bounds.Width + m.Left + m.Right;   // the slot WrapPanel gave it
+            var (l, r) = GlyphsOf(cell);
+            if (k == 0) (firstLeft, firstRight) = (l + m.Left, r + m.Left);
+            (lastLeft, lastRight) = (l + m.Left, r + m.Left);
+            k++;
+        }
+        LyricRowPlacement.Place(widths, firstLeft, firstRight, lastLeft, lastRight, available, ItemsAlignment, RightToLeft, dpi, xs);
+        k = 0;
+        for (var i = start; i < end; i++)
+        {
+            var cell = children[i];
+            if (!cell.IsVisible) continue;
+            var b = cell.Bounds;
+            var m = cell.Margin;
+            // ReSharper disable once CompareOfFloatsByEqualityOperator
+            if (xs[k] != b.X - m.Left)
+                cell.Arrange(new Rect(xs[k], b.Y - m.Top, widths[k], b.Height + m.Top + m.Bottom));
+            k++;
         }
     }
 
-    /// <summary>Where a cell's glyphs are in this panel: its word's (the "word-sweep" layer of
+    /// <summary>Where a cell's glyphs start and end inside it: its word's (the "word-sweep" layer of
     /// the word cell template), scaled as the cell scales it; the whole cell for anything else.</summary>
     private static (double Left, double Right) GlyphsOf(Control cell)
     {
-        var b = cell.Bounds;
+        var width = cell.Bounds.Width;
         var word = FindWord(cell);
-        if (word is null || word.Bounds.Width <= 0) return (b.X, b.Right);
-        var scale = b.Width / word.Bounds.Width;
+        if (word is null || word.Bounds.Width <= 0) return (0, width);
+        var scale = width / word.Bounds.Width;
         var (l, r) = word.GlyphSpan;
-        return (b.X + l * scale, b.X + r * scale);
+        return (l * scale, r * scale);
     }
 
     private static KaraokeWordText? FindWord(Visual visual)

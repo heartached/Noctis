@@ -41,7 +41,7 @@ public class PersianLyricsFontTests
     /// A font manager over Avalonia's real Skia font manager (the one the app runs with), with the
     /// given fallback options, whatever the headless session itself draws with.
     /// </summary>
-    private static FontManager SkiaFontManager(FontManagerOptions? options)
+    internal static FontManager SkiaFontManager(FontManagerOptions? options)
     {
         var type = Type.GetType("Avalonia.Skia.FontManagerImpl, Avalonia.Skia", throwOnError: true)!;
         var impl = (IFontManagerImpl)Activator.CreateInstance(type, nonPublic: true)!;
@@ -73,7 +73,7 @@ public class PersianLyricsFontTests
 
     /// <summary>Runs <paramref name="body"/> with <see cref="FontManager.Current"/> swapped for
     /// <paramref name="fontManager"/>, so TextLayout and TextBlock resolve fonts through it.</summary>
-    private static void WithFontManager(FontManager fontManager, Action body)
+    internal static void WithFontManager(FontManager fontManager, Action body)
     {
         var previous = GetService<FontManager>();
         Bind(fontManager);
