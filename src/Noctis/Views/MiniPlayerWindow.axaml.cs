@@ -82,6 +82,17 @@ public partial class MiniPlayerWindow : Window
 
     private MiniPlayerViewModel? Vm => DataContext as MiniPlayerViewModel;
 
+    /// <summary>Info column width from which the quality tag shows its label too.</summary>
+    internal const double QualityFullWidth = 140;
+    /// <summary>Info column width from which the quality tag shows its mark (label in the tooltip).</summary>
+    internal const double QualityIconWidth = 90;
+
+    /// <summary>The quality tag's room rule (artist line InlineContent): parameter "full" asks
+    /// for the label, anything else for the mark. Value: the info column width.</summary>
+    public static readonly Avalonia.Data.Converters.IValueConverter QualityRoom =
+        new Avalonia.Data.Converters.FuncValueConverter<double, string?, bool>((width, part) =>
+            width >= (part == "full" ? QualityFullWidth : QualityIconWidth));
+
     /// <summary>Every form's seek slider (one per form and design, all the same shared class).</summary>
     internal Slider[] SeekSliders => new[] { BarSeekSlider, CardSeekSlider, LargeSeekSlider, LyricsSeekSlider, PillSeekSlider, SleeveSeekSlider };
 
@@ -93,7 +104,14 @@ public partial class MiniPlayerWindow : Window
 
     public MiniPlayerWindow()
     {
+        _lyricsScroll = new LyricsScrollDriver(this, () => LyricsScroll, () => LyricsItems,
+            () => LyricsStack.Margin.Top, () => LyricsScrollDriver.PageAnchorRatio,
+            () => Vm?.Lyrics, m => LyricsView.Trace("mini " + m));
         InitializeComponent();
+        // The page's manual-scroll detection and Ctrl+wheel timing offset (LyricsScrollDriver).
+        LyricsScroll.PropertyChanged += OnLyricsOffsetChanged;
+        LyricsScroll.PointerWheelChanged += OnLyricsWheel;
+        LyricsScroll.AddHandler(PointerWheelChangedEvent, OnLyricsOffsetWheel, RoutingStrategies.Tunnel);
         // Plugin API 1.8: a lyrics renderer chosen in Settings draws these lines (none: untouched).
         Controls.PluginLyricLines.Attach(LyricsItems, Noctis.Plugins.LyricsSurface.MiniPlayer, () => (DataContext as MiniPlayerViewModel)?.Lyrics);
 
@@ -200,6 +218,9 @@ public partial class MiniPlayerWindow : Window
         // LargeArtClip / LyricsArtClip need no clip of their own any more: both forms'
         // artwork is now full bleed, so RootPanel's rounded clip above is what rounds it.
 
+        // Nothing is bound until a form is shown (SetFormBound).
+        foreach (var root in FormRoots) SetFormBound(root, false);
+
         _flow = new FlowingArtworkAnimator(this, MiniFlowBackdrop, MiniFlowLayer1, MiniFlowLayer2, MiniBeatGlow, GetBeatContext);
 
         _classicRootFill = RootBorder.Background;
@@ -276,8 +297,10 @@ public partial class MiniPlayerWindow : Window
             // half of this, the offset clamp at 0 stalled the first half-viewport of
             // lines against the top edge, where the presenter's clip cut them off.
             var v = e.NewSize.Height;
+            // The lyrics page's run-out padding and anchor (LyricsScrollDriver), so the
+            // active line lands at the same place in both views.
             LyricsStack.Margin = new Thickness(
-                0, Math.Round(v * LyricsAnchorRatio), 8, Math.Round(v * (1 - LyricsAnchorRatio)) + 24);
+                0, Math.Round(v * LyricsScrollDriver.TopPadRatio), 8, Math.Round(v * LyricsScrollDriver.BottomPadRatio));
         };
 
         // The form follows the window size; ClientSize covers both live resize drags
@@ -408,6 +431,7 @@ public partial class MiniPlayerWindow : Window
             _hookedVm.Lyrics.LyricsWindowMoving -= OnLyricsWindowMoving;
             _hookedVm.Lyrics.LyricsWindowMoved -= OnLyricsWindowMoved;
             _hookedVm.Player.PropertyChanged -= OnPlayerPropertyChanged;
+            _hookedVm.Player.Seeked -= OnPlayerSeeked;
             _hookedVm.FormResizeRequested -= OnFormResizeRequested;
             _hookedVm.Settings.PropertyChanged -= OnSettingsPropertyChanged;
         }
@@ -422,6 +446,7 @@ public partial class MiniPlayerWindow : Window
         _hookedVm.Lyrics.LyricsWindowMoving += OnLyricsWindowMoving;
         _hookedVm.Lyrics.LyricsWindowMoved += OnLyricsWindowMoved;
         _hookedVm.Player.PropertyChanged += OnPlayerPropertyChanged;
+        _hookedVm.Player.Seeked += OnPlayerSeeked;
         _hookedVm.FormResizeRequested += OnFormResizeRequested;
         _hookedVm.Settings.PropertyChanged += OnSettingsPropertyChanged;
         UpdateDesignSegment();
@@ -482,7 +507,10 @@ public partial class MiniPlayerWindow : Window
                 // close re-inflated the window to an obsolete size (the card came back
                 // huge after hiding lyrics).
                 if (_lastVmForm == MiniPlayerForm.Lyrics && Vm?.Form != MiniPlayerForm.Lyrics)
+                {
                     _preLyricsSize = null;
+                    LeaveLyricsScroll();
+                }
                 _lastVmForm = Vm?.Form;
 
                 SyncFormVisual();
@@ -505,12 +533,22 @@ public partial class MiniPlayerWindow : Window
             case nameof(LyricsViewModel.ScrollLineIndex) when Vm is { IsLyricsForm: true, Lyrics.IsSyncTabSelected: true } && !_windowAnchor.IsMoving:
                 CenterActiveLyric(animated: true);
                 break;
-            // Switching Synced/Plain: land on the line playing in either list (the page's mapping).
-            case nameof(LyricsViewModel.IsSyncTabSelected) when Vm?.IsLyricsForm == true:
-                _lyricsChaseRunning = false;
+            // Switching Synced/Plain: land on the line playing in either list (the page's
+            // mapping), with following back on, as the page does.
+            case nameof(LyricsViewModel.IsSyncTabSelected) when Vm is { IsLyricsForm: true } tabVm:
+                _lyricsScroll.LastScrolledIndex = -1;
+                _lyricsScroll.Cancel();
+                _lyricsScroll.CancelAutoFollowResumeTimer();
+                tabVm.Lyrics.IsAutoFollowPaused = false;
                 Avalonia.Threading.Dispatcher.UIThread.Post(
-                    () => CenterActiveLyric(animated: false),
+                    () => CenterActiveLyric(animated: true),
                     Avalonia.Threading.DispatcherPriority.Loaded);
+                break;
+            // Follow pill, the auto-return timer or a committed seek: re-anchor now (the page's rule).
+            case nameof(LyricsViewModel.IsAutoFollowPaused) when Vm is { IsLyricsForm: true, Lyrics.IsAutoFollowPaused: false }:
+                _lyricsScroll.CancelAutoFollowResumeTimer();
+                _lyricsScroll.LastScrolledIndex = -1;
+                CenterActiveLyric(animated: true);
                 break;
             case nameof(LyricsViewModel.IsColorModeArtwork):
                 UpdateFlowAnimationState();
@@ -525,7 +563,9 @@ public partial class MiniPlayerWindow : Window
     private void OnLyricsWindowMoving(object? sender, EventArgs e)
     {
         if (Vm is not { IsLyricsForm: true } vm) return;
-        _lyricsChaseRunning = false;
+        _lyricsScroll.Cancel();
+        // The offset settles to the restored value; nothing in between is the user's.
+        _lyricsScroll.IsProgrammaticScroll = true;
         var index = vm.Lyrics.ScrollLineIndex;
         var preferred = index >= 0 && index < vm.Lyrics.LyricLines.Count && vm.Lyrics.IsSyncTabSelected
             ? vm.Lyrics.LyricLines[index]
@@ -537,7 +577,10 @@ public partial class MiniPlayerWindow : Window
     {
         if (!_windowAnchor.IsMoving) return;
         var followed = _windowAnchor.Preferred;
-        if (!_windowAnchor.Restore(LyricsItems, LyricsScroll, y => LyricsScroll.Offset = new Vector(0, y)))
+        bool kept;
+        try { kept = _windowAnchor.Restore(LyricsItems, LyricsScroll, y => _lyricsScroll.ApplyOffset(LyricsScroll, y)); }
+        finally { _lyricsScroll.IsProgrammaticScroll = false; }
+        if (!kept)
             CenterActiveLyric(animated: false);
         // The move came with a line change: chase the new line as usual.
         else if (Vm is { } vm && vm.Lyrics.ScrollLineIndex is var index and >= 0
@@ -810,6 +853,7 @@ public partial class MiniPlayerWindow : Window
                 if (_visibleForm == prev) return;
                 outgoing.IsVisible = false;
                 outgoing.RenderTransform = FormPoseEnter;
+                SetFormBound(outgoing, false);
             }, FormFadeDuration);
         }
 
@@ -848,6 +892,7 @@ public partial class MiniPlayerWindow : Window
     private void ShowIncomingForm(MiniPlayerForm next)
     {
         var incoming = FormRoot(next);
+        SetFormBound(incoming, true);
         incoming.IsVisible = true;
         SyncChrome(next);
         UpdatePillSpin();
@@ -859,6 +904,24 @@ public partial class MiniPlayerWindow : Window
             incoming.Opacity = 1;
             incoming.RenderTransform = FormPoseRest;
         }, Avalonia.Threading.DispatcherPriority.Render);
+    }
+
+    /// <summary>Every form root, in MiniPlayerForm order.</summary>
+    internal Control[] FormRoots => new Control[]
+        { IconFormRoot, BarFormRoot, CardFormRoot, LargeIconFormRoot, LyricsFormRoot, PillFormRoot, SleeveFormRoot };
+
+    /// <summary>
+    /// Only the form on screen is bound. A hidden form's root carries a null DataContext, so
+    /// none of its bindings listen to the player: a position tick, a track change or a new
+    /// cover touches the visible form only (all seven used to update their sliders, labels,
+    /// marquees and artwork loads on every tick and every track — MiniPlayerUnifiedControlsTests
+    /// measures it). Showing a form clears the local value, so it inherits the window's view
+    /// model again and every binding re-reads the current state before it fades in.
+    /// </summary>
+    private static void SetFormBound(Control root, bool bound)
+    {
+        if (bound) root.ClearValue(DataContextProperty);
+        else if (root.DataContext != null || !root.IsSet(DataContextProperty)) root.DataContext = null;
     }
 
     private Control FormRoot(MiniPlayerForm form) => form switch
@@ -1378,7 +1441,8 @@ public partial class MiniPlayerWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
-        _lyricsChaseRunning = false;
+        LeaveLyricsScroll();
+        _lyricsScroll.Stop();
         _lyricsFontTimer?.Stop();
         _pillSpinner?.Stop();
         _flow?.Dispose();
@@ -1398,6 +1462,7 @@ public partial class MiniPlayerWindow : Window
             _hookedVm.Lyrics.LyricsWindowMoving -= OnLyricsWindowMoving;
             _hookedVm.Lyrics.LyricsWindowMoved -= OnLyricsWindowMoved;
             _hookedVm.Player.PropertyChanged -= OnPlayerPropertyChanged;
+            _hookedVm.Player.Seeked -= OnPlayerSeeked;
             _hookedVm.FormResizeRequested -= OnFormResizeRequested;
             // The settings VM outlives this window; a later toggle must not reach it.
             _hookedVm.Settings.PropertyChanged -= OnSettingsPropertyChanged;
@@ -2179,18 +2244,20 @@ public partial class MiniPlayerWindow : Window
             Avalonia.Threading.DispatcherPriority.Loaded);
     }
 
-    /// <summary>Anchor for the active lyric line, as a fraction of the viewport height —
-    /// slightly above centre, like the Apple Music mini player. The run-out padding in
-    /// LyricsScroll.SizeChanged is derived from the same ratio so every line can reach it.</summary>
-    private const double LyricsAnchorRatio = 0.42;
+    /// <summary>The lyrics page's scroll engine, driving this window's lyrics column: the same
+    /// tempo-spring glide with cascading lines, scrub/seek chase, anchor, and auto-follow pause
+    /// with the page's resume rules (LyricsScrollDriver).</summary>
+    private readonly LyricsScrollDriver _lyricsScroll;
 
-    /// <summary>Scrolls the active lyric line to the anchor point of the panel.</summary>
+    /// <summary>The scroll driver (tests).</summary>
+    internal LyricsScrollDriver LyricsScrollEngine => _lyricsScroll;
+
+    /// <summary>Scrolls to the line playing: animated as the page glides/chases, or a jump.
+    /// Plain lyrics land on the synced line mapped into the plain list.</summary>
     private void CenterActiveLyric(bool animated)
     {
         var vm = Vm;
         if (vm == null) return;
-
-        // Plain lyrics: the synced line mapped into the plain list (LyricsView's mapping).
         var index = vm.Lyrics.IsSyncTabSelected
             ? vm.Lyrics.ScrollLineIndex
             : LyricsView.MapSyncedToUnsyncedIndex(vm.Lyrics);
@@ -2198,76 +2265,47 @@ public partial class MiniPlayerWindow : Window
         {
             if (!vm.Lyrics.IsSyncTabSelected)
             {
-                _lyricsChaseRunning = false;
-                LyricsScroll.Offset = default;
+                _lyricsScroll.Cancel();
+                _lyricsScroll.ApplyOffset(LyricsScroll, 0);
             }
             return;
         }
-
-        var container = LyricsItems.ContainerFromIndex(index);
-        if (container == null) return;
-
-        var top = container.TranslatePoint(new Point(0, 0), LyricsItems);
-        if (top == null) return;
-
-        // Offset lives in extent space, which includes the wrapper StackPanel's top
-        // margin (the run-out padding) — TranslatePoint against LyricsItems does not,
-        // so add it back or every target lands short by the pad height (the lyrics
-        // page corrects the same way with LyricsItemsControl.Margin.Top).
-        var target = top.Value.Y + LyricsStack.Margin.Top + container.Bounds.Height / 2
-                     - LyricsScroll.Viewport.Height * LyricsAnchorRatio;
-        var max = Math.Max(0, LyricsScroll.Extent.Height - LyricsScroll.Viewport.Height);
-        target = Math.Clamp(target, 0, max);
-
         if (!animated)
         {
-            _lyricsChaseRunning = false;
-            LyricsScroll.Offset = new Vector(0, target);
+            _lyricsScroll.Cancel();
+            _lyricsScroll.LastScrolledIndex = index;
+            _lyricsScroll.JumpNow(index);
             return;
         }
-
-        // Exponential chase (same idea as the lyrics page / SmoothScrollBehavior): a
-        // new active line only moves the goalpost, so back-to-back updates during a
-        // timeline scrub retarget the glide mid-flight instead of restarting it from
-        // zero velocity — the flow never stutters. Stepped on the compositor frame clock
-        // with real dt, so the decay per second is the same at 60 and 250 Hz.
-        _lyricsChaseTarget = target;
-        if (_lyricsChaseRunning) return;
-        _lyricsChaseRunning = true;
-        _lyricsChaseLastTicks = System.Diagnostics.Stopwatch.GetTimestamp();
-        RequestAnimationFrame(LyricsChaseFrame);
+        _lyricsScroll.ScrollToLine(index);
     }
 
-    private double _lyricsChaseTarget;
-    private bool _lyricsChaseRunning;
-    private long _lyricsChaseLastTicks;
-    // 10 % of the remaining distance per ~15 ms tick, as before: τ = 0.015 / −ln(0.9).
-    private const double LyricsChaseTauSeconds = 0.142;
-
-    private void LyricsChaseFrame(TimeSpan _)
+    private void OnLyricsOffsetChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
     {
-        if (!_lyricsChaseRunning) return;
+        if (e.Property == ScrollViewer.OffsetProperty && e.NewValue is Vector v)
+            _lyricsScroll.OnOffsetChanged(v);
+    }
 
-        var now = System.Diagnostics.Stopwatch.GetTimestamp();
-        // Clamped so a stalled UI thread cannot produce one huge jump.
-        var dt = Math.Min((now - _lyricsChaseLastTicks) / (double)System.Diagnostics.Stopwatch.Frequency, 0.1);
-        _lyricsChaseLastTicks = now;
+    private void OnLyricsWheel(object? sender, PointerWheelEventArgs e) => _lyricsScroll.OnWheel();
 
-        var current = LyricsScroll.Offset.Y;
-        var remaining = _lyricsChaseTarget - current;
-        if (Math.Abs(remaining) < 0.5)
-        {
-            LyricsScroll.Offset = new Vector(0, _lyricsChaseTarget);
-            _lyricsChaseRunning = false;
-            return;
-        }
-        LyricsScroll.Offset = new Vector(0, current + remaining * (1 - Math.Exp(-dt / LyricsChaseTauSeconds)));
-        // Coerced write = target unreachable (extent shrank); a chase that cannot land must not keep the compositor rendering.
-        if (Math.Abs(LyricsScroll.Offset.Y - current) < 1e-6)
-        {
-            _lyricsChaseRunning = false;
-            return;
-        }
-        RequestAnimationFrame(LyricsChaseFrame);
+    // Ctrl/⌘+wheel over the lyrics: the page's timing-offset nudge (same step, same store).
+    private void OnLyricsOffsetWheel(object? sender, PointerWheelEventArgs e)
+    {
+        if (LyricsScrollDriver.TryNudgeOffset(Vm?.Lyrics, LyricsScroll, e))
+            e.Handled = true;
+    }
+
+    private void OnPlayerSeeked(object? sender, TimeSpan target) => _lyricsScroll.NoteSeekCommitted();
+
+    /// <summary>Leaving the lyrics column (other form, or closing): stop its motion and hand
+    /// following back, so a pause made here does not strand the lyrics page (they share the
+    /// view model's IsAutoFollowPaused).</summary>
+    private void LeaveLyricsScroll()
+    {
+        _lyricsScroll.Cancel();
+        _lyricsScroll.CancelAutoFollowResumeTimer();
+        _lyricsScroll.LastScrolledIndex = -1;
+        if (_hookedVm?.Lyrics is { IsAutoFollowPaused: true } lyrics)
+            lyrics.IsAutoFollowPaused = false;
     }
 }

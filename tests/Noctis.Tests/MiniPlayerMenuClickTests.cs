@@ -214,13 +214,16 @@ public class MiniPlayerMenuClickTests
             more.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Pump();
 
-            // Every form's transport row is in the tree (only one is visible at a time),
-            // so this covers Bar, Card, LargeIcon, Lyrics and the Pill / Sleeve designs at once.
+            // Every form's transport row is in the tree (only one is visible, and only the
+            // visible form is bound), so this covers Bar, Card, LargeIcon, Lyrics and the
+            // Pill / Sleeve designs at once; the one on screen names the mode (GitHub #144).
             var repeatButtons = win.GetVisualDescendants().OfType<Button>()
-                .Where(b => ToolTip.GetTip(b) as string == vm.Player.RepeatModeTip) // GitHub #144: names the mode
+                .Where(b => b.Classes.Contains("mini-repeat"))
                 .ToList();
             Assert.Equal(6, repeatButtons.Count);
-            Assert.All(repeatButtons, b => Assert.NotNull(b.Command));
+            var shown = Assert.Single(repeatButtons, b => b.IsEffectivelyVisible);
+            Assert.NotNull(shown.Command);
+            Assert.Equal(vm.Player.RepeatModeTip, ToolTip.GetTip(shown) as string);
 
             var card = win.FindControl<Border>("MenuCard")!;
             var labels = card.GetVisualDescendants().OfType<TextBlock>()
