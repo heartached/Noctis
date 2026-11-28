@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Noctis.Services;
@@ -44,36 +45,60 @@ public class MemoryTrimTests
     }
 
     [Fact]
-    public async Task WhileAudioPlays_TheTrimDoesNotBlock()
+    public void NoCodePath_AsksForABlockingCollection()
     {
-        // R2: the trim after the startup scan ran a forced blocking compacting gen2 while
-        // music played, and the render thread stalled 39 ms (gcPauseMs=34.1) inside it.
-        var quiet = MemoryTrim.Quiet;
-        var playing = true;
-        var modes = new System.Collections.Concurrent.ConcurrentQueue<bool>();
-        MemoryTrim.ForgetAppState(); // a host that never reports its windows: the old rule
-        MemoryTrim.Collector = blocking => modes.Enqueue(blocking);
-        MemoryTrim.IsAudioPlaying = () => Volatile.Read(ref playing);
-        MemoryTrim.Quiet = TimeSpan.FromMilliseconds(50);
+        // 11-27 follow-up: Play must never land behind a blocking collection the app asked for.
+        // The compacting trim (GCCollectionMode.Aggressive, blocking) paused 306 ms on a 575 MB
+        // harness heap and a press landing in it waited 345 ms for audio.
+        var src = File.ReadAllText(Path.Combine(FindRepoRoot(), "src", "Noctis.Core", "Services", "MemoryTrim.cs"));
+        var code = string.Join("\n", src.Split('\n').Where(l => !l.TrimStart().StartsWith("//")));
+        var calls = System.Text.RegularExpressions.Regex.Matches(code, @"GC\.Collect\(([^;]*)\);");
+        Assert.NotEmpty(calls);
+        foreach (System.Text.RegularExpressions.Match call in calls)
+        {
+            Assert.Contains("blocking: false", call.Value);
+            Assert.Contains("compacting: false", call.Value);
+        }
+        Assert.DoesNotContain("blocking: true", code);
+        Assert.DoesNotContain("GCCollectionMode.Aggressive", code);
+        Assert.DoesNotContain("LargeObjectHeapCompactionMode", code); // CompactOnce rides on the next blocking gen2
+    }
+
+    [Fact]
+    public void TheBackgroundCollection_NeverTurnsBlocking_AndPutsTheLatencyModeBack()
+    {
+        // "blocking: false" alone is only a wish: in Interactive the runtime turned 4 of 48 such
+        // requests into full blocking gen2s of 392-841 ms (harness). The trim requests it in
+        // SustainedLowLatency, held until the background collection ends.
+        var original = System.Runtime.GCSettings.LatencyMode;
+        var garbage = new System.Collections.Generic.List<byte[]>();
         try
         {
-            MemoryTrim.RequestAfterIdle("playing");
-            await WaitUntil(() => !modes.IsEmpty);
-            Assert.NotEmpty(modes);
-            Assert.DoesNotContain(true, modes); // background collection only
+            MemoryTrim.SetAudioPlaying(false);
+            System.Runtime.GCSettings.LatencyMode = System.Runtime.GCLatencyMode.Interactive;
+            var fullBlocking = GC.GetGCMemoryInfo(GCKind.FullBlocking).Index;
+            var gen2 = GC.CollectionCount(2);
+            for (var round = 0; round < 3; round++)
+            {
+                for (var i = 0; i < 200; i++) garbage.Add(new byte[100_000]);
+                garbage.Clear();
+                Assert.True(MemoryTrim.BackgroundCollect(TimeSpan.FromSeconds(10)), "the background gen2 never finished");
+                Assert.Equal(System.Runtime.GCLatencyMode.Interactive, System.Runtime.GCSettings.LatencyMode);
+            }
+            Assert.True(GC.CollectionCount(2) >= gen2 + 3);
+            Assert.Equal(fullBlocking, GC.GetGCMemoryInfo(GCKind.FullBlocking).Index);
 
-            modes.Clear();
-            Volatile.Write(ref playing, false);
-            MemoryTrim.RequestAfterIdle("idle");
-            await WaitUntil(() => !modes.IsEmpty);
-            Assert.NotEmpty(modes);
-            Assert.DoesNotContain(false, modes); // nothing playing: the full compacting trim
+            // While music plays the mode stays SustainedLowLatency after the trim's own hold.
+            MemoryTrim.SetAudioPlaying(true);
+            Assert.True(MemoryTrim.BackgroundCollect(TimeSpan.FromSeconds(10)));
+            Assert.Equal(System.Runtime.GCLatencyMode.SustainedLowLatency, System.Runtime.GCSettings.LatencyMode);
+            MemoryTrim.SetAudioPlaying(false);
+            Assert.Equal(System.Runtime.GCLatencyMode.Interactive, System.Runtime.GCSettings.LatencyMode);
         }
         finally
         {
-            MemoryTrim.Collector = null;
-            MemoryTrim.IsAudioPlaying = null;
-            MemoryTrim.Quiet = quiet;
+            MemoryTrim.SetAudioPlaying(false);
+            System.Runtime.GCSettings.LatencyMode = original;
         }
     }
 
@@ -103,39 +128,30 @@ public class MemoryTrimTests
     }
 
     [Fact]
-    public async Task ATrimSkippedWhilePlaying_RunsCompactingOnceStopped_AndRechecksBeforeRunning()
+    public async Task HostsThatDoNotReportWindows_NeverTrimTheWorkingSet_AndOweNothing()
     {
         var quiet = MemoryTrim.Quiet;
         var original = System.Runtime.GCSettings.LatencyMode;
         var longIdle = MemoryTrim.LongIdle;
         var modes = new System.Collections.Concurrent.ConcurrentQueue<bool>();
-        MemoryTrim.ForgetAppState(); // window rule: see the desktop tests below
-        MemoryTrim.Collector = blocking => modes.Enqueue(blocking);
+        MemoryTrim.ForgetAppState(); // server / phone
+        MemoryTrim.Collector = trimWorkingSet => modes.Enqueue(trimWorkingSet);
         MemoryTrim.Quiet = TimeSpan.FromMilliseconds(50);
         MemoryTrim.LongIdle = TimeSpan.FromMilliseconds(50);
         try
         {
             MemoryTrim.SetAudioPlaying(true);
-            MemoryTrim.RequestAfterIdle("window in the background");
-            await WaitUntil(() => !modes.IsEmpty);
-            Assert.Equal(new[] { false }, modes.ToArray()); // background only while playing
-
-            // Paused, then playing again before the deferred trim's quiet period ends: the
-            // trim checks again when it fires and still does not block.
-            modes.Clear();
-            MemoryTrim.SetAudioPlaying(false);
-            MemoryTrim.SetAudioPlaying(true);
+            MemoryTrim.RequestAfterIdle("scan");
             await WaitUntil(() => !modes.IsEmpty);
             Assert.Equal(new[] { false }, modes.ToArray());
 
-            // Stopped for good: the compacting trim it was owed runs, once.
             modes.Clear();
             MemoryTrim.SetAudioPlaying(false);
+            MemoryTrim.RequestAfterIdle("scan");
             await WaitUntil(() => !modes.IsEmpty);
-            await Task.Delay(150);
-            Assert.Equal(new[] { true }, modes.ToArray());
+            await Task.Delay(200);
+            Assert.Equal(new[] { false }, modes.ToArray()); // a background collection, nothing owed after it
 
-            // Nothing was skipped since: another stop owes nothing.
             modes.Clear();
             MemoryTrim.SetAudioPlaying(true);
             MemoryTrim.SetAudioPlaying(false);
@@ -145,7 +161,7 @@ public class MemoryTrimTests
         finally
         {
             MemoryTrim.SetAudioPlaying(false);
-            await Task.Delay(150); // let a deferred request, if any, drain into the fake collector
+            await Task.Delay(150);
             MemoryTrim.Collector = null;
             MemoryTrim.Quiet = quiet;
             MemoryTrim.LongIdle = longIdle;
@@ -154,28 +170,28 @@ public class MemoryTrimTests
     }
 
     [Theory]
-    // playing, app in background (null = host does not report), idle ms -> may block
+    // playing, app in background (null = host does not report), idle ms -> working-set trim
     [InlineData(true, null, 999_999, false)]
-    [InlineData(false, null, 0, true)]          // server / phone: the old rule
+    [InlineData(false, null, 999_999, false)]   // server / phone: never
     [InlineData(true, true, 999_999, false)]    // never while music plays
     [InlineData(false, false, 999_999, false)]  // a play button on screen (window or mini player)
     [InlineData(false, true, 59_999, false)]    // paused a moment ago: a resume is likely
     [InlineData(false, true, 60_000, true)]     // in the background and idle for a minute
-    public void ABlockingTrim_OnlyWhenNothingCanBeResumedOnScreen(bool playing, bool? background, long idleMs, bool expected) =>
-        Assert.Equal(expected, MemoryTrim.MayBlock(playing, background, idleMs, TimeSpan.FromSeconds(60)));
+    public void TheWorkingSetTrim_OnlyWhenNothingCanBeResumedOnScreen(bool playing, bool? background, long idleMs, bool expected) =>
+        Assert.Equal(expected, MemoryTrim.MayTrimWorkingSet(playing, background, idleMs, TimeSpan.FromSeconds(60)));
 
     [Fact]
-    public async Task Desktop_PausedOnScreen_TrimsInTheBackground_AndCompactsOnceHiddenAndIdle()
+    public async Task Desktop_PausedOnScreen_CollectsInTheBackground_AndTrimsTheWorkingSetOnceHiddenAndIdle()
     {
-        // Follow-up 11-27: a full trim ~6 s after pausing made a resume wait behind it (harness:
-        // up to 68.7 ms from resume to the next render, against 15.3 ms with a background trim).
+        // Follow-up 11-27: the working set is only given back with nothing of the app on screen
+        // and playback idle a minute; before that the trim is the background collection alone.
         var quiet = MemoryTrim.Quiet;
         var longIdle = MemoryTrim.LongIdle;
         var now = MemoryTrim.Now;
         var original = System.Runtime.GCSettings.LatencyMode;
         long clock = 1_000_000;
         var modes = new System.Collections.Concurrent.ConcurrentQueue<bool>();
-        MemoryTrim.Collector = blocking => modes.Enqueue(blocking);
+        MemoryTrim.Collector = trimWorkingSet => modes.Enqueue(trimWorkingSet);
         MemoryTrim.Now = () => Volatile.Read(ref clock);
         MemoryTrim.Quiet = TimeSpan.FromMilliseconds(50);
         try
@@ -201,7 +217,7 @@ public class MemoryTrimTests
             await WaitUntil(() => !modes.IsEmpty);
             Assert.Equal(new[] { false }, modes.ToArray());
 
-            // A minute idle and still hidden: the compaction it was owed runs.
+            // A minute idle and still hidden: the working-set trim it was owed runs.
             modes.Clear();
             Interlocked.Add(ref clock, 1_000);
             MemoryTrim.RequestAfterIdle("window in the background");
@@ -221,7 +237,7 @@ public class MemoryTrimTests
     }
 
     [Fact]
-    public async Task Desktop_AnOwedCompaction_IsAskedFor_WhenTheAppGoesToTheBackground()
+    public async Task Desktop_AnOwedWorkingSetTrim_IsAskedFor_WhenTheAppGoesToTheBackground()
     {
         var quiet = MemoryTrim.Quiet;
         var longIdle = MemoryTrim.LongIdle;
@@ -229,7 +245,7 @@ public class MemoryTrimTests
         var original = System.Runtime.GCSettings.LatencyMode;
         long clock = 5_000_000;
         var modes = new System.Collections.Concurrent.ConcurrentQueue<bool>();
-        MemoryTrim.Collector = blocking => modes.Enqueue(blocking);
+        MemoryTrim.Collector = trimWorkingSet => modes.Enqueue(trimWorkingSet);
         MemoryTrim.Now = () => Volatile.Read(ref clock);
         MemoryTrim.Quiet = TimeSpan.FromMilliseconds(50);
         // Small, so the deferred requests fire within the test; the idle rule then compares the
@@ -242,7 +258,7 @@ public class MemoryTrimTests
             MemoryTrim.SetAudioPlaying(true);
             MemoryTrim.RequestAfterIdle("startup");
             await WaitUntil(() => !modes.IsEmpty);
-            Assert.Equal(new[] { false }, modes.ToArray()); // playing: background, compaction owed
+            Assert.Equal(new[] { false }, modes.ToArray()); // playing: background, working-set trim owed
 
             modes.Clear();
             MemoryTrim.SetAudioPlaying(false); // asks again after LongIdle: the window is on screen
