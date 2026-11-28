@@ -70,10 +70,13 @@ public class LyricsRestingWordsTests
 
     /// <summary>An audiobook-like TTML: <paramref name="lines"/> word-timed lines of mixed
     /// length, with an over-wide word (DownOnly clamp), duet voices (end/centre alignment)
-    /// and lines whose last word carries the overflow pad.</summary>
-    internal static string BookTtml(int lines, int seed = 11)
+    /// and lines whose last word carries the overflow pad. <paramref name="persian"/>: every other
+    /// line is Persian (right to left, #269), duet and group lines among them.</summary>
+    internal static string BookTtml(int lines, int seed = 11, bool persian = false)
     {
         var rnd = new Random(seed);
+        string[] persianVocab = ["دوستت", "دارم", "تا", "ابد", "می‌خواهم", "با", "تو", "باشم،", "شب", "روشن",
+            "خیلی‌خیلی‌طولانی‌ترین‌کلمه‌ی‌ممکن‌در‌این‌آهنگ‌بلند", "است"];
         string[] vocab = ["the", "of", "and", "remembered", "quietly", "I", "a", "together,", "everything", "window.",
             "Supercalifragilisticexpialidociousnessesandmore", "it's", "neighbourhood", "map", "dumbbells", "carry"];
         var sb = new StringBuilder();
@@ -87,7 +90,8 @@ public class LyricsRestingWordsTests
             sb.Append($"<p begin=\"{T(t)}\" end=\"{T(t + n * 0.4)}\" ttm:agent=\"{agent}\">");
             for (int w = 0; w < n; w++)
             {
-                var word = vocab[rnd.Next(vocab.Length)];
+                var words = persian && i % 2 == 0 ? persianVocab : vocab;
+                var word = words[rnd.Next(words.Length)];
                 sb.Append($"<span begin=\"{T(t)}\" end=\"{T(t + 0.35)}\">{word}</span>");
                 if (w < n - 1) sb.Append(' ');
                 t += 0.4;
@@ -144,9 +148,31 @@ public class LyricsRestingWordsTests
     [AvaloniaTheory]
     [InlineData(1280.0)]
     [InlineData(900.0)]
-    public void RestingLine_LaysOutExactlyLikeTheWordLayer(double windowWidth)
+    public void RestingLine_LaysOutExactlyLikeTheWordLayer(double windowWidth) =>
+        AssertRestingMatchesLayer(BookTtml(160, seed: (int)windowWidth), windowWidth);
+
+    /// <summary>The same, line for line, for right-to-left (Persian) lines, second-voice and group
+    /// lines among them, at even and odd widths: the two place a row by one rule
+    /// (LyricRowPlacement), so no word moves when its line turns live or rests (#269).</summary>
+    [AvaloniaTheory]
+    [InlineData(1280.0)]
+    [InlineData(900.0)]
+    [InlineData(1013.0)]
+    [InlineData(777.0)]
+    [InlineData(1441.0)]
+    public void RestingLine_LaysOutExactlyLikeTheWordLayer_RightToLeftDuetAndGroup(double windowWidth)
     {
-        var (lines, _) = TtmlParser.Parse(BookTtml(160, seed: (int)windowWidth));
+        var checkedLines = AssertRestingMatchesLayer(BookTtml(170, seed: 7 + (int)windowWidth, persian: true), windowWidth);
+        Assert.Contains(checkedLines, l => l.IsRightToLeft && l.Voice == LyricVoice.Default);
+        Assert.Contains(checkedLines, l => l.IsRightToLeft && l.Voice == LyricVoice.Voice2);
+        Assert.Contains(checkedLines, l => l.IsRightToLeft && l.Voice == LyricVoice.Group);
+        Assert.Contains(checkedLines, l => !l.IsRightToLeft && l.Voice == LyricVoice.Voice2);
+        Assert.Contains(checkedLines, l => !l.IsRightToLeft && l.Voice == LyricVoice.Group);
+    }
+
+    private static List<LyricLine> AssertRestingMatchesLayer(string ttml, double windowWidth)
+    {
+        var (lines, _) = TtmlParser.Parse(ttml);
         var vm = MakeViewModel();
         var view = new LyricsView { DataContext = vm };
         var win = new Window { Width = windowWidth, Height = 800 };
@@ -160,7 +186,7 @@ public class LyricsRestingWordsTests
             Assert.True(view.GetVisualDescendants().Count() < 20_000, "the resting lines should not build word cells");
 
             var cellsField = typeof(KaraokeRestingWords).GetField("_cells", BindingFlags.Instance | BindingFlags.NonPublic)!;
-            var checkedLines = 0;
+            var checkedLines = new List<LyricLine>();
             for (int i = LyricsViewModel.WordLayerWindowLines + 1; i < vm.LyricLines.Count; i++)
             {
                 var line = vm.LyricLines[i];
@@ -189,9 +215,10 @@ public class LyricsRestingWordsTests
                 line.IsWordLayerLive = false;
                 Pump();
                 Assert.Equal(buttonBounds, button.Bounds);
-                checkedLines++;
+                checkedLines.Add(line);
             }
-            Assert.True(checkedLines > 100);
+            Assert.True(checkedLines.Count > 100);
+            return checkedLines;
         }
         finally
         {
