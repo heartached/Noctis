@@ -244,8 +244,9 @@
                 </Template>
             </Setter>
         </Style>
-        <!-- Artist line. It sits in an artist row (Grid.mini-artist-row: the artist in a Border,
-             the quality tag beside it), so its width bound is that Border's. -->
+        <!-- Artist line. It sits in an artist row (Grid.mini-artist-row: the artist in a Border),
+             so its width bound is that Border's. No quality tag here (owner 11-27: "remove the
+             lossless tag from the mini player"). -->
         <Style Selector="controls|MarqueeTextBlock.mini-artist" x:DataType="vm:MiniPlayerViewModel">
             <Setter Property="Text" Value="{Binding Player.CurrentTrack.ArtistDisplay, FallbackValue=''}"/>
             <Setter Property="FontSize" Value="12"/>
@@ -254,52 +255,6 @@
             <Setter Property="IsMiniPlayer" Value="True"/>
             <Setter Property="IsForAlbum" Value="True"/>
             <Setter Property="MaxDisplayWidth" Value="{Binding $parent[Border].Bounds.Width}"/>
-        </Style>
-        <!-- The codec quality tag (Lossless / Hi-Res / codec) ends the artist row on every form
-             and design: same place, no extra row, so it fits the Pill and the Bar too, and it
-             never scrolls away with a long artist. Room rule (MiniPlayerWindow.QualityRoom, on
-             the row's width): from QualityFullWidth (140) it shows mark + label; from
-             QualityIconWidth (90) the mark alone (label in the tooltip); narrower it steps
-             aside and the artist gets the whole row. Hidden while a music video's own audio
-             plays (it describes the song file). -->
-        <Style Selector="ContentControl.mini-quality">
-            <Setter Property="Grid.Column" Value="1"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="Content">
-                <Template>
-                    <StackPanel Classes="mini-quality" Orientation="Horizontal" Spacing="3" Background="Transparent"
-                                VerticalAlignment="Center" Margin="6,0,0,0"
-                                x:DataType="vm:MiniPlayerViewModel">
-                        <StackPanel.IsVisible>
-                            <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
-                                <Binding Path="Player.CurrentTrack.AudioQualityBadge" Converter="{x:Static StringConverters.IsNotNullOrEmpty}"/>
-                                <Binding Path="!Player.IsPlayingMusicVideoAudio"/>
-                                <Binding Path="$parent[Grid].Bounds.Width" Converter="{x:Static views:MiniPlayerWindow.QualityRoom}" ConverterParameter="icon"/>
-                            </MultiBinding>
-                        </StackPanel.IsVisible>
-                        <ToolTip.Tip>
-                            <StackPanel Width="220" Spacing="4">
-                                <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityBadge}"
-                                           FontSize="13" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-                                <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityDetailedInfo}"
-                                           FontSize="12" Opacity="0.9"
-                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                                <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityDescription, FallbackValue=''}"
-                                           FontSize="11" TextWrapping="Wrap" Opacity="0.85" Margin="0,4,0,0"
-                                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-                            </StackPanel>
-                        </ToolTip.Tip>
-                        <Viewbox Width="16" Height="11" VerticalAlignment="Center">
-                            <Path Data="{DynamicResource LosslessWaveIcon}" Fill="{DynamicResource MiniDrawerTextSoft}"/>
-                        </Viewbox>
-                        <TextBlock Text="{Binding Player.CurrentTrack.AudioQualityBadge, FallbackValue=''}"
-                                   FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center"
-                                   Foreground="{DynamicResource MiniDrawerTextSoft}"
-                                   IsVisible="{Binding $parent[Grid].Bounds.Width, Converter={x:Static views:MiniPlayerWindow.QualityRoom}, ConverterParameter=full}"/>
-                    </StackPanel>
-                </Template>
-            </Setter>
         </Style>
         <Style Selector="Window.plain-track-links controls|MarqueeTextBlock.mini-artist">
             <Setter Property="Foreground" Value="{DynamicResource MiniDrawerTextSoft}"/>
@@ -1139,7 +1094,6 @@
                         <TextBlock Classes="mini-no-track"/>
                         <Grid Classes="mini-artist-row" ColumnDefinitions="*,Auto">
                             <Border><controls:MarqueeTextBlock Classes="mini-artist"/></Border>
-                            <ContentControl Classes="mini-quality"/>
                         </Grid>
                     </StackPanel>
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
@@ -1194,7 +1148,6 @@
                         <TextBlock Classes="mini-no-track"/>
                         <Grid Classes="mini-artist-row" ColumnDefinitions="*,Auto">
                             <Border><controls:MarqueeTextBlock Classes="mini-artist"/></Border>
-                            <ContentControl Classes="mini-quality"/>
                         </Grid>
                     </StackPanel>
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
@@ -1315,7 +1268,6 @@
                         <TextBlock Classes="mini-no-track"/>
                         <Grid Classes="mini-artist-row" ColumnDefinitions="*,Auto">
                             <Border><controls:MarqueeTextBlock Classes="mini-artist"/></Border>
-                            <ContentControl Classes="mini-quality"/>
                         </Grid>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
@@ -1425,7 +1377,6 @@
                             <TextBlock Classes="mini-no-track"/>
                             <Grid Classes="mini-artist-row" ColumnDefinitions="*,Auto">
                                 <Border><controls:MarqueeTextBlock Classes="mini-artist"/></Border>
-                                <ContentControl Classes="mini-quality"/>
                             </Grid>
                         </StackPanel>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
@@ -1861,7 +1812,6 @@
                                     <TextBlock Classes="mini-no-track"/>
                                     <Grid Classes="mini-artist-row" ColumnDefinitions="*,Auto">
                                         <Border><controls:MarqueeTextBlock Classes="mini-artist"/></Border>
-                                        <ContentControl Classes="mini-quality"/>
                                     </Grid>
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="8,0,0,0">
@@ -1975,7 +1925,6 @@
                                     <TextBlock Classes="mini-no-track" HorizontalAlignment="Center"/>
                                     <Grid Classes="mini-artist-row" ColumnDefinitions="*,Auto">
                                         <Border><controls:MarqueeTextBlock Classes="mini-artist" HorizontalAlignment="Center"/></Border>
-                                        <ContentControl Classes="mini-quality"/>
                                     </Grid>
                                 </StackPanel>
                                 <Button Grid.Column="2" x:Name="SleeveMoreButton" Classes="mini-transport glass-circle mini-more" Click="OnMoreMenuClick"/>
