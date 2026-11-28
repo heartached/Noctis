@@ -122,6 +122,7 @@ public class KaraokeRestingWords : Control
             _glyphs = new double[count];
             _layouts = new TextLayout?[count];
         }
+        var typeface = new Typeface(_measurer.FontFamily, _measurer.FontStyle, _measurer.FontWeight, _measurer.FontStretch);
         // The template's Viewbox measures its word with no constraint.
         for (int i = 0; i < count; i++)
         {
@@ -130,11 +131,10 @@ public class KaraokeRestingWords : Control
             _measurer.Padding = WordOverflowPaddingConverter.PaddingFor(w);
             _measurer.Measure(Size.Infinity);
             _cellSizes[i] = _measurer.DesiredSize;
-            // What KaraokeWordText draws: the trimmed word.
-            _measurer.Text = (w.Text ?? string.Empty).TrimEnd();
-            _measurer.Padding = default;
-            _measurer.Measure(Size.Infinity);
-            _glyphs[i] = _measurer.TextLayout.WidthIncludingTrailingWhitespace;
+            // What KaraokeWordText draws, measured as it measures it (its _glyphWidth): the trimmed
+            // word. The same number, so the two place a row's words on the same pixels.
+            using (var glyphs = new TextLayout((w.Text ?? string.Empty).TrimEnd(), typeface, _measurer.FontSize, Brushes.White))
+                _glyphs[i] = glyphs.WidthIncludingTrailingWhitespace;
         }
         _measurer.Text = string.Empty;
         _measurer.Padding = default;
@@ -225,30 +225,34 @@ public class KaraokeRestingWords : Control
 
     private void ArrangeLine(int start, int end, double v, double lineV, double available)
     {
-        double u = 0;
-        if (ItemsAlignment != WrapPanelItemsAlignment.Start)
-        {
-            double total = 0;
-            for (int i = start; i < end; i++) total += Cell(_cellSizes[i], available).Size.Width;
-            u = ItemsAlignment == WrapPanelItemsAlignment.Center ? (available - total) / 2 : available - total;
-            // Leave out the blank at the row's reading end, as LyricWrapPanel does.
-            var last = end - 1;
-            var inset = ReadingEndInset(last) * Cell(_cellSizes[last], available).Scale;
-            u += ItemsAlignment == WrapPanelItemsAlignment.Center ? inset / 2 : inset;
-        }
-        // Arrange puts each cell on the pixel grid (a centred row can start mid-pixel).
-        var dpi = UseLayoutRounding ? LayoutHelper.GetLayoutScale(this) : 0;
-        var rtl = RightToLeft;
+        // Placed by the rule the live word layer places its rows by (LyricRowPlacement).
+        var n = end - start;
+        if (n <= 0) return;   // a word wider than the row breaks before itself: an empty row
+        Span<double> buffer = n <= 64 ? stackalloc double[n * 2] : new double[n * 2];
+        var widths = buffer[..n];
+        var xs = buffer[n..];
         for (int i = start; i < end; i++)
         {
             var (size, scale) = Cell(_cellSizes[i], available);
-            var x = rtl ? available - u - size.Width : u;
-            _cells[i] = dpi > 0
-                ? new Rect(LayoutHelper.RoundLayoutValue(x, dpi), LayoutHelper.RoundLayoutValue(v, dpi), size.Width, lineV)
-                : new Rect(x, v, size.Width, lineV);
+            widths[i - start] = size.Width;
             _scales[i] = scale;
-            u += size.Width;
         }
+        var (firstLeft, firstRight) = GlyphsIn(start);
+        var (lastLeft, lastRight) = GlyphsIn(end - 1);
+        // Arrange puts each cell on the pixel grid (a centred row can start mid-pixel).
+        var dpi = UseLayoutRounding ? LayoutHelper.GetLayoutScale(this) : 0;
+        LyricRowPlacement.Place(widths, firstLeft, firstRight, lastLeft, lastRight, available, ItemsAlignment, RightToLeft, dpi, xs);
+        var y = dpi > 0 ? LayoutHelper.RoundLayoutValue(v, dpi) : v;
+        for (int i = start; i < end; i++)
+            _cells[i] = new Rect(xs[i - start], y, widths[i - start], lineV);
+    }
+
+    /// <summary>Where word <paramref name="i"/>'s glyphs start and end inside its cell, scaled as
+    /// the cell is (KaraokeWordText.GlyphSpan).</summary>
+    private (double Left, double Right) GlyphsIn(int i)
+    {
+        var left = GlyphOffset(i, WordOverflowPaddingConverter.PaddingFor(Words![i])) * _scales[i];
+        return (left, left + _glyphs[i] * _scales[i]);
     }
 
     /// <summary>Tests: word <paramref name="i"/>'s arranged cell.</summary>
@@ -260,16 +264,6 @@ public class KaraokeRestingWords : Control
         var pad = WordOverflowPaddingConverter.PaddingFor(Words![i]);
         var left = _cells[i].X + GlyphOffset(i, pad) * _scales[i];
         return (left, left + _glyphs[i] * _scales[i]);
-    }
-
-    /// <summary>The blank in cell <paramref name="i"/> at its word's reading end (its trailing
-    /// space, the line-final pad), unscaled: what LyricWrapPanel leaves out of a row's alignment.</summary>
-    private double ReadingEndInset(int i)
-    {
-        var pad = WordOverflowPaddingConverter.PaddingFor(Words![i]);
-        return RightToLeft
-            ? GlyphOffset(i, pad)
-            : Math.Max(0, _cellSizes[i].Width - pad.Left - _glyphs[i]);
     }
 
     /// <summary>Where word <paramref name="i"/>'s glyphs start in its cell, unscaled: after its
