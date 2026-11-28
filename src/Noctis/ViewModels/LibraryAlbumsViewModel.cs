@@ -1598,7 +1598,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
         var answer = await ShowGroupNotice(new Views.ConfirmationRequest(
-            Loc.T("GroupAlbums.UndoConfirm", tracks.Count), Loc.T("GroupAlbums.Undo"),
+            Loc.Plural("GroupAlbums.UndoConfirm", tracks.Count), Loc.T("GroupAlbums.Undo"),
             Details: albums.Take(8).ToList(), ConfirmText: Loc.T("GroupAlbums.UndoButton")));
         if (!answer.Confirmed) return;
 

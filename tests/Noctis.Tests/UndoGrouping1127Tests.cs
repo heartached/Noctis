@@ -403,7 +403,7 @@ public class UndoGrouping1127Tests : IDisposable
         await vm.UndoGroupingCommand.ExecuteAsync(album);
 
         Assert.NotNull(asked);
-        Assert.Equal(Loc.T("GroupAlbums.UndoConfirm", 2), asked!.Message);
+        Assert.Equal(Loc.Plural("GroupAlbums.UndoConfirm", 2), asked!.Message);
         Assert.Equal(new[] { "Album (Deluxe) — Artist" }, asked.Details);
         Assert.False(asked.InfoOnly);
         Assert.Equal(new[] { g1, g2 }, Assert.Single(lib.UndoGroupCalls));
