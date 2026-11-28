@@ -130,6 +130,61 @@ public class LibraryService : ILibraryService
         _tagWriter = tagWriter;
         _syncRecorder = syncRecorder;
         _fileSystem = fileSystem ?? new LocalFileSystemSource();
+        PendingAlbumWrites.Register(this, FindPendingAlbumWrite, PendingAlbumWriteHonoured);
+    }
+
+    /// <summary>Songs whose pending album write was set this session, by path (a song loaded
+    /// with one is found by its id, <see cref="ComputeFileId"/>).</summary>
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, Track> _pendingAlbumFiles =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The library's song at <paramref name="path"/> with a pending album write
+    /// (<see cref="PendingAlbumWrites"/>), or null.</summary>
+    private Track? FindPendingAlbumWrite(string path)
+    {
+        // Every tag save of any file asks: plain dictionary lookups only.
+        var index = _trackIndex;
+        if (index.TryGetValue(ComputeFileId(path), out var byId) && byId.PendingAlbumWrite != null
+            && string.Equals(byId.FilePath, path, StringComparison.OrdinalIgnoreCase))
+            return byId;
+        return !_pendingAlbumFiles.IsEmpty && _pendingAlbumFiles.TryGetValue(path, out var t) && t.PendingAlbumWrite != null
+               && index.TryGetValue(t.Id, out var current) && ReferenceEquals(current, t)
+            ? t
+            : null;
+    }
+
+    /// <summary>Sets (or clears) <paramref name="t"/>'s pending album write and its retry flag.</summary>
+    private void SetPendingAlbumWrite(Track t, AlbumFileWrite? write)
+    {
+        t.PendingAlbumWrite = write;
+        t.AlbumGroupingUnwritten = write != null;
+        if (write != null) _pendingAlbumFiles[t.FilePath] = t;
+        else _pendingAlbumFiles.TryRemove(t.FilePath, out _);
+    }
+
+    /// <summary>
+    /// The song's file took its pending album write (the retry pass, or another save of the file
+    /// that wrote it first): what the grouping's tags replaced goes to Undo, and the write is done.
+    /// A write replaced meanwhile (grouped or undone again) is left for its own turn.
+    /// </summary>
+    private void PendingAlbumWriteDone(Track t, AlbumFileWrite write, RawTagSnapshot? replaced)
+    {
+        if (!ReferenceEquals(t.PendingAlbumWrite, write)) return;
+        if (replaced != null && write.Tags != null && t.GroupUndo is { } undo && AlbumUndo.Applies(t, undo))
+            undo.Raw = AlbumUndo.Keep(undo.Raw, replaced);
+        SetPendingAlbumWrite(t, null);
+    }
+
+    private void PendingAlbumWriteHonoured(Track t, AlbumFileWrite write, RawTagSnapshot? replaced)
+    {
+        if (!ReferenceEquals(t.PendingAlbumWrite, write)) return;
+        PendingAlbumWriteDone(t, write, replaced);
+        DebugLog.Write("Library", "Album grouping: a waiting album write went into another save of the file");
+        _ = Task.Run(async () =>
+        {
+            try { await SaveAsync().ConfigureAwait(false); }
+            catch (Exception ex) { DebugLog.Write("Library", $"Album grouping: save after a waiting write failed: {ex.Message}"); }
+        });
     }
 
     /// <summary>Batches rating/lyrics tag writes until the user is idle (null = write immediately).</summary>
@@ -3184,10 +3239,7 @@ public class LibraryService : ILibraryService
                     {
                         // What the grouping replaced, for Undo; the song's own state was set when
                         // it was grouped (or undone) and stays.
-                        if (replaced != null && t.GroupUndo is { } undo && AlbumUndo.Applies(t, undo))
-                            undo.Raw = AlbumUndo.Keep(undo.Raw, replaced);
-                        t.PendingAlbumWrite = null;
-                        t.AlbumGroupingUnwritten = false;
+                        PendingAlbumWriteDone(t, pending, replaced);
                         written.Add(t);
                         continue;
                     }
@@ -3343,6 +3395,7 @@ public class LibraryService : ILibraryService
                     Restore = pending?.Restore,
                     RestoreValues = pending?.RestoreValues,
                     Tags = pending?.Tags is { } earlier ? earlier.Then(tagsFor(t)) : tagsFor(t),
+                    Expected = AlbumUndo.Capture(t),
                 };
                 var written = false;
                 RawTagSnapshot? replaced = null;
@@ -3358,8 +3411,7 @@ public class LibraryService : ILibraryService
                 // documents never can be.
                 var retry = !written && t.HasFilesystemPath && !t.IsRemoteStream
                             && t.SourceType is SourceType.Local or SourceType.Smb;
-                t.AlbumGroupingUnwritten = retry;
-                t.PendingAlbumWrite = retry ? file : null;
+                SetPendingAlbumWrite(t, retry ? file : null);
                 // The user's album artist: the grouping pass must not re-key it, written or not.
                 t.AlbumArtistFromTag = true;
                 // The album name is the file's own tag now, not its folder's.
@@ -3407,6 +3459,7 @@ public class LibraryService : ILibraryService
                 // grouping the file never took (still pending) is simply dropped: then there is
                 // nothing in the file to put back.
                 var file = AlbumUndo.FileWrite(undo, t.PendingAlbumWrite);
+                if (file != null) file.Expected = AlbumUndo.Capture(t);
                 var written = file == null;
                 if (file != null && t.HasFilesystemPath && !t.IsRemoteStream)
                 {
@@ -3419,8 +3472,7 @@ public class LibraryService : ILibraryService
                 // write from the next pass, removed tags included.
                 var retry = !written && t.HasFilesystemPath && !t.IsRemoteStream
                             && t.SourceType is SourceType.Local or SourceType.Smb;
-                t.AlbumGroupingUnwritten = retry;
-                t.PendingAlbumWrite = retry ? file : null;
+                SetPendingAlbumWrite(t, retry ? file : null);
                 var from = t.AlbumId;
                 AlbumUndo.RestoreState(t, undo);
                 if (from != t.AlbumId)

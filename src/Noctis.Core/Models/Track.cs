@@ -221,7 +221,9 @@ public partial class Track : ObservableObject
     /// <summary>
     /// The Group into One Album / Move to Album / Undo Grouping write this song's file has not
     /// taken yet (it was read-only or held open; <see cref="AlbumGroupingUnwritten"/> is set too).
-    /// The next pass writes exactly it, then clears both. Null when nothing is pending.
+    /// The next pass writes exactly it, then clears both; so does any other save of the file
+    /// before then, which writes it first (<see cref="Services.PendingAlbumWrites"/>). Null when
+    /// nothing is pending.
     /// </summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Services.AlbumFileWrite? PendingAlbumWrite { get; set; }

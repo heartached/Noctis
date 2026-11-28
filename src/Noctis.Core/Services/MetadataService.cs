@@ -716,22 +716,10 @@ public class MetadataService : IMetadataService
         RawTagSnapshot? changed = null;
         try
         {
-            SaveTagsAtomicallyOrThrow(filePath, file =>
-            {
-                // A failed Undo Grouping first: the file is back as it was, and what this write
-                // replaces is recorded from there.
-                if (write.Restore != null)
-                {
-                    if (write.Restore.OtherBlocks && write.RestoreValues != null)
-                        foreach (var block in OtherTagBlocks(file))
-                            ApplyAlbumTags(block, null, write.RestoreValues);
-                    RawTagState.Restore(file, write.Restore);
-                }
-                if (write.Tags == null) return;
-                var before = RawTagState.Capture(file);
-                ApplyAlbumTags(file.Tag, file, write.Tags);
-                changed = RawTagState.Replaced(before, RawTagState.Capture(file));
-            }, releaseOpenFile: !background); // a background pass must not put a gap in the playing track
+            // This write already holds any write still pending for the file (the caller merged it).
+            SaveTagsAtomicallyOrThrow(filePath, file => changed = ApplyAlbumFileWrite(file, write),
+                releaseOpenFile: !background, // a background pass must not put a gap in the playing track
+                applyPendingAlbumWrite: false);
             replaced = changed;
             return true;
         }
@@ -864,14 +852,30 @@ public class MetadataService : IMetadataService
 
     private bool WriteTrackMetadataCore(Track track, string targetFilePath, string? titleOverride, bool genreEdited)
     {
+        // A grouping or Undo Grouping write the song's file has not taken yet goes into this same
+        // save first (SaveTagsAtomicallyOrThrow); its album fields then stay as it left them
+        // unless the song's own value changed since (an Edit Info edit of that field wins). A
+        // waiting Undo's removed album artist tag stays removed.
+        var expected = string.Equals(targetFilePath, track.FilePath, StringComparison.Ordinal)
+            ? PendingAlbumWrites.Find(targetFilePath)?.Write.Expected
+            : null;
+        var writeAlbum = expected == null || !string.Equals(track.Album, expected.Album, StringComparison.Ordinal);
+        var writeAlbumArtist = expected == null || !string.Equals(track.AlbumArtist, expected.AlbumArtist, StringComparison.Ordinal);
+        var writeNumbering = expected == null || track.TrackNumber != expected.TrackNumber || track.TrackCount != expected.TrackCount
+                             || track.DiscNumber != expected.DiscNumber || track.DiscCount != expected.DiscCount;
+        var writeYear = expected == null || track.Year != expected.Year
+                        || !string.Equals(track.ReleaseDate, expected.ReleaseDate, StringComparison.Ordinal);
+        var writeCompilation = expected == null || track.IsCompilation != expected.IsCompilation;
+        var writeReleaseType = expected == null || track.IsReleaseTypeOverridden != expected.IsReleaseTypeOverridden
+                               || (track.IsReleaseTypeOverridden && track.ReleaseType != expected.ReleaseType);
         var ok = SaveTagsAtomically(targetFilePath, file =>
         {
             var tag = file.Tag;
 
             tag.Title = string.IsNullOrEmpty(titleOverride) ? track.Title : titleOverride;
             tag.Performers = SplitArtistList(track.Artist);
-            tag.AlbumArtists = SplitArtistList(track.AlbumArtist);
-            tag.Album = track.Album;
+            if (writeAlbumArtist) tag.AlbumArtists = SplitArtistList(track.AlbumArtist);
+            if (writeAlbum) tag.Album = track.Album;
             // The model holds every genre joined with "; " (GitHub #123 follow-up, 2026-10-10);
             // each one is written as its own value. Rewritten only when the list changed, so an
             // ordinary save leaves the file's genre field exactly as it was. Outside an editor
@@ -884,16 +888,19 @@ public class MetadataService : IMetadataService
                                       && newGenres.All(g => fileGenres.Contains(g, StringComparer.OrdinalIgnoreCase));
             if (!newGenres.SequenceEqual(fileGenres, StringComparer.Ordinal) && !wouldOnlyDropGenres)
                 tag.Genres = newGenres;
-            tag.Track = (uint)Math.Max(0, track.TrackNumber);
-            tag.TrackCount = (uint)Math.Max(0, track.TrackCount);
-            tag.Disc = (uint)Math.Max(0, track.DiscNumber);
-            tag.DiscCount = (uint)Math.Max(0, track.DiscCount);
+            if (writeNumbering)
+            {
+                tag.Track = (uint)Math.Max(0, track.TrackNumber);
+                tag.TrackCount = (uint)Math.Max(0, track.TrackCount);
+                tag.Disc = (uint)Math.Max(0, track.DiscNumber);
+                tag.DiscCount = (uint)Math.Max(0, track.DiscCount);
+            }
             tag.BeatsPerMinute = (uint)Math.Max(0, track.Bpm);
             // Year 0 means "unknown", not "erase": a track read before Noctis found the
             // file's date (a WAV's full ICRD date read as 0 up to 1.5.6) had every lyrics,
             // rating or tag save empty the date frames in the file (Discord Tangent, "album
             // dates going missing"). Clearing a year on purpose goes through ClearYear.
-            if (track.Year > 0)
+            if (writeYear && track.Year > 0)
             {
                 tag.Year = (uint)track.Year;
                 // TagLib's Year setter stamps a bare "2004" into the very frame the full
@@ -916,8 +923,8 @@ public class MetadataService : IMetadataService
             tag.Grouping = string.IsNullOrWhiteSpace(track.Grouping) ? null : track.Grouping;
             tag.Copyright = string.IsNullOrWhiteSpace(track.Copyright) ? null : track.Copyright;
 
-            ExtendedTagIO.WriteIsCompilation(file, track.IsCompilation);
-            ExtendedTagIO.WriteReleaseTypeOverride(file, track.IsReleaseTypeOverridden ? track.ReleaseType : null);
+            if (writeCompilation) ExtendedTagIO.WriteIsCompilation(file, track.IsCompilation);
+            if (writeReleaseType) ExtendedTagIO.WriteReleaseTypeOverride(file, track.IsReleaseTypeOverridden ? track.ReleaseType : null);
             ExtendedTagIO.WriteShowComposer(file, track.ShowComposerInAllViews);
             ExtendedTagIO.WriteUseWorkAndMovement(file, track.UseWorkAndMovement);
             ExtendedTagIO.WriteWorkName(file, track.WorkName);
@@ -934,15 +941,15 @@ public class MetadataService : IMetadataService
         // The album artist is now in the file's own tag (written above), so the album-grouping
         // pass must treat it as a real tag from here on, as the next scan of the file will
         // (GitHub #178). Only for the track's own file: a converter writes to a new one.
-        if (ok && !string.IsNullOrWhiteSpace(track.AlbumArtist)
+        if (ok && writeAlbumArtist && !string.IsNullOrWhiteSpace(track.AlbumArtist)
             && string.Equals(targetFilePath, track.FilePath, StringComparison.Ordinal))
-        {
             track.AlbumArtistFromTag = true;
-            track.AlbumGroupingUnwritten = false; // the file names its album now (GitHub #201)
-            track.PendingAlbumWrite = null;       // ...and every other tag a pending write held
-        }
+        // The file names its album now (GitHub #201), unless a pending album write is still
+        // waiting (it was not found to honour above): the next pass keeps trying it.
+        if (ok && track.PendingAlbumWrite == null && string.Equals(targetFilePath, track.FilePath, StringComparison.Ordinal))
+            track.AlbumGroupingUnwritten = false;
         // Likewise the album name: a folder name written above is the file's album tag now.
-        if (ok && Track.IsRealAlbumName(track.Album)
+        if (ok && writeAlbum && Track.IsRealAlbumName(track.Album)
             && string.Equals(targetFilePath, track.FilePath, StringComparison.Ordinal))
             track.AlbumFromFolder = false;
         // The file's artist tag now holds the credit as indexed (merged names included), so
@@ -1056,8 +1063,13 @@ public class MetadataService : IMetadataService
     /// <see cref="ReplaceWithCopy"/>): a background write must not put a gap in the music.
     /// </summary>
     internal static void SaveTagsAtomicallyOrThrow(string targetFilePath, Action<TagLib.File> applyTags,
-        bool releaseOpenFile = true)
+        bool releaseOpenFile = true, bool applyPendingAlbumWrite = true)
     {
+        // Undo Grouping follow-up: a grouping or Undo Grouping write the file has not taken yet
+        // (Track.PendingAlbumWrite) goes first, in this same save, whatever else saves the file
+        // (a rating, lyrics, Edit Info, ReplayGain): it is honoured, not dropped.
+        var pending = applyPendingAlbumWrite ? PendingAlbumWrites.Find(targetFilePath) : null;
+        RawTagSnapshot? pendingReplaced = null;
         // Same directory keeps the rename on one filesystem (so it is atomic); the
         // leading dot hides the transient file; the original extension is preserved
         // so TagLib still detects the format from the work copy.
@@ -1082,12 +1094,14 @@ public class MetadataService : IMetadataService
 
             using (var file = TagLib.File.Create(tempPath))
             {
+                if (pending != null) pendingReplaced = ApplyAlbumFileWrite(file, pending.Write);
                 applyTags(file);
                 TagLibFileTypes.UpgradeId3v22(file);
                 file.Save();
             }
             TagLibFileTypes.RepairAiffFormSize(tempPath);
             ReplaceWithCopy(tempPath, targetFilePath, releaseOpenFile);
+            pending?.Honoured(pendingReplaced);
         }
         catch
         {

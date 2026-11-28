@@ -463,4 +463,154 @@ public class GroupTagRoundTrip1127Tests : IDisposable
         Assert.False(back.AlbumGroupingUnwritten);
         Assert.Equal("Album (Deluxe)", back.Album);
     }
+
+    // ── Another save of a file whose Undo is still waiting writes the Undo first ──
+
+    /// <summary>A song without an album artist tag of its own (the grouping writes one, Undo must
+    /// take it out), grouped, then undone while its file was read-only; the file is writable again
+    /// and the Undo still waits. <c>Reference</c> is a copy of the file from before the grouping,
+    /// outside the library: the file as a finished Undo leaves it.</summary>
+    private async Task<(LibraryService Library, string Song, string Reference)> UndoWaitingAsync(string ext)
+    {
+        var song = Copy("Deluxe", ext, f =>
+        {
+            f.Tag.Title = "Plain"; f.Tag.Performers = new[] { "Singer" }; f.Tag.Album = "Album (Deluxe)";
+            f.Tag.Track = 2; f.Tag.Year = 2001;
+        });
+        CopyMain(ext);
+        var reference = Path.Combine(_root, "reference", "01." + ext);
+        Directory.CreateDirectory(Path.GetDirectoryName(reference)!);
+        File.Copy(song, reference);
+        var library = await NewLibraryAsync(2);
+        await library.GroupIntoAlbumAsync(library.AllTracks.ToList(), "Album", "Band");
+        File.SetAttributes(song, FileAttributes.ReadOnly);
+        var undone = await library.UndoAlbumGroupingAsync(library.AllTracks.ToList());
+        Assert.Single(undone.UnwrittenFiles);
+        Assert.NotNull(library.AllTracks.Single(t => t.FilePath == song).PendingAlbumWrite);
+        using (var f = TagLib.File.Create(song)) Assert.Equal(new[] { "Band" }, f.Tag.AlbumArtists); // still grouped
+        File.SetAttributes(song, FileAttributes.Normal);
+        return (library, song, reference);
+    }
+
+    private static void AssertDone(LibraryService library, string song)
+    {
+        var t = library.AllTracks.Single(x => x.FilePath == song);
+        Assert.Null(t.PendingAlbumWrite);          // honoured, so nothing is left to retry
+        Assert.False(t.AlbumGroupingUnwritten);
+        Assert.Equal("Album (Deluxe)", t.Album);
+    }
+
+    private void AssertSameTags(string expected, string actual)
+    {
+        var a = Dump(expected);
+        var b = Dump(actual);
+        var diff = Diff(a, b);
+        Show("diff", a, b, diff);
+        Assert.Empty(diff);
+    }
+
+    [Theory]
+    [InlineData("mp3")]
+    [InlineData("flac")]
+    [InlineData("m4a")]
+    [InlineData("wma")]
+    public async Task RatingSave_WhileAnUndoWaits_EndsAsTheUndoPlusTheRating(string ext)
+    {
+        var (library, song, reference) = await UndoWaitingAsync(ext);
+        IMetadataService metadata = new MetadataService();
+
+        Assert.True(metadata.WriteRating(song, 4, false));
+        Assert.True(metadata.WriteRating(reference, 4, false));
+
+        AssertSameTags(reference, song);
+        using (var f = TagLib.File.Create(song)) Assert.Empty(f.Tag.AlbumArtists);
+        AssertDone(library, song);
+    }
+
+    [Theory]
+    [InlineData("mp3")]
+    [InlineData("flac")]
+    [InlineData("ogg")]
+    public async Task LyricsSave_WhileAnUndoWaits_EndsAsTheUndoPlusTheLyrics(string ext)
+    {
+        var (library, song, reference) = await UndoWaitingAsync(ext);
+        IMetadataService metadata = new MetadataService();
+
+        Assert.True(metadata.WriteLyrics(song, "new words", null));
+        Assert.True(metadata.WriteLyrics(reference, "new words", null));
+
+        AssertSameTags(reference, song);
+        AssertDone(library, song);
+    }
+
+    /// <summary>The Edit Info save writes every field from the song. The reference (no Undo waiting
+    /// there) gets the same save: every tag outside the album fields must end as there; the album
+    /// fields stay as the finished Undo left them, but the album name when the user renamed it.</summary>
+    [Theory]
+    [InlineData("mp3", false)]
+    [InlineData("flac", false)]
+    [InlineData("mp3", true)]
+    [InlineData("flac", true)]
+    public async Task EditInfoSave_WhileAnUndoWaits_EndsAsTheUndoPlusTheEdit(string ext, bool renameAlbum)
+    {
+        var (library, song, reference) = await UndoWaitingAsync(ext);
+        var original = Dump(reference);
+        var metadata = new MetadataService();
+        var track = library.AllTracks.Single(t => t.FilePath == song);
+        var refTrack = metadata.ReadTrackMetadata(reference)!;
+        foreach (var t in new[] { track, refTrack })
+        {
+            t.Comment = "edited";
+            if (renameAlbum) t.Album = "Renamed"; // the user's own value wins for that field
+        }
+
+        Assert.True(metadata.WriteTrackMetadata(track));
+        Assert.True(metadata.WriteTrackMetadata(refTrack));
+
+        var expected = Dump(reference);
+        var actual = Dump(song);
+        string[] albumName = { "id3:TALB", "id3v1:album", "xiph:ALBUM" };
+        foreach (var key in original.Keys.Union(expected.Keys).Union(actual.Keys))
+        {
+            var bare = key.Split('#')[0];
+            if (bare == "id3v1:raw") continue; // its fields are compared one by one
+            var want = !Intended(key, move: true) || (renameAlbum && albumName.Contains(bare))
+                ? expected.GetValueOrDefault(key)
+                : original.GetValueOrDefault(key);
+            Assert.True(want == actual.GetValueOrDefault(key), $"{key}: expected {want ?? "(none)"}, was {actual.GetValueOrDefault(key) ?? "(none)"}");
+        }
+        using (var f = TagLib.File.Create(song))
+        {
+            Assert.Empty(f.Tag.AlbumArtists);
+            Assert.Equal(renameAlbum ? "Renamed" : "Album (Deluxe)", f.Tag.Album);
+            Assert.Equal("edited", f.Tag.Comment);
+        }
+        var done = library.AllTracks.Single(x => x.FilePath == song);
+        Assert.Null(done.PendingAlbumWrite);
+        Assert.False(done.AlbumGroupingUnwritten);
+        Assert.False(done.AlbumArtistFromTag); // the file still has no album artist tag
+    }
+
+    [Fact]
+    public async Task ARatingSave_WhileAGroupingWaits_WritesTheGroupingFirst_AndUndoStillWorks()
+    {
+        var song = Copy("Deluxe", "mp3", f => TagRich(f, 4));
+        CopyMain("mp3");
+        var library = await NewLibraryAsync(2);
+        var before = Dump(song);
+        File.SetAttributes(song, FileAttributes.ReadOnly);
+        await library.GroupIntoAlbumAsync(library.AllTracks.ToList(), "Album", "Band");
+        File.SetAttributes(song, FileAttributes.Normal);
+
+        Assert.True(((IMetadataService)new MetadataService()).WriteRating(song, 3, false));
+
+        using (var f = TagLib.File.Create(song)) Assert.Equal("Album", f.Tag.Album);
+        var track = library.AllTracks.Single(t => t.FilePath == song);
+        Assert.Null(track.PendingAlbumWrite);
+        Assert.NotNull(track.GroupUndo?.Raw); // what the grouping replaced, for Undo
+
+        await library.UndoAlbumGroupingAsync(library.AllTracks.ToList());
+        var diff = Diff(before, Dump(song));
+        Assert.All(diff, k => Assert.StartsWith("id3:POPM", k)); // only the rating save's own change
+    }
 }

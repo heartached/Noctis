@@ -219,4 +219,11 @@ public sealed class AlbumFileWrite
     /// (<see cref="RawTagSnapshot.OtherBlocks"/>).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public AlbumTagWrite? RestoreValues { get; set; }
+
+    /// <summary>The album tags the song had in Noctis when this write was made. Another save of
+    /// the file before this write reached it (a rating, lyrics, Edit Info) writes this write
+    /// first; it writes its own album fields on top only where they differ from these (the user
+    /// changed them since).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AlbumTagValues? Expected { get; set; }
 }
