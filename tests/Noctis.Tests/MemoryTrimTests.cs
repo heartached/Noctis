@@ -71,22 +71,30 @@ public class MemoryTrimTests
         // requests into full blocking gen2s of 392-841 ms (harness). The trim requests it in
         // SustainedLowLatency, held until the background collection ends.
         var original = System.Runtime.GCSettings.LatencyMode;
-        var garbage = new System.Collections.Generic.List<byte[]>();
+        var garbage = new System.Collections.Generic.List<object[]>();
+        // The trim only collects heaps of MinHeapToCollect and up (a smaller one is run blocking by
+        // the runtime, see ShouldCollect): build one, as the app has after its startup burst.
+        var live = new System.Collections.Generic.List<object[]>();
+        while (GC.GetTotalMemory(false) < MemoryTrim.MinHeapToCollect + (16L << 20))
+            live.Add(new object[] { new string('x', 40), new byte[120] });
         try
         {
             MemoryTrim.SetAudioPlaying(false);
             System.Runtime.GCSettings.LatencyMode = System.Runtime.GCLatencyMode.Interactive;
-            var fullBlocking = GC.GetGCMemoryInfo(GCKind.FullBlocking).Index;
             var gen2 = GC.CollectionCount(2);
             for (var round = 0; round < 3; round++)
             {
-                for (var i = 0; i < 200; i++) garbage.Add(new byte[100_000]);
+                // Small dead objects for the collection to free. Made before the baseline: the
+                // test's own allocation may start a collection of the runtime's choosing, and
+                // only the trim's request is under test (large arrays here once did, 11-28).
+                for (var i = 0; i < 100_000; i++) garbage.Add(new object[4]);
                 garbage.Clear();
+                var fullBlocking = GC.GetGCMemoryInfo(GCKind.FullBlocking).Index;
                 Assert.True(MemoryTrim.BackgroundCollect(TimeSpan.FromSeconds(10)), "the background gen2 never finished");
+                Assert.Equal(fullBlocking, GC.GetGCMemoryInfo(GCKind.FullBlocking).Index);
                 Assert.Equal(System.Runtime.GCLatencyMode.Interactive, System.Runtime.GCSettings.LatencyMode);
             }
             Assert.True(GC.CollectionCount(2) >= gen2 + 3);
-            Assert.Equal(fullBlocking, GC.GetGCMemoryInfo(GCKind.FullBlocking).Index);
 
             // While music plays the mode stays SustainedLowLatency after the trim's own hold.
             MemoryTrim.SetAudioPlaying(true);
@@ -99,6 +107,7 @@ public class MemoryTrimTests
         {
             MemoryTrim.SetAudioPlaying(false);
             System.Runtime.GCSettings.LatencyMode = original;
+            GC.KeepAlive(live);
         }
     }
 
@@ -126,6 +135,14 @@ public class MemoryTrimTests
             System.Runtime.GCSettings.LatencyMode = original;
         }
     }
+
+    [Theory]
+    [InlineData(1L << 20, false)]
+    [InlineData(25L << 20, false)] // runtime runs the request blocking at this size (harness)
+    [InlineData(64L << 20, true)]
+    [InlineData(500L << 20, true)]
+    public void ASmallHeap_IsNotCollected(long allocated, bool expected) =>
+        Assert.Equal(expected, MemoryTrim.ShouldCollect(allocated));
 
     [Fact]
     public async Task HostsThatDoNotReportWindows_NeverTrimTheWorkingSet_AndOweNothing()
