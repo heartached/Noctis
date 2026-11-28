@@ -45,11 +45,15 @@ public partial class ArtistDetailView : UserControl
                 (DataContext as ArtistDetailViewModel)?.OnArtistVideoClipSize(clip.Width, clip.Height);
         };
         PageScrollViewer.ScrollChanged += (_, _) => UpdateHeroVideoPause();
-        // Follows a theme or accent tint swapping the page colour.
+        // Follows a theme or accent tint swapping the page colour. Every resources change re-reads
+        // the colour; the brush is only rebuilt when it changed (11-27: a new brush per walk
+        // repainted the hero on every walk, 3-4 of them per theme switch).
+        var fade = new PageColourBrushCache(HeroFadeBrush);
+        var afterFade = new PageColourBrushCache(HeroAfterFadeBrush);
         HeroPageFade.Bind(Border.BackgroundProperty,
-            this.GetResourceObservable("AppMainBackground", o => HeroFadeBrush(o as IBrush)));
+            this.GetResourceObservable("AppMainBackground", o => fade.For(o as IBrush)));
         HeroAfterFade.Bind(Border.BackgroundProperty,
-            this.GetResourceObservable("AppMainBackground", o => HeroAfterFadeBrush(o as IBrush)));
+            this.GetResourceObservable("AppMainBackground", o => afterFade.For(o as IBrush)));
     }
 
     // ── Artist video in the hero ──
@@ -143,6 +147,27 @@ public partial class ArtistDetailView : UserControl
                 new GradientStop(Color.FromArgb(0, c.R, c.G, c.B), 1),
             },
         };
+    }
+
+    /// <summary>The brush built from the page colour, kept while the colour (and whether the page
+    /// is opaque) stays the same.</summary>
+    internal sealed class PageColourBrushCache(Func<IBrush?, IBrush?> build)
+    {
+        private (Color Color, double Opacity)? _for;
+        private IBrush? _brush;
+
+        public IBrush? For(IBrush? page)
+        {
+            if (page is not ISolidColorBrush solid)
+            {
+                _for = null;
+                return _brush = build(page);
+            }
+            var key = (solid.Color, solid.Opacity);
+            if (_for == key) return _brush;
+            _for = key;
+            return _brush = build(page);
+        }
     }
 
     private void HookHeroWindow()

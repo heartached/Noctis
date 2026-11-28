@@ -324,6 +324,28 @@ public class ArtistVideoPerfTests : IDisposable
         }
     }
 
+    /// <summary>Every resources change (3-4 per theme switch before 11-27) re-read the page colour
+    /// and built a new fade brush, repainting the hero; the brush is kept while the colour stays.</summary>
+    [AvaloniaFact]
+    public void HeroFade_KeepsItsBrush_WhileThePageColourStays()
+    {
+        var (view, _, win) = Mount(height: 900, albums: 2);
+        var fade = view.FindControl<Border>("HeroPageFade")!;
+        var before = fade.Background;
+        Assert.IsType<LinearGradientBrush>(before);
+        var key = "UnrelatedTestKey" + Guid.NewGuid().ToString("N");
+        win.Resources[key] = Brushes.Red; // a resources change that leaves AppMainBackground alone
+        Dispatcher.UIThread.RunJobs();
+        Assert.Same(before, fade.Background);
+
+        win.Resources["AppMainBackground"] = new SolidColorBrush(Color.Parse("#0F0F0F"));
+        Dispatcher.UIThread.RunJobs();
+        var after = Assert.IsType<LinearGradientBrush>(fade.Background);
+        Assert.NotSame(before, after);
+        Assert.Equal(Color.Parse("#0F0F0F"), after.GradientStops[^1].Color);
+        win.Close();
+    }
+
     [AvaloniaFact]
     public void TheHero_PausesWhenLessThanAThirdIsOnScreen()
     {
