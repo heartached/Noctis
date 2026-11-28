@@ -4301,8 +4301,10 @@ public partial class SettingsViewModel : ViewModelBase
             // right after picking a mini player design (that pick saves at once).
             if (onDisk is null)
             {
-                var snapshot = _settings;
-                await Task.Run(() => _persistence.SaveSettingsAsync(snapshot));
+                // No file to merge with (a first save, or an unreadable file): the whole live
+                // object is written, so it is serialized here on the UI thread, where nothing
+                // else can change it meanwhile. Rare, unlike the update below.
+                await _persistence.SaveSettingsAsync(_settings);
             }
             else
             {
