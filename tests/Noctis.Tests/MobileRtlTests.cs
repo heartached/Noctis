@@ -189,12 +189,19 @@ public class MobileRtlTests
     [Fact]
     public void Lyrics_ReadByTheirOwnScript_NotThePhonesLanguage()
     {
-        Assert.Equal(FlowDirection.RightToLeft, ScriptDirection.Of(new[] { "أنا لحبيبي وحبيبي إلي", "يا عصفورة بيضا" }));
-        Assert.Equal(FlowDirection.RightToLeft, ScriptDirection.Of(new[] { "שלום עולם" }));
-        Assert.Equal(FlowDirection.LeftToRight, ScriptDirection.Of(new[] { "Hello darkness, my old friend", "I've come to talk with you again" }));
+        // The phone marks each line the desktop's way (#269: TextDirection.LineDirections).
+        static bool[] Directions(params string[] lines)
+        {
+            var models = lines.Select(t => new Noctis.Models.LyricLine { Text = t }).ToList();
+            LyricsPageViewModel.ApplyLineDirections(models);
+            return models.Select(l => l.IsRightToLeft).ToArray();
+        }
+        Assert.Equal(new[] { true, true }, Directions("أنا لحبيبي وحبيبي إلي", "يا عصفورة بيضا"));
+        Assert.Equal(new[] { true }, Directions("שלום עולם"));
+        Assert.Equal(new[] { false, false }, Directions("Hello darkness, my old friend", "I've come to talk with you again"));
         // A Latin song with one Arabic word, and lines with no letters at all.
-        Assert.Equal(FlowDirection.LeftToRight, ScriptDirection.Of(new[] { "Habibi (حبيبي), come with me tonight" }));
-        Assert.Equal(FlowDirection.LeftToRight, ScriptDirection.Of(new[] { "♪", "3:42", "" }));
+        Assert.Equal(new[] { false }, Directions("Habibi (حبيبي), come with me tonight"));
+        Assert.Equal(new[] { false, false, false }, Directions("♪", "3:42", ""));
     }
 
     // ── Text in its own direction (S23, 11-23: "¿Cuál Es Tu Plan?" in an Arabic layout) ──
@@ -394,8 +401,9 @@ public class MobileRtlTests
             void Lyrics(string name, params string[] lines)
             {
                 var lyrics = rig.Shell.Lyrics;
-                lyrics.Lines.ReplaceAll(lines.Select(t => new Noctis.Models.LyricLine { Text = t }).ToList());
-                lyrics.LinesFlowDirection = ScriptDirection.Of(lines);
+                var models = lines.Select(t => new Noctis.Models.LyricLine { Text = t }).ToList();
+                LyricsPageViewModel.ApplyLineDirections(models);
+                lyrics.Lines.ReplaceAll(models);
                 lyrics.HasLyrics = true;
                 if (!rig.Shell.IsLyricsOpen) rig.Shell.ToggleLyricsCommand.Execute(null);
                 Shot(name);
