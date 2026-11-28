@@ -27,7 +27,7 @@ body:
     attributes:
       label: Noctis version
       description: Settings › About. Click the version to copy it with your system info.
-      placeholder: "1.7.3"
+      placeholder: "1.7.4"
     validations:
       required: true
 

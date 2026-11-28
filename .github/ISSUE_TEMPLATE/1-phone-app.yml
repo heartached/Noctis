@@ -69,7 +69,7 @@ body:
     attributes:
       label: Desktop Noctis version
       description: Only if synced. Settings › About on the computer.
-      placeholder: "1.7.3"
+      placeholder: "1.7.4"
 
   - type: textarea
     id: logs
