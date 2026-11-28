@@ -237,8 +237,36 @@ public class PhoneCardResponsivenessTests : IDisposable
         Assert.True(Math.Max(on, off) < 30, report);
     }
 
+    /// <summary>The gap measure leaves late timers out but must still see a real UI job: a 120 ms
+    /// job posted to the UI thread in the middle of a flip shows as a gap of 100 ms or more.</summary>
+    [AvaloniaFact]
+    public async Task TheGapMeasure_StillCatchesAUiJob()
+    {
+        var persistence = new PersistenceService(_root);
+        await persistence.SaveSettingsAsync(new AppSettings());
+        var vm = new SettingsViewModel(persistence, new FakeLibraryService(), new NoOpPlayHistoryService());
+        await vm.LoadAsync();
+        await Flip(vm, true, () => true, sync: true); // warm
+
+        using var poster = new Timer(_ => Avalonia.Threading.Dispatcher.UIThread.Post(() => Thread.Sleep(120)), null, 60, Timeout.Infinite);
+        var (_, gap) = await Flip(vm, false, () => true, sync: true);
+        Assert.True(gap >= 100, $"a 120 ms UI job measured as {gap:F0} ms");
+    }
+
+    /// <summary>One timer tick on Windows' default clock: a 1 ms wait normally fires within it.</summary>
+    private const double TimerTickMs = 16;
+
     /// <summary>Flips the switch, times the setter, then pumps the UI thread until
-    /// <paramref name="settled"/> and returns the longest gap between two turns of the pump.</summary>
+    /// <paramref name="settled"/> and returns the longest gap between two turns of the pump that
+    /// the UI thread is answerable for.</summary>
+    /// <remarks>
+    /// Each turn waits on a 1 ms timer whose callback (a pool thread) stamps when it fired. A
+    /// timer the OS fires late is not a UI job: the 11-27 investigation of this test's
+    /// intermittent failures ("off2 0.0/106 ms") traced every long gap in ~3,500 repeated flips
+    /// to the timer firing 36-70 ms late, with the UI thread resuming 0-6 ms after it, no GC in
+    /// the gap and no pool work completing (also with the settings save back on the UI thread).
+    /// Only lateness beyond one tick is taken out; a UI job delays the resume, which still counts.
+    /// </remarks>
     private static async Task<(double setterMs, double longestGapMs)> Flip(SettingsViewModel vm, bool on, Func<bool> settled, bool sync = false)
     {
         var sw = Stopwatch.StartNew();
@@ -251,15 +279,26 @@ public class PhoneCardResponsivenessTests : IDisposable
         while (sw.Elapsed < TimeSpan.FromSeconds(20))
         {
             if (vm.NoctisServerStartFailed) throw new Xunit.Sdk.XunitException("server failed: " + vm.NoctisServerError);
-            await Task.Delay(1);
+            var asked = sw.Elapsed.TotalMilliseconds;
+            var fired = await TimerTurn(sw);
             var now = sw.Elapsed.TotalMilliseconds;
-            longest = Math.Max(longest, now - last);
+            var timerExcess = Math.Max(0, fired - asked - TimerTickMs);
+            longest = Math.Max(longest, now - last - timerExcess);
             last = now;
             // Settled, then a little longer so the pass's tail (QR, device list) is measured too.
             if (settled()) { if (quietSince < 0) quietSince = now; else if (now - quietSince > 300) break; }
             else quietSince = -1;
         }
         return (setter, longest);
+    }
+
+    /// <summary>Waits ~1 ms on a timer and returns when (on <paramref name="sw"/>) its callback ran;
+    /// the await resumes on the UI thread.</summary>
+    private static async Task<double> TimerTurn(Stopwatch sw)
+    {
+        var fired = new TaskCompletionSource<double>();
+        using var timer = new Timer(_ => fired.TrySetResult(sw.Elapsed.TotalMilliseconds), null, 1, Timeout.Infinite);
+        return await fired.Task;
     }
 
     private static bool Listening(int port)
