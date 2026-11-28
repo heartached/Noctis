@@ -51,6 +51,17 @@ public static class MemoryTrim
     private static bool? _appInBackground; // null: the host does not report it (server, phone)
     private static long _idleSince = Environment.TickCount64;
 
+    /// <summary>
+    /// Below this much allocated (live and dead) the collection is skipped: there is little to give
+    /// back, and on a small heap the runtime runs a requested non-blocking gen2 as a blocking one
+    /// anyway (harness 11-28: heaps of ~1-25 MB, 3-5 of 6 requests became full blocking gen2s of up
+    /// to 11.5 ms, even in SustainedLowLatency; from 53 MB on, 6 of 6 stayed background, 0.1-0.3 ms).
+    /// </summary>
+    internal const long MinHeapToCollect = 64L * 1024 * 1024;
+
+    /// <summary>Whether a heap of <paramref name="allocatedBytes"/> is worth a collection. Pure; internal for tests.</summary>
+    internal static bool ShouldCollect(long allocatedBytes) => allocatedBytes >= MinHeapToCollect;
+
     /// <summary>How long playback must have been stopped or paused before the working set is trimmed.</summary>
     public static TimeSpan LongIdle { get; set; } = TimeSpan.FromSeconds(60);
 
@@ -193,10 +204,18 @@ public static class MemoryTrim
                 return;
             }
             var before = GC.GetTotalMemory(false);
-            var collected = BackgroundCollect(TimeSpan.FromSeconds(5));
-            var after = GC.GetTotalMemory(false);
-            var line = $"trim after {_reason}: managed {before / 1048576} MB -> {after / 1048576} MB, background collection" +
+            string line;
+            if (ShouldCollect(before))
+            {
+                var collected = BackgroundCollect(TimeSpan.FromSeconds(5));
+                var after = GC.GetTotalMemory(false);
+                line = $"trim after {_reason}: managed {before / 1048576} MB -> {after / 1048576} MB, background collection" +
                        (collected ? "" : " (still running)");
+            }
+            else
+            {
+                line = $"trim after {_reason}: managed {before / 1048576} MB, too little to collect";
+            }
             if (trimWorkingSet && OperatingSystem.IsWindows())
             {
                 // Checked again: the collection took a moment, and a resume may have come in.
