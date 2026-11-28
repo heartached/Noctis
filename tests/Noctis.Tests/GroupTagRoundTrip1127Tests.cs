@@ -45,18 +45,52 @@ public class GroupTagRoundTrip1127Tests : IDisposable
 
     private string Music => Path.Combine(_root, "music");
 
-    public static TheoryData<string, byte> Formats => new()
+    /// <summary>Every format the library takes and TagLib writes (MetadataService.SupportedExtensions
+    /// but .dff, which TagLib cannot write); MP3 with ID3v2.3 and with ID3v2.4.</summary>
+    public static TheoryData<string, byte> Formats()
     {
-        { "mp3", 3 }, { "mp3", 4 }, { "flac", 0 }, { "m4a", 0 }, { "ogg", 0 }, { "opus", 0 },
-    };
+        var data = new TheoryData<string, byte> { { "mp3", 3 } };
+        foreach (var ext in MetadataService.SupportedExtensions.Where(e => e != ".dff").Order(StringComparer.Ordinal))
+            data.Add(ext.TrimStart('.'), (byte)(ext == ".mp3" ? 4 : 0));
+        return data;
+    }
+
+    [Fact]
+    public void EveryWritableLibraryFormat_IsCovered()
+        => Assert.Equal(MetadataService.SupportedExtensions.Count, Formats().Count()); // .dff out, MP3 twice
 
     private string Copy(string folder, string ext, Action<TagLib.File> tag)
     {
         var dir = Path.Combine(Music, folder);
         Directory.CreateDirectory(dir);
         var path = Path.Combine(dir, "01." + ext);
-        File.Copy(Path.Combine(AppContext.BaseDirectory, "Fixtures", "Audio", "Silence", "silence." + ext), path, true);
+        // As AdvancedReleaseDateWriteTests: the silent fixtures, and hand-built DSF / Monkey's Audio files.
+        switch (ext)
+        {
+            case "dsf": File.WriteAllBytes(path, AdvancedReleaseDateWriteTests.MinimalDsf()); break;
+            case "ape": File.WriteAllBytes(path, AdvancedReleaseDateWriteTests.MinimalApe()); break;
+            default:
+                var fixture = ext switch
+                {
+                    "oga" => "ogg",
+                    "alac" or "mp4" or "m4b" => "m4a",
+                    "aif" => "aiff",
+                    "asf" => "wma",
+                    _ => ext,
+                };
+                File.Copy(Path.Combine(AppContext.BaseDirectory, "Fixtures", "Audio", "Silence", "silence." + fixture), path, true);
+                break;
+        }
         using var f = TagLib.File.Create(path);
+        // Every block the format can carry, so each one is checked: WAV's ID3v2 chunk, INFO and
+        // MovieID lists and DivX block; the APEv2 tag of WavPack and Monkey's Audio.
+        foreach (var type in ext switch
+                 {
+                     "wav" => new[] { TagLib.TagTypes.Id3v2, TagLib.TagTypes.RiffInfo, TagLib.TagTypes.MovieId, TagLib.TagTypes.DivX },
+                     "wv" or "ape" => new[] { TagLib.TagTypes.Ape },
+                     _ => Array.Empty<TagLib.TagTypes>(),
+                 })
+            f.GetTag(type, true);
         tag(f);
         f.Save();
         return path;
@@ -143,7 +177,9 @@ public class GroupTagRoundTrip1127Tests : IDisposable
                 var key = "id3:" + frame.FrameId.ToString(TagLib.StringType.Latin1);
                 if (frame is TagLib.Id3v2.UserTextInformationFrame u) key += ":" + u.Description;
                 n[key] = n.GetValueOrDefault(key) + 1;
-                d[key + "#" + n[key]] = Convert.ToHexString(frame.Render(id3.Version).Data);
+                // Rendered as ID3v2.4 whatever the tag's version: values are compared, and a v2.2
+                // tag (AIFF, DSF) is saved as v2.3 by every Noctis save (TagLibFileTypes.UpgradeId3v22).
+                d[key + "#" + n[key]] = Convert.ToHexString(frame.Render(4).Data);
             }
         }
         if (file.GetTag(TagLib.TagTypes.Id3v1) is TagLib.Id3v1.Tag v1)
@@ -177,6 +213,49 @@ public class GroupTagRoundTrip1127Tests : IDisposable
                 d[key + "#" + n[key]] = Convert.ToHexString(box.Render().Data);
             }
         }
+        if (file.GetTag(TagLib.TagTypes.Ape) is TagLib.Ape.Tag ape)
+            foreach (var key in ape)
+                d["ape:" + key.ToUpperInvariant()] = Convert.ToHexString(ape.GetItem(key).Render().Data);
+        if (file.GetTag(TagLib.TagTypes.Asf) is TagLib.Asf.Tag asf)
+        {
+            var cd = asf.ContentDescriptionObject;
+            d["asf:c:Title"] = cd?.Title ?? "";
+            d["asf:c:Author"] = cd?.Author ?? "";
+            d["asf:c:Copyright"] = cd?.Copyright ?? "";
+            d["asf:c:Description"] = cd?.Description ?? "";
+            d["asf:c:Rating"] = cd?.Rating ?? "";
+            var n = new Dictionary<string, int>();
+            foreach (var x in asf.ExtendedContentDescriptionObject ?? Enumerable.Empty<TagLib.Asf.ContentDescriptor>())
+            {
+                var key = "asf:x:" + x.Name;
+                n[key] = n.GetValueOrDefault(key) + 1;
+                d[key + "#" + n[key]] = Convert.ToHexString(x.Render().Data);
+            }
+            foreach (var r in asf.MetadataLibraryObject ?? Enumerable.Empty<TagLib.Asf.DescriptionRecord>())
+            {
+                var key = $"asf:m:{r.LanguageListIndex}:{r.StreamNumber}:{r.Name}";
+                n[key] = n.GetValueOrDefault(key) + 1;
+                d[key + "#" + n[key]] = Convert.ToHexString(r.Render().Data);
+            }
+        }
+        foreach (var (type, list) in new[] { (TagLib.TagTypes.RiffInfo, "INFO"), (TagLib.TagTypes.MovieId, "MID ") })
+            if (file.GetTag(type) is TagLib.Riff.ListTag riff)
+            {
+                // The rendered list, field by field: id, size, data, pad.
+                var data = riff.Render().Data;
+                var n = new Dictionary<string, int>();
+                for (var at = 0; at + 8 <= data.Length;)
+                {
+                    var id = System.Text.Encoding.ASCII.GetString(data, at, 4);
+                    var size = (int)BitConverter.ToUInt32(data, at + 4);
+                    var key = "riff:" + list + ":" + id;
+                    n[key] = n.GetValueOrDefault(key) + 1;
+                    d[key + "#" + n[key]] = Convert.ToHexString(data, at + 8, Math.Min(size, data.Length - at - 8));
+                    at += 8 + size + (size & 1);
+                }
+            }
+        if (file.GetTag(TagLib.TagTypes.DivX) is TagLib.Riff.DivXTag divx)
+            d["divx"] = Convert.ToHexString(divx.Render().Data);
         return d;
     }
 
@@ -189,6 +268,9 @@ public class GroupTagRoundTrip1127Tests : IDisposable
     private static readonly string[] AlbumKeys =
     {
         "id3:TALB", "id3:TPE2", "id3v1:album", "id3v1:raw", "xiph:ALBUM", "xiph:ALBUMARTIST", "mp4:©alb", "mp4:aART",
+        "ape:ALBUM", "ape:ALBUM ARTIST", "asf:x:WM/AlbumTitle", "asf:x:WM/AlbumArtist",
+        // TagLib#'s RIFF INFO album (DIRC) and album artist (IART) fields.
+        "riff:INFO:DIRC", "riff:INFO:IART",
     };
 
     private static readonly string[] MoveKeys =
@@ -202,7 +284,22 @@ public class GroupTagRoundTrip1127Tests : IDisposable
         "mp4:trkn", "mp4:disk", "mp4:©day", "mp4:cpil", "mp4:soal", "mp4:soaa",
         "mp4:----:MusicBrainz Album Id", "mp4:----:MusicBrainz Release Group Id", "mp4:----:MusicBrainz Album Artist Id",
         "mp4:----:NOCTIS_RELEASETYPE",
+        "ape:TRACK", "ape:DISC", "ape:YEAR", "ape:COMPILATION", "ape:ALBUMSORT", "ape:ALBUMARTISTSORT",
+        "ape:MUSICBRAINZ_ALBUMID", "ape:MUSICBRAINZ_RELEASEGROUPID", "ape:MUSICBRAINZ_ALBUMARTISTID", "ape:NOCTIS_RELEASETYPE",
+        "asf:x:WM/TrackNumber", "asf:x:TrackTotal", "asf:x:WM/PartOfSet", "asf:x:WM/Year", "asf:x:WM/IsCompilation",
+        "asf:x:WM/AlbumSortOrder", "asf:x:WM/AlbumArtistSortOrder", "asf:x:MusicBrainz/Album Id",
+        "asf:x:MusicBrainz/Release Group Id", "asf:x:MusicBrainz/Album Artist Id", "asf:x:NOCTIS_RELEASETYPE",
+        // RIFF INFO year (ICRD), track (IPRT) and track total (IFRM); MovieID part numbers; the DivX year.
+        "riff:INFO:ICRD", "riff:INFO:IPRT", "riff:INFO:IFRM", "riff:MID :PRT1", "riff:MID :PRT2", "divx",
     };
+
+    /// <summary>A tag version change every Noctis save makes on purpose: ID3v2.2 is saved as
+    /// ID3v2.3, which can hold the sort and lyricist frames v2.2 drops (TagLibFileTypes.UpgradeId3v22).</summary>
+    private static bool KnownUpgrade(string key, SortedDictionary<string, string> before, SortedDictionary<string, string> after)
+        => key == "id3:version" && before.GetValueOrDefault(key) == "2" && after.GetValueOrDefault(key) == "3";
+
+    private static bool AlbumNameKey(string key) => key.Split('#')[0] is "id3:TALB" or "xiph:ALBUM" or "mp4:©alb"
+        or "ape:ALBUM" or "asf:x:WM/AlbumTitle" or "riff:INFO:DIRC";
 
     private static bool Intended(string key, bool move)
     {
@@ -236,9 +333,9 @@ public class GroupTagRoundTrip1127Tests : IDisposable
         var undoDiff = Diff(before, undone);
         Show("undo", before, undone, undoDiff);
 
-        Assert.Contains(groupDiff, k => k.StartsWith("id3:TALB") || k.StartsWith("xiph:ALBUM") || k.StartsWith("mp4:©alb"));
-        Assert.Empty(groupDiff.Where(k => !Intended(k, move: false)));
-        Assert.Empty(undoDiff);
+        Assert.Contains(groupDiff, AlbumNameKey);
+        Assert.Empty(groupDiff.Where(k => !Intended(k, move: false) && !KnownUpgrade(k, before, grouped)));
+        Assert.Empty(undoDiff.Where(k => !KnownUpgrade(k, before, undone)));
     }
 
     [Theory]
@@ -268,9 +365,9 @@ public class GroupTagRoundTrip1127Tests : IDisposable
         var undoDiff = Diff(before, undone);
         Show("undo", before, undone, undoDiff);
 
-        Assert.Contains(moveDiff, k => k.StartsWith("id3:TALB") || k.StartsWith("xiph:ALBUM") || k.StartsWith("mp4:©alb"));
-        Assert.Empty(moveDiff.Where(k => !Intended(k, move: true)));
-        Assert.Empty(undoDiff);
+        Assert.Contains(moveDiff, AlbumNameKey);
+        Assert.Empty(moveDiff.Where(k => !Intended(k, move: true) && !KnownUpgrade(k, before, moved)));
+        Assert.Empty(undoDiff.Where(k => !KnownUpgrade(k, before, undone)));
     }
 
     // ── A file that could not be written then: the next pass writes exactly the same ──

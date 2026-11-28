@@ -55,7 +55,7 @@ public class AdvancedReleaseDateWriteTests : IDisposable
         return path;
     }
 
-    private static byte[] MinimalDsf()
+    internal static byte[] MinimalDsf()
     {
         const int dataLen = 4096;
         using var ms = new MemoryStream();
@@ -67,7 +67,7 @@ public class AdvancedReleaseDateWriteTests : IDisposable
         return ms.ToArray();
     }
 
-    private static byte[] MinimalApe()
+    internal static byte[] MinimalApe()
     {
         using var ms = new MemoryStream();
         using var w = new BinaryWriter(ms);

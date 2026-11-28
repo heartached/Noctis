@@ -743,11 +743,31 @@ public class MetadataService : IMetadataService
         }
     }
 
-    /// <summary>The tag blocks <see cref="RawTagState"/> keeps by value only (APE, ASF, RIFF INFO).</summary>
+    /// <summary>
+    /// <paramref name="write"/> on an open file: a failed Undo Grouping's original entries first
+    /// (the file is back as it was), then the grouping's album tags. Returns what the album tags
+    /// replaced, recorded from there (null when there were none to set).
+    /// </summary>
+    private static RawTagSnapshot? ApplyAlbumFileWrite(TagLib.File file, AlbumFileWrite write)
+    {
+        if (write.Restore != null)
+        {
+            if (write.Restore.OtherBlocks && write.RestoreValues != null)
+                foreach (var block in OtherTagBlocks(file))
+                    ApplyAlbumTags(block, null, write.RestoreValues);
+            RawTagState.Restore(file, write.Restore);
+        }
+        if (write.Tags == null) return null;
+        var before = RawTagState.Capture(file);
+        ApplyAlbumTags(file.Tag, file, write.Tags);
+        return RawTagState.Replaced(before, RawTagState.Capture(file));
+    }
+
+    /// <summary>The tag blocks <see cref="RawTagState"/> does not keep raw (none of the formats
+    /// the library takes has one; Matroska, for one).</summary>
     private static IEnumerable<TagLib.Tag> OtherTagBlocks(TagLib.File file)
     {
-        foreach (var type in new[] { TagLib.TagTypes.Ape, TagLib.TagTypes.Asf, TagLib.TagTypes.RiffInfo,
-                     TagLib.TagTypes.MovieId, TagLib.TagTypes.DivX })
+        foreach (var type in new[] { TagLib.TagTypes.Matroska, TagLib.TagTypes.AudibleMetadata, TagLib.TagTypes.XMP })
             if ((file.TagTypes & type) != 0 && file.GetTag(type) is { } tag)
                 yield return tag;
     }

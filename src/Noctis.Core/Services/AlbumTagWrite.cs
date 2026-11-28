@@ -101,8 +101,10 @@ public sealed record AlbumTagWrite
 
 /// <summary>
 /// The tag values a write replaced in a file, as the file had them (Undo Grouping puts them back
-/// exactly). Per tag block: ID3v2 frames by frame id (TXXX by description) as rendered bytes,
-/// the whole ID3v1 block, Vorbis comment fields, MP4 atoms. Only the entries the write changed
+/// exactly). Per tag block: ID3v2 frames by frame id (TXXX by description) as rendered bytes
+/// (MP3, AAC, AIFF, WAV, DSF), the whole ID3v1 block, Vorbis comment fields (FLAC, Ogg, Opus),
+/// MP4 atoms, APEv2 items (WavPack, Monkey's Audio, MP3/AAC with an APE tag), ASF descriptors
+/// (WMA), RIFF INFO / MovieID fields and the DivX block (WAV). Only the entries the write changed
 /// are kept; an empty value means the file had no such entry (Undo removes it).
 /// </summary>
 public sealed class RawTagSnapshot
@@ -128,14 +130,33 @@ public sealed class RawTagSnapshot
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Dictionary<string, List<string>>? Apple { get; set; }
 
-    /// <summary>The file has tag blocks kept here by value only (APE, ASF, RIFF INFO): Undo
-    /// writes the album tags of those from the song's values before.</summary>
+    /// <summary>APEv2 items by key, each base64 of its rendered bytes ("" for none).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, string>? Ape { get; set; }
+
+    /// <summary>ASF entries: "c:Title" etc. (content description), "x:name" (extended content
+    /// descriptors), "m:language:stream:name" (metadata library records); each value
+    /// "type:data".</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, List<string>>? Asf { get; set; }
+
+    /// <summary>RIFF list fields: "INFO:IART", "MID :TITL"; each value base64.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, List<string>>? Riff { get; set; }
+
+    /// <summary>The DivX block (base64), "" for none; null when the write left it alone.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? DivX { get; set; }
+
+    /// <summary>The file has tag blocks none of the above covers: Undo writes the album tags of
+    /// those from the song's values before.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool OtherBlocks { get; set; }
 
     [JsonIgnore]
     public bool IsEmpty => (Id3v2?.Count ?? 0) == 0 && Id3v1 == null && (Xiph?.Count ?? 0) == 0
-                           && (Apple?.Count ?? 0) == 0 && !OtherBlocks;
+                           && (Apple?.Count ?? 0) == 0 && (Ape?.Count ?? 0) == 0 && (Asf?.Count ?? 0) == 0
+                           && (Riff?.Count ?? 0) == 0 && DivX == null && !OtherBlocks;
 
     /// <summary>Adds <paramref name="newer"/>'s entries this one does not have: what an earlier
     /// write replaced stays the original.</summary>
@@ -158,6 +179,22 @@ public sealed class RawTagSnapshot
             Apple ??= new();
             foreach (var (k, v) in newer.Apple) Apple.TryAdd(k, v);
         }
+        if (newer.Ape != null)
+        {
+            Ape ??= new();
+            foreach (var (k, v) in newer.Ape) Ape.TryAdd(k, v);
+        }
+        if (newer.Asf != null)
+        {
+            Asf ??= new();
+            foreach (var (k, v) in newer.Asf) Asf.TryAdd(k, v);
+        }
+        if (newer.Riff != null)
+        {
+            Riff ??= new();
+            foreach (var (k, v) in newer.Riff) Riff.TryAdd(k, v);
+        }
+        DivX ??= newer.DivX;
         OtherBlocks |= newer.OtherBlocks;
     }
 }

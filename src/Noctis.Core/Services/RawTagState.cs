@@ -4,14 +4,16 @@ namespace Noctis.Services;
 /// Every entry of a file's tag blocks as raw values (<see cref="RawTagSnapshot"/>), so a write
 /// can record what it replaced and Undo Grouping can put exactly that back: ID3v2 frames as
 /// rendered bytes (keyed by frame id, TXXX by description), the ID3v1 block, Vorbis comment
-/// fields, MP4 atoms. Other blocks (APE, ASF, RIFF INFO) are only noted
-/// (<see cref="RawTagSnapshot.OtherBlocks"/>).
+/// fields, MP4 atoms, APEv2 items, ASF descriptors, RIFF INFO / MovieID fields and the DivX
+/// block: every tag block TagLib writes for the formats the library takes. Any other block is
+/// only noted (<see cref="RawTagSnapshot.OtherBlocks"/>).
 /// </summary>
 internal static class RawTagState
 {
     private const TagLib.TagTypes Kept =
         TagLib.TagTypes.Id3v2 | TagLib.TagTypes.Id3v1 | TagLib.TagTypes.Xiph | TagLib.TagTypes.Apple
-        | TagLib.TagTypes.FlacMetadata;
+        | TagLib.TagTypes.FlacMetadata | TagLib.TagTypes.Ape | TagLib.TagTypes.Asf | TagLib.TagTypes.RiffInfo
+        | TagLib.TagTypes.MovieId | TagLib.TagTypes.DivX;
 
     /// <summary>The file's tag entries now.</summary>
     public static RawTagSnapshot Capture(TagLib.File file)
@@ -51,9 +53,180 @@ internal static class RawTagState
                         .ToList();
             }
         }
+        if (file.GetTag(TagLib.TagTypes.Ape) is TagLib.Ape.Tag ape)
+        {
+            s.Ape = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var key in ape)
+                if (ape.GetItem(key) is { } item)
+                    s.Ape[key] = Convert.ToBase64String(item.Render().Data);
+        }
+        if (file.GetTag(TagLib.TagTypes.Asf) is TagLib.Asf.Tag asf)
+            s.Asf = CaptureAsf(asf);
+        if (file.GetTag(TagLib.TagTypes.RiffInfo) is TagLib.Riff.ListTag info)
+            CaptureList(s, "INFO", info);
+        if (file.GetTag(TagLib.TagTypes.MovieId) is TagLib.Riff.ListTag movie)
+            CaptureList(s, "MID ", movie);
+        s.DivX = file.GetTag(TagLib.TagTypes.DivX) is TagLib.Riff.DivXTag divx
+            ? Convert.ToBase64String(divx.Render().Data)
+            : string.Empty;
         s.OtherBlocks = (file.TagTypes & ~Kept) != TagLib.TagTypes.None;
         return s;
     }
+
+    // ── ASF (WMA): content description, extended content descriptors, metadata library ──
+
+    private static readonly string[] AsfDescriptionFields = { "Title", "Author", "Copyright", "Description", "Rating" };
+
+    private static Dictionary<string, List<string>> CaptureAsf(TagLib.Asf.Tag asf)
+    {
+        var d = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        if (asf.ContentDescriptionObject is { } cd)
+            foreach (var field in AsfDescriptionFields)
+            {
+                var value = AsfDescription(cd, field);
+                d["c:" + field] = string.IsNullOrEmpty(value) ? new List<string>() : new List<string> { "U:" + B64(value) };
+            }
+        if (asf.ExtendedContentDescriptionObject is { } ext)
+            foreach (var x in ext)
+                Add(d, "x:" + x.Name, AsfValue(x.Type, x.ToString, x.ToByteVector, x.ToBool, x.ToWord, x.ToDWord, x.ToQWord, null));
+        if (asf.MetadataLibraryObject is { } lib)
+            foreach (var r in lib)
+                Add(d, $"m:{r.LanguageListIndex}:{r.StreamNumber}:{r.Name}",
+                    AsfValue(r.Type, r.ToString, r.ToByteVector, r.ToBool, r.ToWord, r.ToDWord, r.ToQWord, r.ToGuid));
+        return d;
+    }
+
+    private static string? AsfDescription(TagLib.Asf.ContentDescriptionObject cd, string field) => field switch
+    {
+        "Title" => cd.Title,
+        "Author" => cd.Author,
+        "Copyright" => cd.Copyright,
+        "Description" => cd.Description,
+        _ => cd.Rating,
+    };
+
+    private static void SetAsfDescription(TagLib.Asf.ContentDescriptionObject cd, string field, string? value)
+    {
+        switch (field)
+        {
+            case "Title": cd.Title = value; break;
+            case "Author": cd.Author = value; break;
+            case "Copyright": cd.Copyright = value; break;
+            case "Description": cd.Description = value; break;
+            default: cd.Rating = value; break;
+        }
+    }
+
+    private static string AsfValue(TagLib.Asf.DataType type, Func<string> text, Func<TagLib.ByteVector> bytes,
+        Func<bool> flag, Func<ushort> word, Func<uint> dword, Func<ulong> qword, Func<Guid>? guid)
+    {
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        return type switch
+        {
+            TagLib.Asf.DataType.Unicode => "U:" + B64(text()),
+            TagLib.Asf.DataType.Bool => "b:" + (flag() ? "1" : "0"),
+            TagLib.Asf.DataType.Word => "W:" + word().ToString(inv),
+            TagLib.Asf.DataType.DWord => "D:" + dword().ToString(inv),
+            TagLib.Asf.DataType.QWord => "Q:" + qword().ToString(inv),
+            TagLib.Asf.DataType.Guid when guid != null => "G:" + guid().ToString(),
+            _ => "B:" + Convert.ToBase64String(bytes().Data),
+        };
+    }
+
+    private static TagLib.Asf.ContentDescriptor AsfDescriptor(string name, string value)
+    {
+        var data = value[2..];
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        return value[0] switch
+        {
+            'U' => new TagLib.Asf.ContentDescriptor(name, Unb64(data)),
+            'b' => new TagLib.Asf.ContentDescriptor(name, data == "1"),
+            'W' => new TagLib.Asf.ContentDescriptor(name, ushort.Parse(data, inv)),
+            'D' => new TagLib.Asf.ContentDescriptor(name, uint.Parse(data, inv)),
+            'Q' => new TagLib.Asf.ContentDescriptor(name, ulong.Parse(data, inv)),
+            _ => new TagLib.Asf.ContentDescriptor(name, new TagLib.ByteVector(Convert.FromBase64String(data))),
+        };
+    }
+
+    private static TagLib.Asf.DescriptionRecord AsfRecord(ushort language, ushort stream, string name, string value)
+    {
+        var data = value[2..];
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        return value[0] switch
+        {
+            'U' => new TagLib.Asf.DescriptionRecord(language, stream, name, Unb64(data)),
+            'b' => new TagLib.Asf.DescriptionRecord(language, stream, name, data == "1"),
+            'W' => new TagLib.Asf.DescriptionRecord(language, stream, name, ushort.Parse(data, inv)),
+            'D' => new TagLib.Asf.DescriptionRecord(language, stream, name, uint.Parse(data, inv)),
+            'Q' => new TagLib.Asf.DescriptionRecord(language, stream, name, ulong.Parse(data, inv)),
+            'G' => new TagLib.Asf.DescriptionRecord(language, stream, name, Guid.Parse(data)),
+            _ => new TagLib.Asf.DescriptionRecord(language, stream, name, new TagLib.ByteVector(Convert.FromBase64String(data))),
+        };
+    }
+
+    private static void RestoreAsf(TagLib.Asf.Tag asf, Dictionary<string, List<string>> entries)
+    {
+        foreach (var (key, values) in entries)
+        {
+            if (key.StartsWith("c:", StringComparison.Ordinal))
+            {
+                if (asf.ContentDescriptionObject is { } cd)
+                    SetAsfDescription(cd, key[2..], values.Count == 0 ? null : Unb64(values[0][2..]));
+            }
+            else if (key.StartsWith("x:", StringComparison.Ordinal))
+            {
+                var name = key[2..];
+                if (asf.ExtendedContentDescriptionObject is not { } ext) continue;
+                ext.RemoveDescriptors(name);
+                foreach (var v in values) ext.AddDescriptor(AsfDescriptor(name, v));
+            }
+            else if (key.StartsWith("m:", StringComparison.Ordinal) && asf.MetadataLibraryObject is { } lib)
+            {
+                var parts = key.Split(':', 4);
+                var language = ushort.Parse(parts[1], System.Globalization.CultureInfo.InvariantCulture);
+                var stream = ushort.Parse(parts[2], System.Globalization.CultureInfo.InvariantCulture);
+                lib.RemoveRecords(language, stream, parts[3]);
+                foreach (var v in values) lib.AddRecord(AsfRecord(language, stream, parts[3], v));
+            }
+        }
+    }
+
+    // ── RIFF lists (WAV): INFO and MovieID fields, read from the rendered list ──
+
+    private static void CaptureList(RawTagSnapshot s, string list, TagLib.Riff.ListTag tag)
+    {
+        s.Riff ??= new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        var data = tag.Render().Data;
+        for (var at = 0; at + 8 <= data.Length;)
+        {
+            var id = System.Text.Encoding.ASCII.GetString(data, at, 4);
+            var size = (int)BitConverter.ToUInt32(data, at + 4);
+            if (size < 0 || at + 8 + size > data.Length) break;
+            Add(s.Riff, list + ":" + id, Convert.ToBase64String(data, at + 8, size));
+            at += 8 + size + (size & 1);
+        }
+    }
+
+    private static void RestoreLists(TagLib.File file, Dictionary<string, List<string>> fields)
+    {
+        foreach (var (key, values) in fields)
+        {
+            var type = key.StartsWith("MID :", StringComparison.Ordinal) ? TagLib.TagTypes.MovieId : TagLib.TagTypes.RiffInfo;
+            if (file.GetTag(type, values.Count > 0) is not TagLib.Riff.ListTag tag) continue;
+            var id = TagLib.ByteVector.FromString(key[5..], TagLib.StringType.Latin1);
+            if (values.Count == 0) tag.RemoveValue(id);
+            else tag.SetValue(id, values.Select(v => new TagLib.ByteVector(Convert.FromBase64String(v))).ToArray());
+        }
+    }
+
+    private static void Add(Dictionary<string, List<string>> d, string key, string value)
+    {
+        if (!d.TryGetValue(key, out var list)) d[key] = list = new List<string>();
+        list.Add(value);
+    }
+
+    private static string B64(string text) => Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(text));
+    private static string Unb64(string data) => System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(data));
 
     /// <summary>What <paramref name="before"/> held for each entry that differs in
     /// <paramref name="after"/> (empty: there was none).</summary>
@@ -63,7 +236,11 @@ internal static class RawTagState
         s.Id3v2 = Changed(before.Id3v2, after.Id3v2, (a, b) => a.SequenceEqual(b), () => new List<string>());
         s.Xiph = Changed(before.Xiph, after.Xiph, (a, b) => a.SequenceEqual(b), Array.Empty<string>);
         s.Apple = Changed(before.Apple, after.Apple, (a, b) => a.SequenceEqual(b), () => new List<string>());
+        s.Ape = Changed(before.Ape, after.Ape, (a, b) => a == b, () => string.Empty);
+        s.Asf = Changed(before.Asf, after.Asf, (a, b) => a.SequenceEqual(b), () => new List<string>());
+        s.Riff = Changed(before.Riff, after.Riff, (a, b) => a.SequenceEqual(b), () => new List<string>());
         s.Id3v1 = before.Id3v1 == after.Id3v1 ? null : before.Id3v1;
+        s.DivX = before.DivX == after.DivX ? null : before.DivX;
         return s;
     }
 
@@ -141,6 +318,48 @@ internal static class RawTagState
                     return new TagLib.Mpeg4.AppleDataBox(new TagLib.ByteVector(Convert.FromBase64String(v[(cut + 1)..])), flags);
                 }).ToArray());
             }
+
+        RestoreOthers(file, original);
+    }
+
+    /// <summary>The blocks <see cref="Restore"/> covers besides ID3, Vorbis and MP4.</summary>
+    private static void RestoreOthers(TagLib.File file, RawTagSnapshot original)
+    {
+        if (original.Ape is { Count: > 0 } items && file.GetTag(TagLib.TagTypes.Ape, true) is TagLib.Ape.Tag ape)
+            foreach (var (key, value) in items)
+            {
+                if (value.Length == 0) ape.RemoveItem(key);
+                else ape.SetItem(new TagLib.Ape.Item(new TagLib.ByteVector(Convert.FromBase64String(value)), 0));
+            }
+        if (original.Asf is { Count: > 0 } asfEntries && file.GetTag(TagLib.TagTypes.Asf, true) is TagLib.Asf.Tag asf)
+            RestoreAsf(asf, asfEntries);
+        if (original.Riff is { Count: > 0 } fields)
+            RestoreLists(file, fields);
+        if (original.DivX != null)
+        {
+            if (original.DivX.Length == 0)
+                file.RemoveTags(TagLib.TagTypes.DivX);
+            else if (file.GetTag(TagLib.TagTypes.DivX, true) is TagLib.Riff.DivXTag divx)
+                CopyDivX(new TagLib.Riff.DivXTag(new TagLib.ByteVector(Convert.FromBase64String(original.DivX))), divx);
+        }
+    }
+
+    /// <summary>
+    /// The DivX block as it was, field for field. TagLib#'s DivXTag offers no way to load raw data
+    /// into the file's block and its CopyTo goes through the generic properties, which turns the
+    /// "255" (no genre) the block held into blanks; its fields are copied as they are instead.
+    /// </summary>
+    private static void CopyDivX(TagLib.Riff.DivXTag from, TagLib.Riff.DivXTag to)
+    {
+        var fields = typeof(TagLib.Riff.DivXTag).GetFields(
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
+        if (fields.Length == 0)
+        {
+            from.CopyTo(to, true);
+            return;
+        }
+        foreach (var field in fields)
+            if (!field.IsInitOnly) field.SetValue(to, field.GetValue(from));
     }
 
     private static TagLib.Id3v2.Frame? ParseFrame(string base64, byte version)
