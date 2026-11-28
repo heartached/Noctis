@@ -1593,7 +1593,7 @@
                                                         MaxWidth="{Binding $parent[ItemsControl].MaxWidth}">
                                             <Panel HorizontalAlignment="{Binding Side, Converter={StaticResource VoiceAlign}}">
                                                 <!-- Plain text layer (lines without word timings) -->
-                                                <TextBlock Text="{Binding Text}"
+                                                <controls:LyricTextBlock Text="{Binding Text}"
                                                            Classes="mini-lyric-plain"
                                                            FontWeight="Bold"
                                                            Foreground="{Binding $parent[Window].((vm:MiniPlayerViewModel)DataContext).Lyrics.LyricsPrimaryFg}"
@@ -1603,13 +1603,13 @@
                                                            Opacity="{Binding LineOpacity}"
                                                            IsVisible="{Binding ShowLineText}"
                                                            TextWrapping="Wrap">
-                                                    <TextBlock.TextAlignment>
+                                                    <controls:LyricTextBlock.TextAlignment>
                                                         <MultiBinding Converter="{StaticResource LyricLineTextAlign}">
                                                             <Binding Path="Voice"/>
                                                             <Binding Path="IsRightToLeft"/>
                                                         </MultiBinding>
-                                                    </TextBlock.TextAlignment>
-                                                </TextBlock>
+                                                    </controls:LyricTextBlock.TextAlignment>
+                                                </controls:LyricTextBlock>
 
                                                 <!-- Word-level karaoke layer (long lyrics: near the sung line only,
                                                      the resting stand-in below elsewhere) -->
@@ -1732,7 +1732,7 @@
                                                     </ItemsPanelTemplate>
                                                 </ItemsControl.ItemsPanel>
                                             </ItemsControl>
-                                            <TextBlock Text="{Binding Transliteration}"
+                                            <controls:LyricTextBlock Text="{Binding Transliteration}"
                                                        Classes="romanization-text"
                                                        FontWeight="Bold"
                                                        Foreground="{Binding $parent[Window].((vm:MiniPlayerViewModel)DataContext).Lyrics.LyricsPrimaryFg}"
@@ -1744,19 +1744,19 @@
                                                        FontSize="{Binding $parent[ItemsControl].FontSize, Converter={StaticResource FontScale}, ConverterParameter=0.6}"
                                                        MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
                                                        TextWrapping="Wrap">
-                                                <TextBlock.IsVisible>
+                                                <controls:LyricTextBlock.IsVisible>
                                                     <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
                                                         <Binding Path="ShowTransliterationText"/>
                                                         <Binding Path="$parent[Window].((vm:MiniPlayerViewModel)DataContext).Lyrics.ShowRomanization"/>
                                                     </MultiBinding>
-                                                </TextBlock.IsVisible>
-                                                <TextBlock.Transitions>
+                                                </controls:LyricTextBlock.IsVisible>
+                                                <controls:LyricTextBlock.Transitions>
                                                     <Transitions>
                                                         <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
                                                     </Transitions>
-                                                </TextBlock.Transitions>
-                                            </TextBlock>
-                                            <TextBlock Text="{Binding Translation}"
+                                                </controls:LyricTextBlock.Transitions>
+                                            </controls:LyricTextBlock>
+                                            <controls:LyricTextBlock Text="{Binding Translation}"
                                                        Classes="translation-text"
                                                        FontWeight="Bold"
                                                        Foreground="{Binding $parent[Window].((vm:MiniPlayerViewModel)DataContext).Lyrics.LyricsPrimaryFg}"
@@ -1768,18 +1768,18 @@
                                                        FontSize="{Binding $parent[ItemsControl].FontSize, Converter={StaticResource FontScale}, ConverterParameter=0.6}"
                                                        MaxWidth="{Binding $parent[ItemsControl].MaxWidth}"
                                                        TextWrapping="Wrap">
-                                                <TextBlock.IsVisible>
+                                                <controls:LyricTextBlock.IsVisible>
                                                     <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
                                                         <Binding Path="ShowTranslation"/>
                                                         <Binding Path="$parent[Window].((vm:MiniPlayerViewModel)DataContext).Lyrics.ShowTranslations"/>
                                                     </MultiBinding>
-                                                </TextBlock.IsVisible>
-                                                <TextBlock.Transitions>
+                                                </controls:LyricTextBlock.IsVisible>
+                                                <controls:LyricTextBlock.Transitions>
                                                     <Transitions>
                                                         <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut"/>
                                                     </Transitions>
-                                                </TextBlock.Transitions>
-                                            </TextBlock>
+                                                </controls:LyricTextBlock.Transitions>
+                                            </controls:LyricTextBlock>
                                             </StackPanel>
                                         </Button>
                                     </DataTemplate>

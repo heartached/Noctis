@@ -138,12 +138,14 @@ public class MiniPlayerUnifiedControlsTests
     };
 
     private static async Task<(MiniPlayerWindow Win, MiniPlayerViewModel Vm, PlayerViewModel Player)> Open(
-        string prefix, string style, double width, double height, Track? track = null)
+        string prefix, string style, double width, double height, Track? track = null, double scaling = 1)
     {
         var vm = CreateVm(out var player, out _);
         player.ReplaceQueueAndPlay(new List<Track> { track ?? T("Song"), T("Next one") }, 0);
         if (style != "Classic") vm.SetDesignCommand.Execute(style);
         var win = new MiniPlayerWindow { DataContext = vm, Width = width, Height = height };
+        // Before Show, like a window opened on a 125% monitor (Avalonia.Headless).
+        if (Math.Abs(scaling - 1) > 1e-9) win.SetRenderScaling(scaling);
         win.Show();
         await PumpFor(400);
         // A design opens at its canonical size; put the size under test back.
@@ -690,6 +692,126 @@ public class MiniPlayerUnifiedControlsTests
             }
         }
         finally { win.Close(); }
+    }
+
+    // ── Per-monitor DPI (owner: main monitor 125%, left 100%, mini player dragged between) ──
+
+    public static IEnumerable<object[]> FormsAtDpi() =>
+        Forms().SelectMany(f => new[] { 1.25, 1.5, 2.0 }.Select(scale => f.Append(scale).ToArray()));
+
+    /// <summary>
+    /// A window on a 125% / 150% / 200% monitor (Avalonia.Headless SetRenderScaling before Show,
+    /// as the repo's other DPI tests do): every form lays out whole (nothing clipped or
+    /// overlapping), and the round buttons, slider, its thumb and the covers sit on whole device
+    /// pixels — layout rounding snaps them, so no half-pixel soft edges.
+    /// </summary>
+    [AvaloniaTheory]
+    [MemberData(nameof(FormsAtDpi))]
+    public async Task HighDpi_EveryForm_IsWhole_AndSnapsToDevicePixels(string prefix, string style, double w, double h, double scale)
+    {
+        var (win, vm, player) = await Open(prefix, style, w, h, scaling: scale);
+        try
+        {
+            Assert.Equal(scale, win.RenderScaling);
+            AssertNoClipOrOverlap(win, prefix, $"{prefix} at {scale:P0}");
+
+            bool OnPixels(Control c, out Rect px)
+            {
+                var r = new Rect(c.TranslatePoint(default, win)!.Value, c.Bounds.Size) * scale;
+                px = r;
+                static bool Whole(double v) => Math.Abs(v - Math.Round(v)) < 0.02;
+                return Whole(r.X) && Whole(r.Y) && Whole(r.Right) && Whole(r.Bottom);
+            }
+            var root = FormRoot(win, prefix);
+            var checks = new List<Control>();
+            foreach (var name in new[] { "HeartButton", "MoreButton", "ShuffleButton", "PrevButton", "PlayButton", "NextButton", "RepeatButton", "SeekSlider" })
+                if (win.FindControl<Control>(prefix + name) is { IsEffectivelyVisible: true } c) checks.Add(c);
+            var seek = win.FindControl<Slider>(prefix + "SeekSlider")!;
+            player.PositionFraction = 0.37; // an arbitrary thumb position
+            win.UpdateLayout();
+            checks.Add(seek.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.Thumb>().First());
+            checks.AddRange(root.GetVisualDescendants().OfType<CachedImage>().Where(i => i.IsEffectivelyVisible && i.Width > 0 && i.Width < 200));
+            foreach (var c in checks)
+                Assert.True(OnPixels(c, out var px), $"{prefix} at {scale:P0}: {c.GetType().Name} {c.Name} on {px} (not whole device pixels)");
+
+            // The window itself: the canonical size is whole device pixels at this scaling.
+            var (cw, ch) = MiniPlayerViewModel.CanonicalSize(FormOf(prefix));
+            Assert.Equal(Math.Round(cw * scale), cw * scale, 6);
+            Assert.Equal(Math.Round(ch * scale), ch * scale, 6);
+
+            // The "…" menu opens from its button at this scaling.
+            win.FindControl<Button>(prefix + "MoreButton")!.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            await PumpFor(250);
+            var popup = win.FindControl<Avalonia.Controls.Primitives.Popup>("MorePopup")!;
+            Assert.True(popup.IsOpen);
+            Assert.Same(win.FindControl<Button>(prefix + "MoreButton"), popup.PlacementTarget);
+        }
+        finally { win.Close(); }
+    }
+
+    /// <summary>Every canonical size is a whole number of device pixels at 100/125/150/200%, so
+    /// a jump into a form never lands on a fractional window size (a soft card edge).</summary>
+    [Theory]
+    [InlineData(1.0)]
+    [InlineData(1.25)]
+    [InlineData(1.5)]
+    [InlineData(1.75)]
+    [InlineData(2.0)]
+    public void CanonicalSizes_AreWholeDevicePixels(double scale)
+    {
+        foreach (var form in Enum.GetValues<MiniPlayerForm>())
+        {
+            var (w, h) = MiniPlayerViewModel.CanonicalSize(form);
+            Assert.True(Math.Abs(w * scale - Math.Round(w * scale)) < 1e-9, $"{form} width {w} at {scale}");
+            Assert.True(Math.Abs(h * scale - Math.Round(h * scale)) < 1e-9, $"{form} height {h} at {scale}");
+        }
+    }
+
+    /// <summary>
+    /// The drawer's keep-on-screen shift is in screen pixels. It came back in DIPs and was
+    /// applied to the pixel Position, so on a 125% monitor a Queue opened near the bottom moved
+    /// the card up only 80% of the overflow: its bottom stayed under the taskbar, and the saved
+    /// Y (Position + shift) was wrong by the rest.
+    /// </summary>
+    [Theory]
+    [InlineData(1.0)]
+    [InlineData(1.25)]
+    [InlineData(1.5)]
+    [InlineData(2.0)]
+    public void DrawerShift_KeepsTheExpandedCardOnScreen_AtAnyScaling(double scale)
+    {
+        // A 1920x1080 @ scale monitor's work area (taskbar 48 px), the card near its bottom.
+        var work = new PixelRect(0, 0, (int)(1920 * scale), (int)((1080 - 48) * scale));
+        var cardDip = 188.0;
+        var drawerDip = 200.0;
+        var y = work.Bottom - (int)Math.Round(cardDip * scale) - 10; // 10 px above the taskbar
+        var shift = MiniPlayerWindow.DrawerShiftPixels(y, cardDip + drawerDip, scale, work);
+        var expandedBottom = y - shift + Math.Round((cardDip + drawerDip) * scale);
+        Assert.Equal(work.Bottom, expandedBottom, 0.5);     // flush with the work area, not under it
+        Assert.Equal(Math.Round(drawerDip * scale) - 10, shift, 0.5);
+        // Room enough below: no shift. Taller than the screen: never above its top.
+        Assert.Equal(0, MiniPlayerWindow.DrawerShiftPixels(100, cardDip + drawerDip, scale, work));
+        Assert.Equal(40, MiniPlayerWindow.DrawerShiftPixels(40, 5000, scale, work));
+    }
+
+    /// <summary>A style switch between monitors: anchoring and the keep-on-screen clamp use the
+    /// pixel size of the target at that monitor's scaling (a 125% monitor next to a 100% one).</summary>
+    [Fact]
+    public void StyleSwitch_Anchoring_UsesThatMonitorsScaling()
+    {
+        var left = new PixelRect(-1920, 0, 1920, 1040);          // 100%
+        var main = new PixelRect(0, 0, 2400, 1300);              // 125% (1920x1040 DIPs)
+        // Bar (420x188) parked in the main monitor's bottom-right corner → Sleeve (340x372).
+        var barPx = MiniPlayerPlacement.ToPixels(420, 188, 1.25);
+        var current = new PixelRect(main.Right - barPx.Width, main.Bottom - barPx.Height, barPx.Width, barPx.Height);
+        var p = MiniPlayerPlacement.Anchored(current, 340, 372, 1.25, main);
+        var sleevePx = MiniPlayerPlacement.ToPixels(340, 372, 1.25);
+        Assert.Equal(new PixelPoint(main.Right - sleevePx.Width, main.Bottom - sleevePx.Height), p);
+        // The same card on the 100% monitor, bottom-left corner.
+        var barLeft = MiniPlayerPlacement.ToPixels(420, 188, 1.0);
+        var q = MiniPlayerPlacement.Anchored(new PixelRect(left.X, left.Bottom - barLeft.Height, barLeft.Width, barLeft.Height),
+            340, 372, 1.0, left);
+        Assert.Equal(new PixelPoint(left.X, left.Bottom - 372), q);
     }
 
     /// <summary>A persistence whose settings calls do their (simulated) file work synchronously

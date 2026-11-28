@@ -161,6 +161,41 @@ public class LyricRowEdgeTests
         finally { win.Close(); }
     }
 
+    private sealed class NoOpPlayHistoryService : Noctis.Services.IPlayHistoryService
+    {
+        public IReadOnlyList<Noctis.Models.PlayHistoryEvent> Events => Array.Empty<Noctis.Models.PlayHistoryEvent>();
+        public Task PreloadAsync() => Task.CompletedTask;
+        public void RecordPlay(Track track) { }
+        public void RecordSkip(Track track) { }
+        public Task FlushAsync() => Task.CompletedTask;
+    }
+
+    /// <summary>The mini player's lyrics column: the same rows (LyricTextBlock for plain text,
+    /// the shared word cells) end at their edge / centre the same way.</summary>
+    [AvaloniaFact]
+    public void MiniPlayer_WrappedRows_EndAtTheirEdge()
+    {
+        var app = Application.Current!;
+        if (!app.Resources.TryGetResource("SearchIcon", null, out _))
+            app.Resources.MergedDictionaries.Add(new Avalonia.Markup.Xaml.Styling.ResourceInclude((Uri?)null)
+                { Source = new Uri("avares://Noctis.UI/Assets/Icons.axaml") });
+        var vm = MakeLyrics();
+        var library = new FakeLibraryService();
+        var settings = new SettingsViewModel(new TestPersistenceService(), library, new NoOpPlayHistoryService());
+        var mini = new MiniPlayerViewModel(vm.Player, vm, settings, library);
+        var win = new MiniPlayerWindow { DataContext = mini, Width = 340, Height = 900 };
+        try
+        {
+            win.Show();
+            RtlLyricLayersTests.PumpFor(150);
+            mini.ToggleLyricsFormCommand.Execute(null);
+            RtlLyricLayersTests.PumpFor(700);
+            Assert.Equal(MiniPlayerForm.Lyrics, mini.Form);
+            AssertEdges(win, vm.LyricLines, "mini");
+        }
+        finally { win.Close(); }
+    }
+
     [AvaloniaFact]
     public void Phone_WrappedRows_EndAtTheirEdge()
     {
