@@ -52,8 +52,5 @@ public static class TextDirection
 
     /// <summary>In a right-to-left script's blocks (Hebrew, Arabic, Syriac, Thaana, N'Ko and their
     /// presentation forms); callers ask it of letters only.</summary>
-    public static bool IsRightToLeftLetter(char c) =>
-        c is >= '\u0590' and <= '\u08FF'
-        or >= '\uFB1D' and <= '\uFDFF'
-        or >= '\uFE70' and <= '\uFEFF';
+    public static bool IsRightToLeftLetter(char c) => Noctis.Helpers.RightToLeftScript.IsLetter(c);
 }

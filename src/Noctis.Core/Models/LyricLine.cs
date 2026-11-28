@@ -90,15 +90,40 @@ public partial class LyricLine : ObservableObject
     /// Set with <see cref="SetRightToLeft"/>, which passes it on to the line's words.
     /// </summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Side))]
+    [NotifyPropertyChangedFor(nameof(TransliterationSide))]
     private bool _isRightToLeft;
 
-    /// <summary>Sets <see cref="IsRightToLeft"/> on the line and on every word of its layers.</summary>
+    /// <summary>
+    /// The edge the line's block and its secondary rows (adlibs, romanization, translation) sit
+    /// against, as a voice for the LyricVoice* converters: <see cref="Voice"/>, mirrored for a
+    /// right-to-left line (#269: an English translation under a Persian line sits on the right).
+    /// </summary>
+    public LyricVoice Side => IsRightToLeft ? Mirror(Voice) : Voice;
+
+    /// <summary>The word-timed romanization reads right to left by its own text (a Latin
+    /// romanization of a Persian line does not); set with <see cref="TransliterationWords"/>.</summary>
+    public bool TransliterationIsRightToLeft { get; private set; }
+
+    /// <summary>The romanization row's word alignment: its words are laid out in their own
+    /// direction (LyricWrapPanel mirrors the slots of a right-to-left row), the row still on
+    /// <see cref="Side"/>.</summary>
+    public LyricVoice TransliterationSide => TransliterationIsRightToLeft ? Mirror(Side) : Side;
+
+    private static LyricVoice Mirror(LyricVoice voice) => voice switch
+    {
+        LyricVoice.Default => LyricVoice.Voice2,
+        LyricVoice.Voice2 => LyricVoice.Default,
+        _ => voice,
+    };
+
+    /// <summary>Sets <see cref="IsRightToLeft"/> on the line and on the words of its main and
+    /// background layers; the romanization keeps its own direction.</summary>
     public void SetRightToLeft(bool value)
     {
         IsRightToLeft = value;
         Mark(Words);
         Mark(BackgroundWords);
-        Mark(TransliterationWords);
         void Mark(IReadOnlyList<WordTiming>? words)
         {
             if (words is null) return;
@@ -166,6 +191,10 @@ public partial class LyricLine : ObservableObject
         {
             _transliterationWords = value;
             ComputeWordEmphasis(_transliterationWords, TransliterationEndTimestamp);
+            var rtl = value is { Count: > 0 } && Helpers.RightToLeftScript.StartsRightToLeft(string.Concat(value.Select(w => w.Text)));
+            TransliterationIsRightToLeft = rtl;
+            if (value != null)
+                foreach (var w in value) w.IsRightToLeft = rtl;
         }
     }
     private IReadOnlyList<WordTiming>? _transliterationWords;
