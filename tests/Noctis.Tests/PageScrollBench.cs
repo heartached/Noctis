@@ -56,6 +56,29 @@ public class PageScrollBench
         ["Rock", "Pop", "Hip-Hop/Rap", "Electronic", "Jazz", "Classical", "R&B/Soul", "Metal", "Folk", "Indie",
          "Ambient", "Soundtrack", "Country", "Blues", "Reggae", "Punk", "Latin", "K-Pop", "Funk", "Alternative"];
 
+    /// <summary>
+    /// <see cref="WriteLibrary"/> on a thread of its own, the UI thread blocked until it is done.
+    /// Not Task.Run(...).GetAwaiter().GetResult(): a Wait on a task the pool has not started yet
+    /// runs it inline on the waiting (UI) thread, where the persistence awaits inside post their
+    /// continuations to the blocked dispatcher and the run hangs for good (11-27: a
+    /// ThemeSwitchBench run stuck for hours, the dump showed WriteLibrary inlined on the session
+    /// thread inside Task.InternalWaitCore).
+    /// </summary>
+    internal static (List<Track> Tracks, List<Playlist> Playlists) WriteLibraryOffUiThread(int trackCount, bool covers)
+    {
+        (List<Track>, List<Playlist>) result = default;
+        Exception? error = null;
+        var thread = new Thread(() =>
+        {
+            try { result = WriteLibrary(trackCount, covers); }
+            catch (Exception ex) { error = ex; }
+        }) { IsBackground = true };
+        thread.Start();
+        thread.Join();
+        if (error != null) throw new InvalidOperationException("writing the bench library failed", error);
+        return result;
+    }
+
     internal static (List<Track> Tracks, List<Playlist> Playlists) WriteLibrary(int trackCount, bool covers)
     {
         var rnd = new Random(1234);
@@ -386,7 +409,7 @@ public class PageScrollBench
         var covers = Environment.GetEnvironmentVariable("NOCTIS_PERF_COVERS") != "0";
         var gen = Stopwatch.StartNew();
         // Off the UI thread: the persistence awaits would post back to the blocked dispatcher.
-        var (tracks, playlists) = Task.Run(() => WriteLibrary(TrackCount, covers)).GetAwaiter().GetResult();
+        var (tracks, playlists) = WriteLibraryOffUiThread(TrackCount, covers);
         Log($"library: {tracks.Count} tracks, {tracks.Select(t => t.AlbumId).Distinct().Count()} albums, " +
             $"{tracks.Select(t => t.AlbumArtist).Distinct().Count()} album artists, covers={covers} ({gen.ElapsedMilliseconds} ms to write)");
 
