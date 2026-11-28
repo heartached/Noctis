@@ -78,6 +78,7 @@ public partial class MiniPlayerWindow : Window
     // how much of the current geometry belongs to it. Placement is persisted with both
     // backed out, or quitting with the queue open would restore an oversized empty card.
     private double _drawerHeight;
+    /// <summary>Upward shift the open drawer needed, in screen pixels (like Position).</summary>
     private double _drawerShiftY;
 
     private MiniPlayerViewModel? Vm => DataContext as MiniPlayerViewModel;
@@ -2117,13 +2118,7 @@ public partial class MiniPlayerWindow : Window
         // the whole expanded card stays visible, and give the shift back when it collapses.
         var targetShift = 0.0;
         if (delta > 0 && Screens.ScreenFromWindow(this) is { } screen)
-        {
-            var scaling = screen.Scaling <= 0 ? 1 : screen.Scaling;
-            var bottom = Position.Y + (fromHeight + delta) * scaling;
-            var overflow = bottom - screen.WorkingArea.Bottom;
-            if (overflow > 0)
-                targetShift = Math.Min(overflow / scaling, Math.Max(0, (Position.Y - screen.WorkingArea.Y) / scaling));
-        }
+            targetShift = DrawerShiftPixels(Position.Y, fromHeight + delta, screen.Scaling, screen.WorkingArea);
 
         var generation = ++_resizeAnimationGeneration;
         const double durationMs = 240;
@@ -2166,6 +2161,22 @@ public partial class MiniPlayerWindow : Window
             CapturePlacement();
         }
         RequestGeometryFrame(Frame);
+    }
+
+    /// <summary>
+    /// How many screen PIXELS the window moves up so a card <paramref name="expandedHeight"/>
+    /// DIPs tall, its top at <paramref name="positionY"/>, ends inside the work area (never
+    /// above its top). Pixels, because the shift is applied to and backed out of Position,
+    /// which is in pixels. It was returned in DIPs (overflow / scaling) and then added to the
+    /// pixel Y as is: on the owner's 125% monitor an opened drawer moved the card up only 80%
+    /// of the way (its bottom stayed under the taskbar) and the saved Y was off by the rest.
+    /// </summary>
+    internal static double DrawerShiftPixels(int positionY, double expandedHeight, double scaling, PixelRect workArea)
+    {
+        var s = scaling > 0 && double.IsFinite(scaling) ? scaling : 1;
+        var bottom = positionY + Math.Round(expandedHeight * s);
+        var overflow = bottom - workArea.Bottom;
+        return overflow > 0 ? Math.Min(overflow, Math.Max(0, positionY - workArea.Y)) : 0;
     }
 
     /// <summary>In-flight drawer animation: generation tag (only honored while it matches

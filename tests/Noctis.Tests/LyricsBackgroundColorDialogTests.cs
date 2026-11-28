@@ -472,6 +472,11 @@ public class LyricsBackgroundColorDialogTests : IDisposable
             var host = Assert.IsType<PillDialogHost>(dialog.Content);
             Assert.True(host.BlurBackdrop);
             Pump(400);
+            // The debounce's wait ends when the test says so, not by the wall clock: the old
+            // 60 ms "nothing yet" pump ran past the 150 ms wait whenever a frame was slow
+            // (busy machine, a heavy earlier test), and the re-take landed inside the check.
+            var waits = new List<TaskCompletionSource>();
+            dialog.RetakeDelay = _ => { var w = new TaskCompletionSource(); waits.Add(w); return w.Task; };
             var before = host.BackdropRefreshes;
 
             vm.SelectColorModeSolidCommand.Execute(null);
@@ -479,19 +484,55 @@ public class LyricsBackgroundColorDialogTests : IDisposable
             vm.SetBackgroundColorCommand.Execute("#5C8A6E");
             Pump(60);
             Assert.Equal(before, host.BackdropRefreshes);             // not while picking
+            Assert.True(waits.Count >= 3, $"{waits.Count} pick waits");
+            // The earlier picks' waits end: superseded by the last pick, so nothing.
+            foreach (var w in waits.Take(waits.Count - 1)) w.SetResult();
+            Pump(60);
+            Assert.Equal(before, host.BackdropRefreshes);
+            // The last one ends: one re-take for the run.
+            waits[^1].SetResult();
             Assert.True(PumpUntil(() => host.BackdropRefreshes == before + 1, 1500), "no re-take after the picks");
-            Pump(400);
-            Assert.Equal(before + 1, host.BackdropRefreshes);         // one for the run
+            Pump(200);
+            Assert.Equal(before + 1, host.BackdropRefreshes);
 
+            waits.Clear();
             vm.SelectColorModeGradientCommand.Execute(null);
+            Assert.NotEmpty(waits);
+            foreach (var w in waits) w.SetResult();
             Assert.True(PumpUntil(() => host.BackdropRefreshes == before + 2, 1500), "no re-take after the mode switch");
 
             dialog.Close();
             Assert.True(PumpUntil(() => !dialog.IsVisible));
             var closed = host.BackdropRefreshes;
+            waits.Clear();
             vm.SetBackgroundColorCommand.Execute("#1A1A2E");
-            Pump(500);
+            foreach (var w in waits) w.SetResult();
+            Pump(200);
             Assert.Equal(closed, host.BackdropRefreshes);             // nothing after it closed
+        }
+        finally { owner.Close(); }
+    }
+
+    /// <summary>Why the check above used to fail now and then in a busy run: the re-take wait is
+    /// wall-clock, so a frame that stalls the UI thread past it (200 ms here) lets the re-take
+    /// land inside any fixed "nothing yet" window. The product behaviour is right (one re-take,
+    /// 150 ms after the last pick); only a wall-clock assertion on it was not.</summary>
+    [AvaloniaFact]
+    public void ReTakeWait_IsWallClock_SoAStalledFrameRunsPastIt()
+    {
+        EnsureAppStyles();
+        var (vm, _, _) = MakeViewModel();
+        var (owner, _) = ShowPage(vm);
+        try
+        {
+            var dialog = OpenFromMenu(vm, owner);
+            var host = Assert.IsType<PillDialogHost>(dialog.Content);
+            Pump(400);
+            var before = host.BackdropRefreshes;
+            vm.SetBackgroundColorCommand.Execute("#5C8A6E");
+            Thread.Sleep(200); // a slow frame / GC pause on the UI thread
+            Pump(60);
+            Assert.Equal(before + 1, host.BackdropRefreshes); // what the old 60 ms check saw
         }
         finally { owner.Close(); }
     }

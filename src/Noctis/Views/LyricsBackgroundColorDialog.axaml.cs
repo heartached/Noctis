@@ -57,6 +57,12 @@ public partial class LyricsBackgroundColorDialog : Window
     private LyricsViewModel? _watched;
     private int _pickGeneration;
 
+    /// <summary>The wait between the last pick and the re-take (Task.Delay). Tests swap in a
+    /// wait they end themselves: timing it by the wall clock made "nothing while picking"
+    /// depend on how long the test thread's next frames took (a slow frame under load ran past
+    /// the 150 ms and the re-take landed inside the check).</summary>
+    internal Func<TimeSpan, Task> RetakeDelay { get; set; } = Task.Delay;
+
     private void WatchPicks(LyricsViewModel? vm)
     {
         if (_watched != null) _watched.PropertyChanged -= OnPickChanged;
@@ -70,7 +76,7 @@ public partial class LyricsBackgroundColorDialog : Window
             or nameof(LyricsViewModel.IsColorModeSolid) or nameof(LyricsViewModel.IsColorModeGradient))) return;
         // Only the last of a quick run of picks re-takes it (and none once closed).
         var generation = ++_pickGeneration;
-        await Task.Delay(BackdropRetakeDelay);
+        await RetakeDelay(BackdropRetakeDelay);
         if (generation != _pickGeneration || _watched is null) return;
         await Host.RefreshBackdropAsync();
     }
