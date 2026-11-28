@@ -156,6 +156,8 @@ public class MobileLyricsPromotionTests
         var promoted = new List<long>();
         long uiBytes = 0;
         var all0 = GC.GetTotalAllocatedBytes(precise: true);
+        long intervalAll = all0, intervalUi = 0;
+        Log?.Invoke($"  before: sink {Avalonia.Logging.Logger.Sink?.GetType().Name ?? "none"}, threads {Process.GetCurrentProcess().Threads.Count}, pool {ThreadPool.ThreadCount} busy {ThreadPool.PendingWorkItemCount} queued, timers {Timer.ActiveCount}, heap {GC.GetTotalMemory(false) / 1024 / 1024} MB");
         while (clock.Elapsed.TotalMilliseconds < end)
         {
             var t = clock.Elapsed.TotalMilliseconds;
@@ -169,6 +171,10 @@ public class MobileLyricsPromotionTests
                 var reasons = "";
                 var voided = natural0 != 0 && outside.AllForLowMemory(held, out reasons);
                 Assert.True(natural0 == 0 || voided, $"{natural0} nursery collections ran inside an interval ({reasons})");
+                var allNow = GC.GetTotalAllocatedBytes(precise: true);
+                Log?.Invoke($"  interval: UI thread {intervalUi / 1024} KB, other threads {(allNow - intervalAll - intervalUi) / 1024} KB");
+                intervalAll = allNow;
+                intervalUi = 0;
                 var collected = CollectNursery();
                 if (voided)
                 {
@@ -186,7 +192,9 @@ public class MobileLyricsPromotionTests
             nextFrame = t + 1000.0 / 60;
             var b0 = GC.GetAllocatedBytesForCurrentThread();
             Step(t);
-            uiBytes += GC.GetAllocatedBytesForCurrentThread() - b0;
+            var stepBytes = GC.GetAllocatedBytesForCurrentThread() - b0;
+            uiBytes += stepBytes;
+            intervalUi += stepBytes;
             frames++;
         }
         var all = GC.GetTotalAllocatedBytes(precise: true) - all0;
