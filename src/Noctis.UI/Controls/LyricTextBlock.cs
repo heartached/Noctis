@@ -20,8 +20,10 @@ public class LyricTextBlock : TextBlock
     protected override void RenderTextLayout(DrawingContext context, Point origin)
     {
         var y = origin.Y;
-        foreach (var line in TextLayout.TextLines)
+        var lines = TextLayout.TextLines;
+        for (var i = 0; i < lines.Count; i++)   // indexed: drawn every frame a row moves, allocates nothing
         {
+            var line = lines[i];
             line.Draw(context, new Point(origin.X + EdgeShift(line), y));
             y += line.Height;
         }
